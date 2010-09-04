@@ -1,0 +1,72 @@
+#!/bin/bash
+# Quick and dirty script to compile the core parts of Wabbitemu
+#
+
+IGNORE_ERRORS=1
+
+# Functions
+function checkfail() {
+	if [ "$1" != 0 ];then
+		echo "Failed. See err.log for more details."
+		if [ ! $IGNORE_ERRORS = 1 ];then
+			exit 1
+		else
+			echo "Error ignored, continuing."
+		fi
+	fi
+	rm err.log
+}
+
+for src in core/*.c
+do
+obj=`printf "$src" | sed 's/[.]c/.o/'`
+if [ -f "$obj" ];then
+	continue
+fi
+echo -e "\033[1m""Building $src""...""\033[0m"
+gcc -c -I . `wx-config --version=2.8 --libs --cflags` -I core -I hardware -I utilities -I interface $src -DHIGH_SHADE_GIF -DVERBOSE -DWXVER -o "$obj" &> err.log
+checkfail $?
+done
+
+for src in hardware/*.c
+do
+obj=`printf "$src" | sed 's/[.]c/.o/'`
+if [ -f "$obj" ];then
+	continue
+fi
+echo -e "\033[1m""Building $src""...""\033[0m"
+if [ "$src" = "hardware/keys.c" ]; then
+echo "C++"
+g++ -c -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface $src"pp" -DHIGH_SHADE_GIF -DVERBOSE -DWXVER -o "$obj" &> err.log
+else
+gcc -c -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface $src -DHIGH_SHADE_GIF -DVERBOSE -DWXVER -o "$obj" &> err.log
+fi
+checkfail $?
+done
+
+:<<COMMENT
+for src in utilities/*.c
+do
+obj=`printf "$src" | sed 's/[.]c/.o/'`
+if [ -f "$obj" ];then
+	continue
+fi
+echo -e "\033[1m""Building $src""...""\033[0m"
+gcc -c -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface $src -DHIGH_SHADE_GIF -DVERBOSE -DWXVER -o "$obj" &> err.log
+checkfail $?
+done
+COMMENT
+
+echo -e "\033[1m""Building interface/calc.c""...""\033[0m"
+gcc -c -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface interface/calc.c -DHIGH_SHADE_GIF -DVERBOSE -DWXVER -o interface/calc.o
+
+echo -e "\033[1m""Building wxgui_lcd.cpp""...""\033[0m"
+g++ -c -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface wxgui_lcd.cpp -DHIGH_SHADE_GIF -DVERBOSE -DWXVER -o wxgui_lcd
+echo -e "\033[1m""Building wxgui.cpp""...""\033[0m"
+g++ -c -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface wxgui.cpp -DHIGH_SHADE_GIF -DVERBOSE -DWXVER -o wxgui
+
+
+#gcc -c -I . -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface hardware/*.c core/*.c \
+#	utilities/*.c -DHIGH_SHADE_GIF -DVERBOSE -DWXVER
+
+echo "Building complete!"
