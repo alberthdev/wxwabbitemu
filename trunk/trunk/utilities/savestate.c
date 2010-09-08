@@ -1,13 +1,14 @@
-#include <stdio.h>
-#include <string.h>
 #include "core.h"
 #include "savestate.h"
 #include "lcd.h"
 #include "link.h"
 #include "calc.h"
+#ifdef USE_ZLIB
 #include "zlibcmp.h"
+#endif
 //#include "stdint.h"
 #include "83psehw.h"
+#define MAX_PATH PATH_MAX
 
 BOOL cmpTags(char* str1,char* str2) {
 	int i;
@@ -39,7 +40,7 @@ int fgeti(FILE* stream) {
 }
 
 SAVESTATE_t* CreateSave(char* author, char* comment , int model) {
-	SAVESTATE_t* save = malloc(sizeof(SAVESTATE_t));
+	SAVESTATE_t* save = (SAVESTATE_t*) malloc(sizeof(SAVESTATE_t));
 	if (!save) return NULL;
 
 	save->version_major = CUR_MAJOR;
@@ -115,7 +116,7 @@ CHUNK_t* NewChunk(SAVESTATE_t* save, char* tag) {
 	if (save->chunks[chunk] != NULL) {
 		puts("Error new chunk was not null.");
 	}
-	save->chunks[chunk] = malloc(sizeof(CHUNK_t));
+	save->chunks[chunk] = (CHUNK_t *) malloc(sizeof(CHUNK_t));
 	if (!save->chunks[chunk]) {
 		puts("Chunk could not be created");
 		return NULL;
@@ -159,7 +160,7 @@ void CheckPNT(CHUNK_t* chunk) {
 
 BOOL WriteChar(CHUNK_t* chunk, unsigned char value) {
 	unsigned char* tmppnt;
-	tmppnt = realloc(chunk->data,chunk->size+sizeof(char));
+	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size+sizeof(char));
 	if (tmppnt == NULL) {
 		puts("Error could not realloc data");
 		return FALSE;
@@ -175,7 +176,7 @@ BOOL WriteShort(CHUNK_t* chunk, unsigned short value) {
 	int i;
 	unsigned char* tmppnt;
 	unsigned char* pnt = (unsigned char*)(&value);
-	tmppnt = realloc(chunk->data,chunk->size+sizeof(short));
+	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size+sizeof(short));
 	if (tmppnt == NULL) {
 		puts("Error could not realloc data");
 		return FALSE;
@@ -195,7 +196,7 @@ BOOL WriteInt(CHUNK_t* chunk, unsigned int value) {
 	int i;
 	unsigned char* tmppnt;
 	unsigned char* pnt = (unsigned char*)(&value);
-	tmppnt = realloc(chunk->data,chunk->size+sizeof(int));
+	tmppnt = (unsigned char*) realloc(chunk->data,chunk->size+sizeof(int));
 	if (tmppnt == NULL) {
 		puts("Error could not realloc data");
 		return FALSE;
@@ -216,7 +217,7 @@ BOOL WriteLong(CHUNK_t* chunk, unsigned long long value) {
 	int i;
 	unsigned char* tmppnt;
 	unsigned char* pnt = (unsigned char*)(&value);
-	tmppnt = realloc(chunk->data,chunk->size+sizeof(long long));
+	tmppnt = (unsigned char*) realloc(chunk->data,chunk->size+sizeof(long long));
 	if (tmppnt == NULL) {
 		puts("Error could not realloc data");
 		return FALSE;
@@ -237,7 +238,7 @@ BOOL WriteFloat(CHUNK_t* chunk, float value) {
 	int i;
 	unsigned char* tmppnt;
 	unsigned char* pnt = (unsigned char*)(&value);
-	tmppnt = realloc(chunk->data,chunk->size+sizeof(float));
+	tmppnt = (unsigned char*) realloc(chunk->data,chunk->size+sizeof(float));
 	if (tmppnt == NULL) {
 		puts("Error could not realloc data");
 		return FALSE;
@@ -257,7 +258,7 @@ BOOL WriteDouble(CHUNK_t* chunk, double value) {
 	int i;
 	unsigned char* tmppnt;
 	unsigned char* pnt = (unsigned char*)(&value);
-	tmppnt = realloc(chunk->data,chunk->size+sizeof(double));
+	tmppnt = (unsigned char*) realloc(chunk->data,chunk->size+sizeof(double));
 	if (tmppnt == NULL) {
 		puts("Error could not realloc data");
 		return FALSE;
@@ -277,7 +278,7 @@ BOOL WriteDouble(CHUNK_t* chunk, double value) {
 BOOL WriteBlock(CHUNK_t* chunk, unsigned char* pnt, int length) {
 	int i;
 	unsigned char* tmppnt;
-	tmppnt = realloc(chunk->data,chunk->size+length);
+	tmppnt = (unsigned char*) realloc(chunk->data,chunk->size+length);
 	if (tmppnt == NULL) {
 		puts("Error could not realloc data");
 		return FALSE;
@@ -594,7 +595,7 @@ void SaveLCD(SAVESTATE_t* save, LCD_t* lcd) {
 	WriteBlock(chunk,lcd->display,DISPLAY_SIZE);
 
 	WriteInt(chunk,lcd->front);
-	WriteBlock(chunk,lcd->queue,LCD_MAX_SHADES*DISPLAY_SIZE);
+	WriteBlock(chunk,(unsigned char *) lcd->queue,LCD_MAX_SHADES*DISPLAY_SIZE);
 	
 	WriteInt(chunk,lcd->shades);
 	WriteInt(chunk,lcd->mode);
@@ -776,14 +777,14 @@ void LoadLCD(SAVESTATE_t* save, LCD_t* lcd) {
 	lcd->x			= ReadInt(chunk);
 	lcd->y			= ReadInt(chunk);
 	lcd->z			= ReadInt(chunk);
-	lcd->cursor_mode		= ReadInt(chunk);
+	lcd->cursor_mode		= (LCD_CURSOR_MODE) ReadInt(chunk);
 	lcd->contrast	= ReadInt(chunk);
 	lcd->base_level	= ReadInt(chunk);
 	ReadBlock(chunk,lcd->display,DISPLAY_SIZE);
 	lcd->front		= ReadInt(chunk);
-	ReadBlock(chunk,lcd->queue,LCD_MAX_SHADES*DISPLAY_SIZE);
+	ReadBlock(chunk,(unsigned char *) lcd->queue,LCD_MAX_SHADES*DISPLAY_SIZE);
 	lcd->shades		= ReadInt(chunk);
-	lcd->mode		= ReadInt(chunk);
+	lcd->mode		= (LCD_MODE) ReadInt(chunk);
 	lcd->time		= ReadDouble(chunk);
 	lcd->ufps		= ReadDouble(chunk);
 	lcd->ufps_last	= ReadDouble(chunk);
@@ -900,7 +901,7 @@ char* GetRomOnly(SAVESTATE_t* save,int* size) {
 	*size = 0;
 	if (!chunk) return NULL;
 	*size = chunk->size;
-	return chunk->data;
+	return (char *) chunk->data;
 }
 
 
@@ -909,6 +910,7 @@ void WriteSave(const char * fn,SAVESTATE_t* save,int compress) {
 	FILE* ofile;
 	FILE* cfile;
 	char tmpfn[L_tmpnam];
+	char temp_save[MAX_PATH];
 	
 	if (!save) {
 		puts("Save was null for write");
@@ -918,7 +920,9 @@ void WriteSave(const char * fn,SAVESTATE_t* save,int compress) {
 		ofile = fopen(fn,"wb");
 	} else {
 		tmpnam(tmpfn);
-		ofile = fopen(tmpfn,"wb");
+		strcpy(temp_save, getenv("appdata"));
+		strcat(temp_save, tmpfn);
+		ofile = fopen(temp_save,"wb");
 	}
 		
 	if (!ofile) {
@@ -947,35 +951,35 @@ void WriteSave(const char * fn,SAVESTATE_t* save,int compress) {
 		fwrite(save->chunks[i]->data,1,save->chunks[i]->size,ofile);
 	}
 	fclose(ofile);
-	#ifdef WINVER // FIXME! FIXME! FIXME!
+	
 	if (compress) {
 		cfile = fopen(fn,"wb");
 		if (!cfile) {
 			puts("Could not open compress file for write");
 			return;
 		}
-		ofile = fopen(tmpfn,"rb");
+		ofile = fopen(temp_save,"rb");
 		if (!ofile) {
 			puts("Could not open tmp file for read");
 			return;
 		}
 		fputs(DETECT_CMP_STR,cfile);
 		switch(compress) {
+#ifdef USE_ZLIB
 			case ZLIB_CMP:
 				fputc(ZLIB_CMP,cfile);
 				def(ofile,cfile,9);
 				break;
+#endif
 			default:
 				puts("Error bad compression format selected.");
-				fputc(ZLIB_CMP,cfile);
-				def(ofile,cfile,0);
 				break;
 		}
 		fclose(ofile);
 		fclose(cfile);
-		remove(tmpfn);
+
+		remove(temp_save);
 	}
-	#endif
 }
 
 SAVESTATE_t* ReadSave(FILE* ifile) {
@@ -984,6 +988,7 @@ SAVESTATE_t* ReadSave(FILE* ifile) {
 	int chunk_offset,chunk_count;
 	char string[128];
 	char tmpfn[L_tmpnam];
+	char temp_save[MAX_PATH];
 	SAVESTATE_t* save;
 	CHUNK_t* chunk;
 	FILE* tmpfile;
@@ -993,26 +998,32 @@ SAVESTATE_t* ReadSave(FILE* ifile) {
 	if (strncmp(DETECT_CMP_STR,string,8)==0) {
 		i = fgetc(ifile);
 		tmpnam(tmpfn);
-		tmpfile = fopen(tmpfn,"wb");
+		strcpy(temp_save, getenv("appdata"));
+		strcat(temp_save, tmpfn);
+		tmpfile = fopen(temp_save,"wb");
 		if (!tmpfile) {
 			puts("Could not open tmp file for write");
 			return NULL;
 		}
-		#ifdef WINVER // FIXME! FIXME! FIXME!
+		
 		switch(i) {
+#ifndef _WINDLL
+#ifdef USE_ZLIB
 			case ZLIB_CMP:
 				inf(ifile,tmpfile);
 				break;
+#endif
+#endif
 			default:
 				puts("Compressed save is not compatible.");
 				fclose(tmpfile);
 				remove(tmpfn);
 				return NULL;
 		}
-		#endif
+		
 		fclose(tmpfile);
-		ifile = fopen(tmpfn,"rb");	//this is not a leak, ifile gets closed
-									// outside of this routine.
+		ifile = fopen(temp_save,"rb");	//this is not a leak, ifile gets closed
+										// outside of this routine.
 		if (!ifile) {
 			puts("Could not open tmp file for read");
 			return NULL;
@@ -1028,7 +1039,7 @@ SAVESTATE_t* ReadSave(FILE* ifile) {
 		return NULL;
 	}		
 	
-	save = malloc(sizeof(SAVESTATE_t));
+	save = (SAVESTATE_t *) malloc(sizeof(SAVESTATE_t));
 	if (!save) {
 		puts("Save could not be allocated");
 		if (compressed == TRUE) fclose(ifile);
@@ -1069,12 +1080,12 @@ SAVESTATE_t* ReadSave(FILE* ifile) {
 		string[4]	= 0;
 		chunk		= NewChunk(save,string);
 		chunk->size	= fgeti(ifile);
-		chunk->data	= malloc(chunk->size);
+		chunk->data	= (unsigned char *) malloc(chunk->size);
 		fread(chunk->data,1,chunk->size,ifile);
 	}
 	if (compressed == TRUE) {
 		fclose(ifile);
-		remove(tmpfn);
+		remove(temp_save);
 	}
 /* check for read errors... */
 	return save;

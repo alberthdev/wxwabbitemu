@@ -1,5 +1,10 @@
 #include "lcd.h"
 #include "gifhandle.h"
+#ifdef WINVER
+#include "registry.h"
+#endif
+
+#include "calc.h"
 
 /* 
  * Differing interpretations of contrast require that
@@ -59,6 +64,7 @@ static void LCD_advance_cursor(LCD_t *);
 static void LCD_reset(LCD_t *);
 static void LCD_enqueue(LCD_t *);
 static void LCD_free(LCD_t *);
+u_char *LCD_update_image(LCD_t *lcd);
 
 
 //static FILE *log;
@@ -70,7 +76,7 @@ LCD_t* LCD_init(CPU_t* cpu, int model) {
 	
 	//log = fopen("screen_delay.txt","w");
 	
-	LCD_t* lcd = malloc(sizeof(LCD_t));
+	LCD_t* lcd = (LCD_t *) malloc(sizeof(LCD_t));
 	if (!lcd) {
 		printf("Couldn't allocate memory for LCD\n");
 		exit(1);
@@ -84,6 +90,7 @@ LCD_t* LCD_init(CPU_t* cpu, int model) {
 		case TI_83:
 			lcd->base_level = BASE_LEVEL_83;
 			break;
+		case TI_85:
 		case TI_86:
 			lcd->base_level = BASE_LEVEL_83P;
 			lcd->contrast = lcd->base_level;
@@ -109,7 +116,7 @@ LCD_t* LCD_init(CPU_t* cpu, int model) {
 	// Set all values to the defaults
 #ifdef WINVER
 	lcd->shades = QueryWabbitKey("shades");
-	lcd->mode = QueryWabbitKey("lcd_mode");
+	lcd->mode = (LCD_MODE) QueryWabbitKey("lcd_mode");
 	lcd->steady_frame = 1.0 / QueryWabbitKey("lcd_freq");
 #else
 	lcd->shades = 6;
@@ -139,7 +146,7 @@ static void LCD_free(LCD_t *lcd) {
  * Device code for LCD commands 
  */
 void LCD_command(CPU_t *cpu, device_t *dev) {
-	LCD_t *lcd = dev->aux;
+	LCD_t *lcd = (LCD_t *) dev->aux;
 	
 	if (cpu->output) {
 		// Test the bus to determine which command to run
@@ -151,7 +158,7 @@ void LCD_command(CPU_t *cpu, device_t *dev) {
 				lcd->word_len = CRD_DATA(86E);
 				break;
 			CRD_CASE(UDE):
-				lcd->cursor_mode = CRD_DATA(UDE);
+				lcd->cursor_mode = (LCD_CURSOR_MODE) CRD_DATA(UDE);
 				break;
 			CRD_CASE(CHE):
 			CRD_CASE(OPA1):
@@ -182,7 +189,7 @@ void LCD_command(CPU_t *cpu, device_t *dev) {
  * Also manage user FPS and grayscale 
  */
 void LCD_data(CPU_t *cpu, device_t *dev) {
-	LCD_t *lcd = dev->aux;
+	LCD_t *lcd = (LCD_t *) dev->aux;
 
 	// Get a pointer to the byte referenced by the CRD cursor
 	u_int shift = 0;
@@ -227,6 +234,14 @@ void LCD_data(CPU_t *cpu, device_t *dev) {
 		
 		if (lcd->mode == MODE_GAME_GRAY) {
 			if (lcd->x == 0 && lcd->y == 0) {
+				int i;
+				for (i = 0; i < lcd->shades; i++) {
+					if (memcmp(lcd->display, lcd->queue[i], DISPLAY_SIZE) == 0) {
+						LCD_update_image(lcd);
+						break;
+					}
+				}
+				
 				LCD_enqueue(lcd);
 				lcd->time = tc_elapsed(cpu->timer_c);
 			}
@@ -282,10 +297,10 @@ void LCD_data(CPU_t *cpu, device_t *dev) {
 	}
 
 
-	if ((tc_elapsed(cpu->timer_c) - lcd->lastgifframe) >= 0.01){
+	/*if ((tc_elapsed(cpu->timer_c) - lcd->lastgifframe) >= 0.01){
 		handle_screenshot();
 		lcd->lastgifframe += 0.01;
-	}
+	}*/
 
 }
 
@@ -302,10 +317,12 @@ static void LCD_advance_cursor(LCD_t *lcd) {
 			lcd->x = (lcd->x - 1) % 64;
 			break;
 		case Y_UP:
-			lcd->y++;
-			u_int bound = lcd->word_len ? 15 : 19;
-			if (lcd->y >= bound) lcd->y = 0;
-			break;
+			{
+				lcd->y++;
+				u_int bound = lcd->word_len ? 15 : 19;
+				if (lcd->y >= bound) lcd->y = 0;
+				break;
+			}
 		case Y_DOWN:
 			if (lcd->y <= 0) {
 				lcd->y = lcd->word_len ? 14 : 18;
@@ -360,13 +377,8 @@ void LCD_clear(LCD_t *lcd) {
 }
 
 
-/* 
- * Generate a grayscale image from the black and white images
- * pushed to the queue.  If there are no images in the queue,
- * the generated image will be blank
- */
-u_char* LCD_image(LCD_t *lcd) {
-	int level = abs(lcd->contrast - lcd->base_level);
+u_char *LCD_update_image(LCD_t *lcd) {
+	int level = abs((int) lcd->contrast - (int) lcd->base_level);
 	int base = (lcd->contrast - 54) * 24;
 	if (base < 0) base = 0;
 
@@ -403,7 +415,19 @@ u_char* LCD_image(LCD_t *lcd) {
 		}
 	}
 
-	return (uint8_t*) lcd->screen;
+	return (uint8_t*) lcd->screen;	
+}
+
+/* 
+ * Generate a grayscale image from the black and white images
+ * pushed to the queue.  If there are no images in the queue,
+ * the generated image will be blank
+ */
+u_char* LCD_image(LCD_t *lcd) {
+	if (lcd->mode == MODE_GAME_GRAY)
+		return (uint8_t*) lcd->screen;
+	else
+		return LCD_update_image(lcd);
 }
 
 

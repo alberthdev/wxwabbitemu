@@ -1,8 +1,7 @@
 #include "state.h"
 #include "link.h"
-
+#include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 #ifndef WINVER
 #define min(a, b) ((a) > (b) ? (b) : (a))
@@ -16,7 +15,7 @@ void state_build_applist(CPU_t *cpu, applist_t *applist) {
 	applist->count = 0;
 	
 	if (cpu->mem_c->flash == NULL) return;
-	u_char (*flash)[PAGE_SIZE] = (u_char (*)[]) cpu->mem_c->flash;
+	u_char (*flash)[PAGE_SIZE] = (u_char (*)[PAGE_SIZE]) cpu->mem_c->flash;
 
 	// fetch the userpages for this model
 	upages_t upages;
@@ -198,29 +197,31 @@ char *Symbol_Name_to_String(symbol83P_t *sym, char *buffer) {
 //	case NewEquObj:
 //	case UnknownEquObj:
 	case EquObj_2:
-		if (sym->name[0] != 0x5E) return NULL;
-		
-		u_char b = sym->name[1] & 0x0F;
-		switch(sym->name[1] & 0xF0) {
-		
-		case 0x10: //Y1
-			sprintf(buffer,"Y%d",circ10(b));
-			return buffer;
-		case 0x20: //X1t Y1t
-			sprintf(buffer,"X%dT",((b/2)+1)%6);
-			if (b%2) buffer[0] = 'Y';
-			return buffer;
-		case 0x40: //r1
-			sprintf(buffer,"R%d",(b+1)%6);
-			return buffer;
-		case 0x80: //Y1
-			switch (b) {
-			case 0: return strcpy(buffer, "Un");
-			case 1: return strcpy(buffer, "Vn");												
-			case 2: return strcpy(buffer, "Wn");
+		{
+			if (sym->name[0] != 0x5E) return NULL;
+			
+			u_char b = sym->name[1] & 0x0F;
+			switch(sym->name[1] & 0xF0) {
+			
+			case 0x10: //Y1
+				sprintf(buffer,"Y%d",circ10(b));
+				return buffer;
+			case 0x20: //X1t Y1t
+				sprintf(buffer,"X%dT",((b/2)+1)%6);
+				if (b%2) buffer[0] = 'Y';
+				return buffer;
+			case 0x40: //r1
+				sprintf(buffer,"R%d",(b+1)%6);
+				return buffer;
+			case 0x80: //Y1
+				switch (b) {
+				case 0: return strcpy(buffer, "Un");
+				case 1: return strcpy(buffer, "Vn");												
+				case 2: return strcpy(buffer, "Wn");
+				}
+			default: 
+				return NULL;
 			}
-		default: 
-			return NULL;
 		}
 	default:
 		return NULL;
@@ -232,14 +233,14 @@ char* GetRealAns(CPU_t *cpu) {
 	symlist_t symlist;
 	state_build_symlist_83P(cpu, &symlist);
 	
-	const u_char ans_name[] = {tAns, 0x00, 0x00};
+	const char ans_name[] = {tAns, 0x00, 0x00};
 	symbol83P_t *sym = search_symlist(&symlist, ans_name, 3);
 	if (sym == NULL) return NULL;
 
 #ifdef WINVER
-	char *buffer = LocalAlloc(LMEM_FIXED, 2048);
+	char *buffer = (char *) LocalAlloc(LMEM_FIXED, 2048);
 #else
-	char *buffer = malloc(2048);
+	char *buffer = (char *) malloc(2048);
 #endif
 	
 	symbol_to_string(cpu, sym, buffer);

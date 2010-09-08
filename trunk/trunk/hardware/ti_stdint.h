@@ -12,8 +12,8 @@ typedef struct STDINT {
 	double freq[4];
 	int mem;
 	int xy;	
-	BOOL on_backup;
-	BOOL on_latch;
+	bool on_backup;
+	bool on_latch;
 } STDINT_t;
 
 

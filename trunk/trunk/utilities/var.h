@@ -3,23 +3,17 @@
 
 #include "savestate.h"
 
-typedef struct TIVAR TIVAR_t;
-typedef struct TIFILE TIFILE_t;
-typedef struct ROM ROM_t;
-typedef struct TIFLASH TIFLASH_t;
-typedef struct INTELHEX INTELHEX_t;
-typedef struct TIBACKUP TIBACKUP_t;
-
-
-struct INTELHEX {
+typedef struct INTELHEX {
 	int DataSize;
 	int Address;
 	int Type;
 	unsigned int Data[256];
 	int CheckSum;
-};
+} INTELHEX_t;
 
-struct TIFLASH {
+#pragma pack(1)
+
+typedef struct TIFLASH {
 	unsigned char sig[8];
 	unsigned char rev[2];
 	unsigned char flag;
@@ -39,17 +33,17 @@ struct TIFLASH {
 
 	int pages;		//total number of pages.
 
-} __attribute__((packed));
+} TIFLASH_t;
 
 
 
-struct ROM {
+typedef struct ROM {
 	int size;
 	char version[32];
 	unsigned char * data;
-};
+} ROM_t;
 
-struct TIBACKUP {
+typedef struct TIBACKUP {
 	unsigned short headersize;		// size of the header up to name, sometimes ignored
 	unsigned short length1;			// data size
 	unsigned char vartype;			// what type of varible
@@ -67,9 +61,9 @@ struct TIBACKUP {
 	unsigned char * data3;			// pointer to data
 
 
-} __attribute__((packed));
+} TIBACKUP_t;
 
-struct TIVAR {
+typedef struct TIVAR {
 	unsigned short headersize;		// size of the header up to name, sometimes ignored
 	unsigned short length;			// data size
 	unsigned char vartype;			// what type of varible
@@ -78,9 +72,9 @@ struct TIVAR {
 	unsigned char flag;				// bit 7 is if flash 83+only
 	unsigned short length2;			// duplicate of data size
 	unsigned char * data;			// pointer to data
-} __attribute__((packed));
+} TIVAR_t;
 
-struct TIFILE {
+typedef struct TIFILE {
 	unsigned char sig[8];
 	unsigned char subsig[3];
 	unsigned char comment[42];
@@ -93,11 +87,13 @@ struct TIFILE {
 	TIFLASH_t * flash;
 	SAVESTATE_t* save;
 	TIBACKUP_t* backup;
-};
+} TIFILE_t;
 
+
+#pragma pack()
 
 #define TI_FLASH_HEADER_SIZE (8+2+1+1+4+1+8+23+1+1+24+4)	
-#define TI_FILE_HEADER_SIZE (8+3+42+2)	
+#define TI_FILE_HEADER_SIZE (8+3+42/*+2*/)	
 #define TI_VAR_HEADER_SIZE (2+2+1+8)
 
 
@@ -108,9 +104,10 @@ struct TIFILE {
 #define BACKUP_TYPE	5		//Wabbit specific saves.
 #define LABEL_TYPE	6		//Lab file
 #define BREAKPOINT_TYPE 7	//breakpoint file
+#define SKIP_TYPE 	8	//breakpoint file
 
-int FindRomVersion(int ,char* ,unsigned char* ,int );
-TIFILE_t * importvar(char *);
+int FindRomVersion(int, char*, unsigned char*, int);
+TIFILE_t* importvar(char *, int, int);
 void FreeTiFile(TIFILE_t *);
 
 #endif

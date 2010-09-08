@@ -1,7 +1,6 @@
 #ifndef STATE_H_
 #define STATE_H_
 
-#include <stdio.h>
 #include "core.h"
 #include "var.h"		// TIFILE
 
@@ -46,5 +45,6 @@ void state_build_applist(CPU_t *, applist_t *);
 void state_userpages(CPU_t *, upages_t *);
 symlist_t* state_build_symlist_83P(CPU_t *, symlist_t *);
 char *GetRealAns(CPU_t*);
+char *Symbol_Name_to_String(symbol83P_t *sym, char *buffer);
 
 #endif /*STATE_H_*/

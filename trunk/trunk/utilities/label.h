@@ -5,12 +5,12 @@
 
 typedef struct {
     char *name;
-    BOOL IsRAM;
+    bool IsRAM;
     uint8_t page;
     uint16_t addr;
 } label_struct;
 
-char* FindAddressLabel( int slot, BOOL IsRAM, uint8_t page, uint16_t addr);
+char* FindAddressLabel( int slot, bool IsRAM, uint8_t page, uint16_t addr);
 //void ImportBcalls(char* fn);
 char* FindBcall(int address);
 void FindFlags(int flag,int bit, char **flagstring, char **bitstring);

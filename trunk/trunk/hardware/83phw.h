@@ -8,7 +8,6 @@
 
 
 
-static STDINT_t *INT83P_init(CPU_t*);
 int device_init_83p(CPU_t*);
 int memory_init_83p(memc *);
 
