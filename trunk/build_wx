@@ -44,7 +44,7 @@ CPPFLAGS="-c -w -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx
 CPPDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # LDFLAGS - additional or required arguments to add on to the linker.
-LDFLAGS="-lwx_base-2.8 -lwx_gtk2_core-2.8"
+LDFLAGS="`wx-config --version=2.8 --cppflags --libs`"
 
 ########################################################
 # That's all! DO NOT CHANGE ANY VARIABLES BELOW!
