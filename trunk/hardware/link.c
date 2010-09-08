@@ -137,7 +137,7 @@ static u_char link_recv(CPU_t *cpu) {
 	return byte;
 }
 
-BOOL link_connected()
+bool link_connected()
 {
 	return calcs[gslot].cpu.pio.link->client != &vout;
 }
