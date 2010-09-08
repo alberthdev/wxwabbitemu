@@ -604,6 +604,7 @@ COMPILEC utilities/savestate.c
 COMPILEC interface/state.c
 COMPILEC interface/calc.c
 COMPILECPP gui_wx.cpp
+COMPILECPP guilcd_wx.cpp
 LINKLD "obj/*.o" "wxwabbitemu"
 
 ########################################################
