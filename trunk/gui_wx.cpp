@@ -186,5 +186,5 @@ void MyFrame::OnShow(wxShowEvent& WXUNUSED(event))
  
 void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 {
-    wxMessageBox("Finally works on linux", "About Wabbitemu", wxOK | wxICON_INFORMATION, this);
+    wxMessageBox(wxT("Finally works on linux"), wxT("About Wabbitemu"), wxOK | wxICON_INFORMATION, this);
 }
