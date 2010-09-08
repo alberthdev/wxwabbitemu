@@ -557,12 +557,11 @@ function LINKLD() {
 	
 	if [ -f "$outfile" ] && [ "$OVERWRITE" = "0" ];then
 		printsdone "Skipping target $outfile"", since it's already built."
-		continue
+	else	
+		printwork "Linking $1""..."
+		$CPP $LDFLAGS $1 -o "$outfile"
+		checkfail $? "Linking $1""..."
 	fi
-	
-	printwork "Linking $1""..."
-	$CPP $LDFLAGS $1 -o "$outfile"
-	checkfail $? "Linking $1""..."
 }
 
 
