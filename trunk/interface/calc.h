@@ -29,6 +29,9 @@
 #include <stdint.h>
 #include "types.h"
 #endif
+#ifdef WXVER
+#include "wx/wx.h"
+#endif
 
 #ifdef QTVER
 #include <pthread.h>
