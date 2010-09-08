@@ -163,7 +163,7 @@ void calc_erase_certificate( u_char* mem, int size) {
 #ifdef _WINDLL
 __declspec(dllexport)
 #endif
-int rom_load(int slot, char * FileName) {
+int rom_load(int slot, char *FileName) {
 	if (slot == -1)
 		return -1;
 	//doesnt matter for the 2nd two args never a group

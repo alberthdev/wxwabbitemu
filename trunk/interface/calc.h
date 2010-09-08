@@ -17,6 +17,7 @@
 #include "DropTarget.h"
 #elif WXVER
 #include "gui_wx.h"
+#include "guilcd_wx.h"
 #endif
 #include "core.h"
 #include "lcd.h"
@@ -93,6 +94,7 @@ typedef struct calc {
 	HDC hdcKeymap;
 #elif WXVER
 	MyFrame *wxFrame;
+	MyLCD *wxLCD;
 	int Scale;
 	bool SkinEnabled;
 	wxSize SkinSize;
