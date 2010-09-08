@@ -36,11 +36,11 @@ CPP="g++"
 LD="ld"
 
 # CCFLAGS - additional arguments to add on to the C compiler.
-CCFLAGS="-w -c -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface"
+CCFLAGS="-c -w -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface"
 CCDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # CPPFLAGS - additional arguments to add on to the C++ compiler.
-CPPFLAGS="-w -c -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface"
+CPPFLAGS="-c -w -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface"
 CPPDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # LDFLAGS - additional or required arguments to add on to the linker.
@@ -444,12 +444,13 @@ parsearg $@
 # .cpp file, and LINKLD combines all *.o files together
 # into one binary.
 ########################################################
-COMPILECPP core/*.cpp
-COMPILECPP hardware/keys.cpp
+COMPILEC core/*.c
+COMPILEC hardware/*.c
+COMPILEC hardware/keys.c
 COMPILEC utilities/var.c
 COMPILEC utilities/savestate.c
 COMPILEC interface/state.c
-COMPILECPP interface/calc.cpp
+COMPILEC interface/calc.c
 COMPILECPP gui_wx.cpp
 LINKLD "obj/*.o" "wxwabbitemu"
 

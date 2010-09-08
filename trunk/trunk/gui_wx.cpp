@@ -1,6 +1,18 @@
 #include "gui_wx.h"
 #include "calc.h"
 
+enum
+{
+    ID_Quit,
+    ID_About,
+
+};
+
+/*BEGIN_EVENT_TABLE(MyFrame, wxFrame)
+	EVT_SHOW(MyFrame::OnShow)
+    EVT_MENU(ID_Quit, MyFrame::OnQuit)
+    EVT_MENU(ID_About, MyFrame::OnAbout)
+END_EVENT_TABLE()*/
 
 class MyApp: public wxApp
 {
@@ -16,7 +28,9 @@ bool MyApp::OnInit()
 	calcs[slot].Scale = 2;
     gui_frame(slot);
     return TRUE;
-} 
+}
+
+
 
 /*int main(int argc, char *argv[]) 
 {
@@ -26,13 +40,18 @@ bool MyApp::OnInit()
 }*/
 
 void gui_frame(int slot) {
-	wxSize windowSize;
-	if (calcs[slot].SkinEnabled)
-		windowSize = calcs[slot].SkinSize;
-	else
-		windowSize.Set(128*calcs[slot].Scale, 64*calcs[slot].Scale);
-	calcs[slot].wxFrameMain = new wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"), wxDefaultPosition, windowSize);
-	calcs[slot].wxFrameMain->SetSizeHints( wxDefaultSize, wxDefaultSize );
+	MyFrame *myFrame = new MyFrame(slot);
+	myFrame->Show(true);
+}
+
+void gui_debug(int slot) {
+	return;
+}
+
+MyFrame::MyFrame(int slot) {
+	wxSize windowSize;	
+	frameMain = new wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"));// wxDefaultPosition, wxDefaultSize);
+	frameMain->SetSizeHints( wxDefaultSize, wxDefaultSize );
 	wxMenuBar *m_menubar = new wxMenuBar( 0 );
 	wxMenu *m_fileMenu = new wxMenu();	
 	wxMenuItem* m_newMenuItem;
@@ -62,7 +81,7 @@ void gui_frame(int slot) {
 	m_fileMenu->Append( m_closeMenuItem );
 	
 	wxMenuItem* m_exitMenuItem;
-	m_exitMenuItem = new wxMenuItem( m_fileMenu, wxID_ANY, wxString( wxT("Exit") ) + wxT('\t') + wxT("ALT+F4"), wxEmptyString, wxITEM_NORMAL );
+	m_exitMenuItem = new wxMenuItem( m_fileMenu, ID_Quit, wxString( wxT("Exit") ) + wxT('\t') + wxT("ALT+F4"), wxEmptyString, wxITEM_NORMAL );
 	m_fileMenu->Append( m_exitMenuItem );
 	
 	m_menubar->Append( m_fileMenu, wxT("File") );
@@ -134,17 +153,36 @@ void gui_frame(int slot) {
 	m_helpMenu->Append( m_websiteMenuItem );
 	
 	wxMenuItem* m_aboutMenuItem;
-	m_aboutMenuItem = new wxMenuItem( m_helpMenu, wxID_ANY, wxString( wxT("About") ) , wxEmptyString, wxITEM_NORMAL );
+	m_aboutMenuItem = new wxMenuItem( m_helpMenu, ID_About, wxString( wxT("About") ) , wxEmptyString, wxITEM_NORMAL );
 	m_helpMenu->Append( m_aboutMenuItem );
 	
 	m_menubar->Append( m_helpMenu, wxT("Help") );
 	
-	calcs[slot].wxFrameMain->SetMenuBar( m_menubar );
+	frameMain->SetMenuBar( m_menubar );
 	
-	wxStatusBar *m_statusBar1 = calcs[slot].wxFrameMain->CreateStatusBar( 1, wxST_SIZEGRIP, wxID_ANY );
-	calcs[slot].wxFrameMain->Show(true);
+	wxStatusBar *m_statusBar1 = frameMain->CreateStatusBar( 1, wxST_SIZEGRIP, wxID_ANY );
+	
+	int menuSize = wxSystemSettings::GetMetric(wxSYS_MENU_Y, frameMain);
+	if (calcs[slot].SkinEnabled)
+		windowSize = calcs[slot].SkinSize;
+	else
+		windowSize.Set(128*calcs[slot].Scale, 64*calcs[slot].Scale + menuSize);
+	frameMain->SetClientSize(windowSize);
 }
 
-void gui_debug(int slot) {
-	return;
+void MyFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
+{
+	printf("TEST");
+    frameMain->Close(TRUE);
+}
+
+void MyFrame::OnShow(wxShowEvent& WXUNUSED(event))
+{
+    frameMain->Show(TRUE);
+}
+ 
+void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
+{
+    wxMessageBox("This is a wxWindows Hello world sample",
+        "About Hello World", wxOK | wxICON_INFORMATION, this);
 }
