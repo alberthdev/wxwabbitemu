@@ -13,13 +13,16 @@ class MyFrame: public wxFrame
 {
 public:
     MyFrame(int slot);
+	wxFrame *frameMain;
 
     void OnQuit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
 	void OnShow(wxShowEvent& event);
-private:
-	wxFrame *frameMain;
 	//DECLARE_EVENT_TABLE()
+protected:
+	
+private:
+	
 };
 
 #endif

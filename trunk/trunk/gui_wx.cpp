@@ -3,8 +3,8 @@
 
 enum
 {
-    ID_Quit,
-    ID_About,
+    ID_Quit = 1,
+    ID_About = 2,
 
 };
 
@@ -41,7 +41,7 @@ bool MyApp::OnInit()
 
 void gui_frame(int slot) {
 	MyFrame *myFrame = new MyFrame(slot);
-	myFrame->Show(true);
+	myFrame->frameMain->Show(true);
 }
 
 void gui_debug(int slot) {
@@ -162,6 +162,9 @@ MyFrame::MyFrame(int slot) {
 	
 	wxStatusBar *m_statusBar1 = frameMain->CreateStatusBar( 1, wxST_SIZEGRIP, wxID_ANY );
 	
+	frameMain->Connect(ID_Quit, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnQuit);
+	frameMain->Connect(ID_About, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnAbout);
+	
 	int menuSize = wxSystemSettings::GetMetric(wxSYS_MENU_Y, frameMain);
 	if (calcs[slot].SkinEnabled)
 		windowSize = calcs[slot].SkinSize;
@@ -183,6 +186,5 @@ void MyFrame::OnShow(wxShowEvent& WXUNUSED(event))
  
 void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 {
-    wxMessageBox(wxT("This is a wxWindows Hello world sample"),
-        wxT("About Hello World"), wxOK | wxICON_INFORMATION, this);
+    wxMessageBox("Finally works on linux", "About Wabbitemu", wxOK | wxICON_INFORMATION, this);
 }
