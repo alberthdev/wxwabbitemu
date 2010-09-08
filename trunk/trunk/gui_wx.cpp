@@ -183,6 +183,6 @@ void MyFrame::OnShow(wxShowEvent& WXUNUSED(event))
  
 void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 {
-    wxMessageBox("This is a wxWindows Hello world sample",
-        "About Hello World", wxOK | wxICON_INFORMATION, this);
+    wxMessageBox(wxT("This is a wxWindows Hello world sample"),
+        wxT("About Hello World"), wxOK | wxICON_INFORMATION, this);
 }

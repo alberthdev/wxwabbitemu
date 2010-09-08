@@ -54,6 +54,7 @@ IGNORE_ERRORS=0
 NO_COLORS=0
 CLEAN_EVERYTHING=0
 OVERWRITE=0
+USE_BUILD_HASH=0
 
 # Functions
 
@@ -77,6 +78,10 @@ function parsearg() {
 			'-c' | '--clean' )
 				printbold "Will clean up the build and remove all compiled files."
 				CLEAN_EVERYTHING=1
+				;;
+			'-b' | '--build-hash' )
+				printbold "Will use build hashes to speed up building."
+				USE_BUILD_HASH=1
 				;;
 			'-w' | '--overwrite' )
 				printbold "Will overwrite any old compiled files, including object files."
@@ -105,6 +110,7 @@ function showhelp() {
 	echo "						debugging."
 	echo "	-n, --no-colors		Disable color output."
 	echo "	-c, --clean			Remove all built files, including object files."
+	echo "	-b, --build-hash	Use build hashing to only recompile changed files."
 	echo "	-w, --overwrite		Overwrite any existing object/built files."
 	echo "	-h, --help			Show this help."
 	set="`assertIsSet 1`"
@@ -220,9 +226,46 @@ function COMPILEC() {
 				continue
 			fi
 			
-			if [ -f "obj/""$objfile" ] && [ "$OVERWRITE" = "0" ];then
-				printsdone "Skipping $csource"", since it's already built."
-				continue
+			if [ "$USE_BUILD_HASH" = "1" ];then
+				if [ ! -f .buildhash ];then
+					printwork "Creating build hash..."
+					if [ -d .buildhash ];then
+						printfail "Creating build hash..."
+						echo ".buildhash is a file. A file is required. Please remove it, and then try again."
+						exit 1
+					fi
+					touch .buildhash
+					if [ ! "$?" = "0" ];then
+						printfail "Creating build hash..."
+						echo "Failed to create build hash."
+						exit 1
+					fi
+					printdone "Creating build hash..."
+				fi
+				
+				bhcheck=`cat .buildhash | grep "^$basefilename "`
+				if [ ! "$bhcheck" = "" ];then
+					md5check=`cat .buildhash | grep "^$basefilename " | cut -f2 -d' '`
+					curmd5=`md5sum $csource | cut -f1 -d' '`
+					if [ ! "$md5check" = "$curmd5" ];then
+						printbold "Detected file change, so building."
+						mod1=`cat .buildhash | sed '/'$basefilename' /d'`
+						echo "$mod1" > .buildhash
+						echo "$basefilename $curmd5" >> .buildhash
+					else
+						if [ -f "obj/""$objfile" ]; then
+							continue
+						fi
+					fi
+				else
+					curmd5=`md5sum $csource | cut -f1 -d' '`
+					echo "$basefilename $curmd5" >> .buildhash
+				fi
+			else
+				if [ -f "obj/""$objfile" ] && [ "$OVERWRITE" = "0" ];then
+					printsdone "Skipping $csource"", since it's already built."
+					continue
+				fi
 			fi
 			
 			if [ ! -d obj/ ];then
@@ -264,9 +307,46 @@ function COMPILEC() {
 			continue
 		fi
 		
-		if [ -f "obj/""$objfile" ] && [ "$OVERWRITE" = "0" ];then
-			printsdone "Skipping $1"", since it's already built."
-			continue
+		if [ "$USE_BUILD_HASH" = "1" ];then
+			if [ ! -f .buildhash ];then
+				printwork "Creating build hash..."
+				if [ -d .buildhash ];then
+					printfail "Creating build hash..."
+					echo ".buildhash is a file. A file is required. Please remove it, and then try again."
+					exit 1
+				fi
+				touch .buildhash
+				if [ ! "$?" = "0" ];then
+					printfail "Creating build hash..."
+					echo "Failed to create build hash."
+					exit 1
+				fi
+				printdone "Creating build hash..."
+			fi
+			
+			bhcheck=`cat .buildhash | grep "^$basefilename "`
+			if [ ! "$bhcheck" = "" ];then
+				md5check=`cat .buildhash | grep "^$basefilename " | cut -f2 -d' '`
+				curmd5=`md5sum $1 | cut -f1 -d' '`
+				if [ ! "$md5check" = "$curmd5" ];then
+					printbold "Detected file change, so building."
+					mod1=`cat .buildhash | sed '/'$basefilename' /d'`
+					echo "$mod1" > .buildhash
+					echo "$basefilename $curmd5" >> .buildhash
+				else
+					if [ -f "obj/""$objfile" ]; then
+						continue
+					fi
+				fi
+			else
+				curmd5=`md5sum $1 | cut -f1 -d' '`
+				echo "$basefilename $curmd5" >> .buildhash
+			fi
+		else
+			if [ -f "obj/""$objfile" ] && [ "$OVERWRITE" = "0" ];then
+				printsdone "Skipping $1"", since it's already built."
+				continue
+			fi
 		fi
 		
 		if [ ! -d obj/ ];then
@@ -316,9 +396,46 @@ function COMPILECPP() {
 				continue
 			fi
 			
-			if [ -f "obj/""$objfile" ] && [ "$OVERWRITE" = "0" ];then
-				printsdone "Skipping $cppsource"", since it's already built."
-				continue
+			if [ "$USE_BUILD_HASH" = "1" ];then
+				if [ ! -f .buildhash ];then
+					printwork "Creating build hash..."
+					if [ -d .buildhash ];then
+						printfail "Creating build hash..."
+						echo ".buildhash is a file. A file is required. Please remove it, and then try again."
+						exit 1
+					fi
+					touch .buildhash
+					if [ ! "$?" = "0" ];then
+						printfail "Creating build hash..."
+						echo "Failed to create build hash."
+						exit 1
+					fi
+					printdone "Creating build hash..."
+				fi
+				
+				bhcheck=`cat .buildhash | grep "^$basefilename "`
+				if [ ! "$bhcheck" = "" ];then
+					md5check=`cat .buildhash | grep "^$basefilename " | cut -f2 -d' '`
+					curmd5=`md5sum $cppsource | cut -f1 -d' '`
+					if [ ! "$md5check" = "$curmd5" ];then
+						printbold "Detected file change, so building."
+						mod1=`cat .buildhash | sed '/'$basefilename' /d'`
+						echo "$mod1" > .buildhash
+						echo "$basefilename $curmd5" >> .buildhash
+					else
+						if [ -f "obj/""$objfile" ]; then
+							continue
+						fi
+					fi
+				else
+					curmd5=`md5sum $cppsource | cut -f1 -d' '`
+					echo "$basefilename $curmd5" >> .buildhash
+				fi
+			else
+				if [ -f "obj/""$objfile" ] && [ "$OVERWRITE" = "0" ];then
+					printsdone "Skipping $cppsource"", since it's already built."
+					continue
+				fi
 			fi
 			
 			if [ ! -d obj/ ];then
@@ -360,9 +477,46 @@ function COMPILECPP() {
 			continue
 		fi
 		
-		if [ -f "obj/""$objfile" ] && [ "$OVERWRITE" = "0" ];then
-			printsdone "Skipping $1"", since it's already built."
-			continue
+		if [ "$USE_BUILD_HASH" = "1" ];then
+			if [ ! -f .buildhash ];then
+				printwork "Creating build hash..."
+				if [ -d .buildhash ];then
+					printfail "Creating build hash..."
+					echo ".buildhash is a file. A file is required. Please remove it, and then try again."
+					exit 1
+				fi
+				touch .buildhash
+				if [ ! "$?" = "0" ];then
+					printfail "Creating build hash..."
+					echo "Failed to create build hash."
+					exit 1
+				fi
+				printdone "Creating build hash..."
+			fi
+			
+			bhcheck=`cat .buildhash | grep "^$basefilename "`
+			if [ ! "$bhcheck" = "" ];then
+				md5check=`cat .buildhash | grep "^$basefilename " | cut -f2 -d' '`
+				curmd5=`md5sum $1 | cut -f1 -d' '`
+				if [ ! "$md5check" = "$curmd5" ];then
+					printbold "Detected file change, so building."
+					mod1=`cat .buildhash | sed '/'$basefilename' /d'`
+					echo "$mod1" > .buildhash
+					echo "$basefilename $curmd5" >> .buildhash
+				else
+					if [ -f "obj/""$objfile" ]; then
+						continue
+					fi
+				fi
+			else
+				curmd5=`md5sum $1 | cut -f1 -d' '`
+				echo "$basefilename $curmd5" >> .buildhash
+			fi
+		else
+			if [ -f "obj/""$objfile" ] && [ "$OVERWRITE" = "0" ];then
+				printsdone "Skipping $1"", since it's already built."
+				continue
+			fi
 		fi
 		
 		if [ ! -d obj/ ];then
@@ -407,7 +561,7 @@ function LINKLD() {
 	fi
 	
 	printwork "Linking $1""..."
-	$LD $LDFLAGS $1 -o "$outfile"
+	$CPP $LDFLAGS $1 -o "$outfile"
 	checkfail $? "Linking $1""..."
 }
 
@@ -446,7 +600,6 @@ parsearg $@
 ########################################################
 COMPILEC core/*.c
 COMPILEC hardware/*.c
-COMPILEC hardware/keys.c
 COMPILEC utilities/var.c
 COMPILEC utilities/savestate.c
 COMPILEC interface/state.c
