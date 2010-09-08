@@ -36,11 +36,11 @@ CPP="g++"
 LD="ld"
 
 # CCFLAGS - additional arguments to add on to the C compiler.
-CCFLAGS="-c -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface"
+CCFLAGS="-w -c -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface"
 CCDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # CPPFLAGS - additional arguments to add on to the C++ compiler.
-CPPFLAGS="-c -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface"
+CPPFLAGS="-w -c -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface"
 CPPDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # LDFLAGS - additional or required arguments to add on to the linker.
@@ -449,8 +449,7 @@ COMPILECPP hardware/keys.cpp
 COMPILEC utilities/var.c
 COMPILEC utilities/savestate.c
 COMPILEC interface/state.c
-# Note from Albert - huh? Doesn't exist for me... :P
-#COMPILECPP interface/calc.cpp
+COMPILECPP interface/calc.cpp
 COMPILECPP gui_wx.cpp
 LINKLD "obj/*.o" "wxwabbitemu"
 
