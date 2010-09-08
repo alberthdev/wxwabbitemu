@@ -1,3 +1,4 @@
+#include "core.h"
 #include "indexcb.h"
 //-----------------------------------------
 // CB OPCODES
@@ -119,8 +120,8 @@ void rl_ind(CPU_t *cpu, char offset) {
 		CPU_mem_write(cpu, cpu->ix + offset, result);
 	} else {
         result = CPU_mem_read(cpu, cpu->iy + offset);
-		carry = (result>>7)&1;
-		result = (result<<1)+(cpu->f&1);
+		carry = (result >> 7) & 1;
+		result = (result << 1) + (cpu->f & 1);
 		CPU_mem_write(cpu, cpu->iy + offset, result);
 	}
 	cpu->f = signchk(result) + zerochk(result) +
@@ -158,7 +159,7 @@ void rlc_ind(CPU_t *cpu, char offset) {
 	int result;
 	int carry;
 	int save = (cpu->bus & 0x07);
-	tc_add(cpu->timer_c,23);
+	tc_add(cpu->timer_c, 23);
 	if (cpu->prefix == IX_PREFIX) {
 		result = CPU_mem_read(cpu, cpu->ix + offset);
 		carry = (result>>7)&1;

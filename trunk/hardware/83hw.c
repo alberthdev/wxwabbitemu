@@ -37,7 +37,7 @@ unsigned char banks83[16][4] = {
 
 
 void setpage83(CPU_t *cpu) {
-	STDINT_t* stdint = cpu->pio.devices[0x02].aux;
+	STDINT_t* stdint = (STDINT_t *) cpu->pio.devices[0x02].aux;
 	int xy		= ( ( stdint->xy & 0x10 ) >> 4 );
 	int ram		= ( ( stdint->mem & 0x40 ) >> 6 );
 	int page	= ( ( stdint->mem & 0x07 ) + ( ( stdint->xy & 0x10 ) >> 0x01 ) );
@@ -150,8 +150,8 @@ void setpage83(CPU_t *cpu) {
 	
 
 void port00_82(CPU_t *cpu, device_t *dev) {
-	link_t* link = dev->aux;
-	STDINT_t* stdint = cpu->pio.devices[0x02].aux;
+	link_t* link = (link_t *) dev->aux;
+	STDINT_t* stdint = (STDINT_t *) cpu->pio.devices[0x02].aux;
 	
 	if (cpu->input) {
 		cpu->bus = ((link->host&0x03))<<2;
@@ -178,8 +178,8 @@ void port00_82(CPU_t *cpu, device_t *dev) {
 }
 
 void port00_83(CPU_t *cpu, device_t *dev) {
-	link_t* link = dev->aux;
-	STDINT_t* stdint = cpu->pio.devices[0x02].aux;
+	link_t* link = (link_t *) dev->aux;
+	STDINT_t* stdint = (STDINT_t *) cpu->pio.devices[0x02].aux;
 	
 	if (cpu->input) {
 		cpu->bus = ((link->host&0x03)^0x03);
@@ -208,7 +208,7 @@ void port00_83(CPU_t *cpu, device_t *dev) {
 }
 
 void port02_83(CPU_t *cpu, device_t *dev) {
-	STDINT_t* mem83 = dev->aux;
+	STDINT_t* mem83 = (STDINT_t *) dev->aux;
 	if (cpu->input) {
 		cpu->bus = mem83->mem;
 		cpu->input = FALSE;
@@ -220,7 +220,7 @@ void port02_83(CPU_t *cpu, device_t *dev) {
 }
 
 void port03_83(CPU_t *cpu, device_t *dev) {
-	STDINT_t * stdint = dev->aux;
+	STDINT_t * stdint = (STDINT_t *) dev->aux;
 	
 	if (cpu->input) {
 		unsigned char result = 0;
@@ -291,8 +291,8 @@ void port03_83(CPU_t *cpu, device_t *dev) {
 
 
 void port04_83(CPU_t *cpu, device_t *dev) {
-	link_t * link = cpu->pio.devices[0x00].aux;
-	STDINT_t * stdint = dev->aux;
+	link_t * link = (link_t *) cpu->pio.devices[0x00].aux;
+	STDINT_t * stdint = (STDINT_t *) dev->aux;
 	
 	if (cpu->input) {
 		cpu->bus = ((link->host&0x03)|(link->client[0]&0x03))^0x03;
@@ -338,7 +338,7 @@ void port14_83(CPU_t *cpu, device_t *dev) {
 
 
 STDINT_t* INT83_init(CPU_t* cpu) {
-	STDINT_t * stdint = malloc(sizeof(STDINT_t));
+	STDINT_t * stdint = (STDINT_t *) malloc(sizeof(STDINT_t));
 	if (!stdint) {
 		printf("Couldn't allocate memory for standard interrupt\n");
 		exit(1);
@@ -366,7 +366,7 @@ STDINT_t* INT83_init(CPU_t* cpu) {
 }
 
 link_t* link83_init(CPU_t* cpu) {
-	link_t * link = malloc(sizeof(link_t));
+	link_t * link = (link_t *) malloc(sizeof(link_t));
 	if (!link) {
 		printf("Couldn't allocate memory for link\n");
 		exit(1);
@@ -382,30 +382,44 @@ int device_init_83(CPU_t *cpu,int bad82) {
 
 
 	link_t * link = link83_init(cpu);
+	cpu->pio.devices[0x00].active = TRUE;
+	cpu->pio.devices[0x00].aux = link;
 	if (bad82 == 1) {
 		puts("82 port");
-		cpu->pio.devices[0x00] = (device_t) {TRUE, NULL, link, (devp) &port00_82};
+		cpu->pio.devices[0x00].code = (devp) port00_82;
 	} else {
 		puts("83 port");
-		cpu->pio.devices[0x00] = (device_t) {TRUE, NULL, link, (devp) &port00_83};
+		cpu->pio.devices[0x00].code = (devp) port00_83;
 	}
 	keypad_t *keyp = keypad_init(cpu);
-	cpu->pio.devices[0x01] = (device_t) {TRUE, NULL, keyp, (devp) &keypad};
+	cpu->pio.devices[0x01].active = TRUE;
+	cpu->pio.devices[0x01].aux = keyp;
+	cpu->pio.devices[0x01].code = (devp) keypad;
 	
 	STDINT_t* stdint = INT83_init(cpu);
-	cpu->pio.devices[0x02] = (device_t) {TRUE, NULL, stdint, (devp) &port02_83};
+	cpu->pio.devices[0x02].active = TRUE;
+	cpu->pio.devices[0x02].aux = stdint;
+	cpu->pio.devices[0x02].code = (devp) port02_83;
 	
-	cpu->pio.devices[0x03] = (device_t) {TRUE, NULL, stdint, (devp) &port03_83};
+	cpu->pio.devices[0x03].active = TRUE;
+	cpu->pio.devices[0x03].aux = stdint;
+	cpu->pio.devices[0x03].code = (devp) port03_83;
 
-	cpu->pio.devices[0x04] = (device_t) {TRUE, NULL, stdint, (devp) &port04_83};
+	cpu->pio.devices[0x04].active = TRUE;
+	cpu->pio.devices[0x04].aux = stdint;
+	cpu->pio.devices[0x04].code = (devp) port04_83;
 
 	LCD_t *lcd = LCD_init(cpu,TI_83);
-	cpu->pio.devices[0x10] = (device_t) {TRUE, NULL, lcd, (devp) &LCD_command};
+	cpu->pio.devices[0x10].active = TRUE;
+	cpu->pio.devices[0x10].aux = lcd;
+	cpu->pio.devices[0x10].code = (devp) LCD_command;
 
-	cpu->pio.devices[0x11] = (device_t) {TRUE, NULL, lcd, (devp) &LCD_data};
+	cpu->pio.devices[0x11].active = TRUE;
+	cpu->pio.devices[0x11].aux = lcd;
+	cpu->pio.devices[0x11].code = (devp) LCD_data;
 
-	cpu->pio.devices[0x14] = (device_t) {TRUE, NULL, NULL, (devp) &port14_83};
-
+	cpu->pio.devices[0x14].active = TRUE;
+	cpu->pio.devices[0x14].code = (devp) port14_83;
 
 	cpu->pio.lcd		= lcd;
 	cpu->pio.keypad		= keyp;
@@ -431,16 +445,16 @@ int memory_init_83(memc *mc) {
 
 
 	mc->flash_size = mc->flash_pages * PAGE_SIZE;
-	mc->flash = calloc(mc->flash_pages, PAGE_SIZE);
-	mc->flash_break = calloc(mc->flash_pages, PAGE_SIZE);
+	mc->flash = (u_char *) calloc(mc->flash_pages, PAGE_SIZE);
+	mc->flash_break = (u_char *) calloc(mc->flash_pages, PAGE_SIZE);
 	memset(mc->flash, 0xFF, mc->flash_size);
 	
 	mc->ram_size = mc->ram_pages * PAGE_SIZE;
-	mc->ram = calloc(mc->ram_pages, PAGE_SIZE);
-	mc->ram_break = calloc(mc->ram_pages, PAGE_SIZE);
+	mc->ram = (u_char *) calloc(mc->ram_pages, PAGE_SIZE);
+	mc->ram_break = (u_char *) calloc(mc->ram_pages, PAGE_SIZE);
 
 	if (!mc->flash || !mc->ram) {
-		printf("Couldn't allocate memory in memory_init_83p\n");
+		printf("Couldn't allocate memory in memory_init_83\n");
 		return 1;
 	}
 	mc->flash_version = 0;

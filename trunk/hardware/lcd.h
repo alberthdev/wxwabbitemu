@@ -62,7 +62,7 @@ typedef enum _LCD_MODE {
  */
 typedef struct LCD {
 	void (*free)(struct LCD*);		// Function to free this aux
-	BOOL active;					// TRUE = on, FALSE = off
+	bool active;					// TRUE = on, FALSE = off
 	u_int word_len;
 	int x, y, z;					/* LCD cursors */
 	int width;

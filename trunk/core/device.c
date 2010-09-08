@@ -1,9 +1,5 @@
 #include "device.h"
 
-
-#include <ctype.h>
-
-
 #ifdef DEBUG
 void console_output(CPU_t *cpu, device_t *dev) {
 	if (cpu->output) {

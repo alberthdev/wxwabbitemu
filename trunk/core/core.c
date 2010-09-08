@@ -1,16 +1,35 @@
 #include "core.h"
-
+#include "calc.h"
 #include "device.h"
 #include "alu.h"
 #include "indexcb.h"
 #include "control.h"
+#include "83phw.h"
+#include "83psehw.h"
+#ifdef WXVER
+#include "gui_wx.h"
+#endif
+
 
 #include "optable.h"
 
-#define CALC84MANIAC_HACK
+u_char check_break(memc *mem, uint16_t addr) {
+	bank_t *bank = &mem->banks[mc_bank(addr)];
+	return mem->breaks[bank->ram][PAGE_SIZE * bank->page + mc_base(addr)] & 1;
+}
+
+u_char check_mem_write_break(memc *mem, uint16_t addr) {
+	bank_t *bank = &mem->banks[mc_bank(addr)];
+	return mem->breaks[bank->ram][PAGE_SIZE * bank->page + mc_base(addr)] & 2;
+}
+
+u_char check_mem_read_break(memc *mem, uint16_t addr) {
+	bank_t *bank = &mem->banks[mc_bank(addr)];
+	return mem->breaks[bank->ram][PAGE_SIZE * bank->page + mc_base(addr)] & 4;
+}
 
 unsigned char mem_read(memc *mem, unsigned short addr) {
-	if ((mem->port27_remap_count > 0) && !mem->boot_mapped && (mc_bank(addr) == 3) && (mc_base(addr) >= (0x10000 - 64*mem->port27_remap_count)) && mc_base(addr) >= 0xFB64) {
+	if ((mem->port27_remap_count > 0) && !mem->boot_mapped && (mc_bank(addr) == 3) && (addr >= (0x10000 - 64*mem->port27_remap_count)) && addr >= 0xFB64) {
 		return mem->ram[0*PAGE_SIZE + mc_base(addr)];
 	}
 	if ((mem->port28_remap_count > 0) && !mem->boot_mapped && (mc_bank(addr) == 2) && (mc_base(addr) < 64*mem->port28_remap_count)) {
@@ -47,29 +66,40 @@ uint8_t wmem_write(memc *mem, waddr_t waddr, uint8_t data) {
 waddr_t addr_to_waddr(memc *mem_c, uint16_t addr) {
 	waddr_t waddr;
 	bank_t *bank = &mem_c->banks[mc_bank(addr)];
-	
+
 	waddr.addr = addr;
 	waddr.page = bank->page;
 	waddr.is_ram = bank->ram;
-	
+
 	return waddr;
 }
 
-u_char check_break(memc *mem, uint16_t addr) {
-	bank_t *bank = &mem->banks[mc_bank(addr)];
-	return mem->breaks[bank->ram][PAGE_SIZE * bank->page + mc_base(addr)];
+void set_break(memc *mem, BOOL ram, int page, uint16_t addr) {
+	mem->breaks[ram % 2][PAGE_SIZE * page + mc_base(addr)] |= 1;
 }
 
-void set_break(memc *mem, BOOL ram, int page, uint16_t addr) {
-	mem->breaks[ram % 2][PAGE_SIZE * page + mc_base(addr)] = 1;
+void set_mem_write_break(memc *mem, BOOL ram, int page, uint16_t addr) {
+	mem->breaks[ram % 2][PAGE_SIZE * page + mc_base(addr)] |= 2;
+}
+
+void set_mem_read_break(memc *mem, BOOL ram, int page, uint16_t addr) {
+	mem->breaks[ram % 2][PAGE_SIZE * page + mc_base(addr)] |= 4;
 }
 
 void clear_break(memc *mem, BOOL ram, int page, uint16_t addr) {
-	mem->breaks[ram % 2][PAGE_SIZE * page + mc_base(addr)] = 0;
+	mem->breaks[ram % 2][PAGE_SIZE * page + mc_base(addr)] &= 6;
+}
+
+void clear_mem_write_break(memc *mem, BOOL ram, int page, uint16_t addr) {
+	mem->breaks[ram % 2][PAGE_SIZE * page + mc_base(addr)] &= 5;
+}
+
+void clear_mem_read_break(memc *mem, BOOL ram, int page, uint16_t addr) {
+	mem->breaks[ram % 2][PAGE_SIZE * page + mc_base(addr)] &= 3;
 }
 
 unsigned char mem_write(memc *mem, unsigned short addr, char data) {
-	if ((mem->port27_remap_count > 0) && !mem->boot_mapped && (mc_bank(addr) == 3) && (mc_base(addr) >= (0x10000 - 64*mem->port27_remap_count)) && mc_base(addr) >= 0xFB64) {
+	if ((mem->port27_remap_count > 0) && !mem->boot_mapped && (mc_bank(addr) == 3) && (addr >= (0x10000 - 64*mem->port27_remap_count)) && addr >= 0xFB64) {
 		return mem->ram[0*PAGE_SIZE + mc_base(addr)] = data;
 	}
 	if ((mem->port28_remap_count > 0) && !mem->boot_mapped && (mc_bank(addr) == 2) && (mc_base(addr) < 64*mem->port28_remap_count)) {
@@ -87,7 +117,7 @@ inline unsigned short read2bytes(memc *mem, unsigned short addr) {
 	return (mem_read(mem,addr)+(mem_read(mem,addr+1)<<8));
 }
 
-inline unsigned short mem_read16(memc *mem, unsigned short addr) {
+unsigned short mem_read16(memc *mem, unsigned short addr) {
 	return (mem_read(mem,addr)+(mem_read(mem,addr+1)<<8));
 }
 
@@ -116,7 +146,7 @@ static void handle_pio(CPU_t *cpu) {
 			cpu->pio.skip_count[i] = (cpu->pio.skip_count[i]+1)%cpu->pio.skip_factor[i];
 		}
 	}
-} 
+}
 
 static int CPU_opcode_fetch(CPU_t *cpu) {
 	int bank = mc_bank(cpu->pc);
@@ -126,7 +156,7 @@ static int CPU_opcode_fetch(CPU_t *cpu) {
 		cpu->bus = 0xC7;	// rst 00h, may want to place interrupt and hardware resets.
 	} else {
 		if (!cpu->mem_c->banks[bank].ram) endflash(cpu);	//I DON'T THINK THIS IS CORRECT
-		cpu->bus = mem_read(cpu->mem_c, cpu->pc);			//However it shouldn't be a problem 
+		cpu->bus = mem_read(cpu->mem_c, cpu->pc);			//However it shouldn't be a problem
 															//assuming you know how to write to flash
 	}
 	if (cpu->mem_c->banks[bank].ram) {
@@ -135,11 +165,26 @@ static int CPU_opcode_fetch(CPU_t *cpu) {
 		SEtc_add(cpu->timer_c, cpu->mem_c->read_OP_flash_tstates);
 	}
 	cpu->pc++;
-	cpu->r = (cpu->r&0x80) + ((cpu->r+1)&0x7F);		//note: prefix opcodes inc the r reg to. so bit 7,h has 2 incs. 
+	cpu->r = (cpu->r&0x80) + ((cpu->r+1)&0x7F);		//note: prefix opcodes inc the r reg to. so bit 7,h has 2 incs.
 	return cpu->bus;
 }
 
-int CPU_mem_read(CPU_t *cpu, unsigned short addr) {
+unsigned char CPU_mem_read(CPU_t *cpu, unsigned short addr) {
+	if (check_mem_read_break(cpu->mem_c, addr))
+	{
+		calcs[gslot].running = FALSE;
+#ifdef WINVER
+		bank_t *bank = &calcs[gslot].mem_c.banks[mc_bank(calcs[gslot].cpu.pc)];
+		if (calcs[gslot].ole_callback != NULL) {
+			PostMessage(calcs[gslot].ole_callback, WM_USER, bank->ram<<16 | bank->page, calcs[gslot].cpu.pc);
+			printf("postmessage called!\n");
+		} else {
+#endif
+			gui_debug(gslot);
+#ifdef WINVER
+		}
+#endif
+	}
 	cpu->bus = mem_read(cpu->mem_c, addr);
 
 	if (cpu->mem_c->banks[mc_bank(addr)].ram) {
@@ -147,19 +192,34 @@ int CPU_mem_read(CPU_t *cpu, unsigned short addr) {
 	} else {
 		if (cpu->mem_c->step > 4) cpu->bus = 0xFF; // Flash status read, apparently
 		else cpu->mem_c->step = 0;
-		
+
 		SEtc_add(cpu->timer_c, cpu->mem_c->read_NOP_flash_tstates);
 	}
 
 	return cpu->bus;
 }
 
-int CPU_mem_write(CPU_t *cpu, unsigned short addr, unsigned char data) {
+unsigned char CPU_mem_write(CPU_t *cpu, unsigned short addr, unsigned char data) {
+	if (check_mem_write_break(cpu->mem_c, addr))
+	{
+		calcs[gslot].running = FALSE;
+#ifdef WINVER
+		bank_t *bank = &calcs[gslot].mem_c.banks[mc_bank(calcs[gslot].cpu.pc)];
+		if (calcs[gslot].ole_callback != NULL) {
+			PostMessage(calcs[gslot].ole_callback, WM_USER, bank->ram<<16 | bank->page, calcs[gslot].cpu.pc);
+			printf("postmessage called!\n");
+		} else {
+#endif
+			gui_debug(gslot);
+#ifdef WINVER
+		}
+#endif
+	}
 	int bank = mc_bank(addr);
-	
+
 	if (cpu->mem_c->banks[bank].ram) {
 		if (!cpu->mem_c->banks[bank].read_only) mem_write(cpu->mem_c, addr, data);
-		
+
 		SEtc_add(cpu->timer_c, cpu->mem_c->write_ram_tstates);
 	} else {
 		if (cpu->mem_c->flash_locked) {
@@ -173,10 +233,11 @@ int CPU_mem_write(CPU_t *cpu, unsigned short addr, unsigned char data) {
 					flashwrite83pse(cpu,addr,data);	// in a seperate function for now, flash writes aren't the same across calcs
 					break;
 				case 03:	//TI84+
+					flashwrite84p(cpu, addr, data);
 					break;
 			}
 		}
-		
+
 		SEtc_add(cpu->timer_c, cpu->mem_c->write_flash_tstates);
 	}
 
@@ -214,7 +275,7 @@ static void handle_interrupt(CPU_t *cpu) {
 			cpu->halt = FALSE;
 			CPU_opcode_run(cpu);
 		} else if (cpu->imode == 1) {
-			// 
+			//
 			tc_add(cpu->timer_c, 8);
 			cpu->halt = FALSE;
 			cpu->bus = 0xFF;
@@ -229,12 +290,12 @@ static void handle_interrupt(CPU_t *cpu) {
 			cpu->pc = reg;
 		}
 	}
-}			
-		
+}
+
 int CPU_step(CPU_t* cpu) {
 	cpu->interrupt = 0;
 	cpu->ei_block = FALSE;
-	
+
 	if (cpu->halt == FALSE) {
 		CPU_opcode_fetch(cpu);
 		if (cpu->bus == 0xDD || cpu->bus == 0xFD) {
@@ -251,7 +312,7 @@ int CPU_step(CPU_t* cpu) {
 		tc_add(cpu->timer_c, 4*HALT_SCALE);
 		cpu->r = (cpu->r&0x80) + ((cpu->r+1*HALT_SCALE)&0x7F);
 	}
-	
+
 	handle_pio(cpu);
 
 	if (cpu->interrupt && !cpu->ei_block) handle_interrupt(cpu);
@@ -267,7 +328,7 @@ void displayreg(CPU_t *cpu) {
 	printf("HL %0.4X\tHL' %0.4X\n", cpu->hl, cpu->hlp);
 	printf("IX %0.4X\tIY  %0.4X\n", cpu->ix, cpu->iy);
 	printf("PC %0.4X\tSP  %0.4X\n", cpu->pc, cpu->sp);
-	
+
 	printf("(BC) %0.4X\t(BC') %0.4X\n", read2bytes(cpu->mem_c,cpu->bc), read2bytes(cpu->mem_c,cpu->bcp));
 	printf("(DE) %0.4X\t(DE') %0.4X\n", read2bytes(cpu->mem_c,cpu->de), read2bytes(cpu->mem_c,cpu->dep));
 	printf("(HL) %0.4X\t(HL') %0.4X\n", read2bytes(cpu->mem_c,cpu->hl), read2bytes(cpu->mem_c,cpu->hlp));

@@ -3,21 +3,21 @@
 
 #define NumElm(array) (sizeof (array) / sizeof ((array)[0]))
 
-#include <stdint.h>
-
 #ifdef WINVER
-#include <winsock.h>
+#include <stdint.h>
 #else
 #include <sys/types.h>
 #endif
 
 
-#ifndef BOOL
-typedef int BOOL;
-#endif
-#ifndef FALSE
+#ifndef TRUE
 #define FALSE (0)
 #define TRUE (!FALSE)
+#ifdef WINVER
+typedef int BOOL;
+#else
+typedef signed char BOOL;
+#endif
 #endif
 
 #include <stdio.h>
