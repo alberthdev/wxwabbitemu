@@ -15,6 +15,8 @@
 #ifdef WINVER
 #include "gui.h" // it would be nice to get this separated somehow
 #include "DropTarget.h"
+#elif WXVER
+#include "gui_wx.h"
 #endif
 #include "core.h"
 #include "lcd.h"
@@ -90,7 +92,7 @@ typedef struct calc {
 	HDC hdcSkin;
 	HDC hdcKeymap;
 #elif WXVER
-	wxFrame *wxFrameMain;
+	MyFrame *wxFrame;
 	int Scale;
 	bool SkinEnabled;
 	wxSize SkinSize;
