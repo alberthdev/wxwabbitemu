@@ -36,11 +36,11 @@ CPP="g++"
 LD="ld"
 
 # CCFLAGS - additional arguments to add on to the C compiler.
-CCFLAGS="-c -w -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface"
+CCFLAGS="-c -w -I . `wx-config --version=2.8 --libs --cflags` -I core -I hardware -I utilities -I interface"
 CCDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # CPPFLAGS - additional arguments to add on to the C++ compiler.
-CPPFLAGS="-c -w -I . `wx-config --version=2.8 --libs --cflags` -I/usr/include/wx-2.8 -I core -I hardware -I utilities -I interface"
+CPPFLAGS="-c -w -I . `wx-config --version=2.8 --libs --cppflags` -I core -I hardware -I utilities -I interface"
 CPPDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # LDFLAGS - additional or required arguments to add on to the linker.
@@ -546,13 +546,13 @@ function LINKLD() {
 	outfile="$2"
 	if [ "$CLEAN_EVERYTHING" = "1" ];then
 		printwork "Removing $outfile""..."
-		rm "obj/""$outfile" 2>/dev/null >/dev/null
+		rm "$outfile" 2>/dev/null >/dev/null
 		if [ ! "$?" = "0" ];then
 			printfail "Removing $outfile""..."
 			exit 1
 		fi
 		printdone "Removing $outfile""..."
-		continue
+		return
 	fi
 	
 	if [ -f "$outfile" ] && [ "$OVERWRITE" = "0" ];then

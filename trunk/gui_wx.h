@@ -6,6 +6,9 @@
 #include <wx/wx.h>
 #include <sys/time.h>
 
+#if (wxUSE_UNICODE)
+#include <wx/encconv.h>
+#endif
 
 int gui_draw(int);
 int gui_frame(int);
