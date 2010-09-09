@@ -1,5 +1,6 @@
 #include "gui_wx.h"
 #include "calc.h"
+
 bool gif_anim_advance;
 bool silent_mode = false;
 enum
@@ -66,7 +67,7 @@ Save States  (*.sav)|*.sav|\
 ROMs  (*.rom)|*.rom| \
 All Files (*.*)|*.*";
 	wxFileDialog dialog(NULL, wxT("Wabbitemu: Please select a ROM or save state"),
-	wxT(""), wxT(""), strFilter, wxFD_OPEN | wxFD_FILE_MUST_EXIST);//, wxDefaultPosition,wxDefaultSize, "filedlg")
+	wxT(""), wxT(""), wxT(strFilter), wxFD_OPEN | wxFD_FILE_MUST_EXIST);//, wxDefaultPosition,wxDefaultSize, "filedlg")
 	if (dialog.ShowModal() == wxID_OK) {
 		strcpy(load_file_buffer, wxStringToChar(dialog.GetPath()));
 		return true;
@@ -199,7 +200,7 @@ int gui_frame_update(int slot) {
 				wxStatus = calcs[slot].wxFrame->frameMain->CreateStatusBar(1, wxST_SIZEGRIP, wxID_ANY );
 			int iStatusWidths[] = {100, -1};
 			wxStatus->SetStatusWidths(2, iStatusWidths);
-			wxStatus->SetStatusText(CalcModelTxt[calcs[slot].model], 0);
+			wxStatus->SetStatusText(wxT(CalcModelTxt[calcs[slot].model]), 0);
 			//wxMessageBox(CalcModelTxt[calcs[slot].model], wxT("OnInit"), wxOK, NULL);
 			wxSize skinSize(128*calcs[slot].Scale, 64*calcs[slot].Scale);
 			if (wxMenu)
