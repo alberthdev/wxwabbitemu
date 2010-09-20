@@ -2,6 +2,7 @@
 #define LABEL_H
 
 #include "coretypes.h"
+#include <types.h>
 
 typedef struct {
     char *name;

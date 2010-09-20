@@ -99,6 +99,7 @@ typedef struct calc {
 	bool SkinEnabled;
 	wxSize SkinSize;
 	wxSize LCDSize;
+	clock_t sb_refresh;
 #else
 	pthread_t hdlThread;
 #endif
@@ -166,6 +167,8 @@ int rom_load(int, char *);
 void calc_slot_free(int);
 #ifdef WINVER
 int calc_from_hwnd(HWND);
+#elif WXVER
+int calc_from_frame(wxWindow *frame);
 #endif
 #endif
 

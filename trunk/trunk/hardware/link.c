@@ -2,10 +2,7 @@
 #include "calc.h"
 #include "lcd.h"	//lcd->active
 #include "keys.h"	//key_press
-#ifdef WXVER
 #include <setjmp.h>
-#endif
-
 //#define DEBUG
 
 static u_char vout, *vin; // Virtual Link data
@@ -29,6 +26,7 @@ static jmp_buf exc_pkt, exc_byte; // Exceptions
 
 /* Prototypes of static functions*/
 static LINK_ERR forceload_app(CPU_t *, TIFILE_t *);
+static LINK_ERR link_send_app(CPU_t *, TIFILE_t *);
 #ifdef _DEBUG
 static void print_command_ID(uint8_t);
 #endif
@@ -55,11 +53,14 @@ int link_connect(CPU_t *cpu1, CPU_t *cpu2) {
 	if (link1 == NULL || link2 == NULL)
 		return 1;
 
-	//link1->host = &link2->client;
-	//link2->host = &link1->client;
 	link1->client = &link2->host;
 	link2->client = &link1->host;
 
+	return 0;
+}
+
+int link_disconnect(CPU_t *cpu) {
+	cpu->pio.link->client = NULL;
 	return 0;
 }
 
@@ -137,9 +138,11 @@ static u_char link_recv(CPU_t *cpu) {
 	return byte;
 }
 
-bool link_connected()
+bool link_connected(int slot)
 {
-	return calcs[gslot].cpu.pio.link->client != &vout;
+	if (slot > 1)
+		return FALSE;
+	return calcs[0].cpu.pio.link->client == &calcs[1].cpu.pio.link->host;
 }
 
 /* Calculate a TI Link Protocol checksum
@@ -337,7 +340,11 @@ static void link_RTS(CPU_t *cpu, TIFILE_t *tifile, int dest) {
 	var_hdr.length = link_endian(tifile->var->length);
 	var_hdr.type_ID = tifile->var->vartype;
 	memset(var_hdr.name, 0, sizeof(var_hdr.name));
+#ifdef WINVER
 	strncpy(var_hdr.name, (char *) tifile->var->name, 8);
+#else
+	strncpy(var_hdr.name, (char *) tifile->var->name, 8);
+#endif
 	var_hdr.version = tifile->var->version;
 	if (dest == SEND_RAM) {
 		var_hdr.type_ID2 = 0x00;
@@ -457,7 +464,7 @@ LINK_ERR link_send_app(CPU_t *cpu, TIFILE_t *tifile) {
 		return LERR_FILE;
 
 	// Get the size of the whole APP
-	int i;
+	size_t i;
 	for (i = 0, cpu->pio.link->vlink_size = 0; i < tifile->flash->pages; i++)
 		cpu->pio.link->vlink_size += tifile->flash->pagesize[i];
 
@@ -549,6 +556,37 @@ LINK_ERR link_send_app(CPU_t *cpu, TIFILE_t *tifile) {
 	}
 }
 
+bool check_flashpage_empty(u_char (*dest)[PAGE_SIZE], u_int page, u_int num_pages) {
+	u_char *space = &dest[page][PAGE_SIZE - 1];
+	u_int i;
+	// Make sure the subsequent pages are empty
+	for (i = 0; i < num_pages * PAGE_SIZE; i++, space--) {
+		if (*space != 0xFF) {
+			printf("Subsequent pages not empty\n");
+			return FALSE;
+		}
+	}
+	return TRUE;
+}
+
+/* Fixes the certificate page so that the app is no longer marked as a trial
+ * cpu: cpu for the core the application is on
+ * page: the page the application you want to mark is on
+ */
+void fix_certificate(CPU_t *cpu, u_int page) {
+	u_char (*dest)[PAGE_SIZE] = (u_char (*)[PAGE_SIZE]) cpu->mem_c->flash;
+	upages_t upages;
+	state_userpages(cpu, &upages);
+	//there is probably some logic here that im missing...
+	//the 83p wtf is up with that offset
+	int offset = 0x1E50;
+	if (cpu->pio.model == TI_83P)
+		offset = 0x1F18;
+	//erase the part of the certifcate that marks it as a trial app
+	dest[cpu->mem_c->flash_pages-2][offset + 2 * (upages.start - page)] = 0x80;
+	dest[cpu->mem_c->flash_pages-2][offset+1 + 2 * (upages.start - page)] = 0x00;
+}
+
 /* Forceload a TI-83+ series APP
  * On error: Returns an error code */
 static LINK_ERR forceload_app(CPU_t *cpu, TIFILE_t *tifile) {
@@ -566,15 +604,42 @@ static LINK_ERR forceload_app(CPU_t *cpu, TIFILE_t *tifile) {
 	
 	u_int page;
 	for (page = upages.start; page >= upages.end + tifile->flash->pages
-			&& dest[page][0x00] == 0x80 && dest[page][0x01] == 0x0F; page
-			-= dest[page][0x1C]) {
+			&& dest[page][0x00] == 0x80 && dest[page][0x01] == 0x0F; 
+			page -= dest[page][0x1C]) {
 
+		//different size app need to send the long way
 		if (!memcmp(&dest[page][0x12], &tifile->flash->data[0][0x12], 8)) {
 			if (dest[page][0x1C] != tifile->flash->pages)
-				return link_send_app(cpu, tifile);
+			{
+				//or we can forceload it still ;D
+				//theres probably some good reason jim didnt write this code :|
+				int pageDiff = tifile->flash->pages - dest[page][0x1C];
+				int currentPage = page - tifile->flash->pages;
+				while (!check_flashpage_empty(dest, currentPage, tifile->flash->pages) && currentPage >= upages.end)
+					currentPage--;
+				if (currentPage - pageDiff < upages.end)
+					return LERR_MEM;
+				if (pageDiff > 0) {
+					while (++currentPage < page)
+						memcpy(dest[currentPage-pageDiff], dest[currentPage], PAGE_SIZE);
+				} else {
+					//need to copy the other way
+					int tempPage = currentPage;
+					currentPage = page - tifile->flash->pages;
+					while (--currentPage >= tempPage)
+						memcpy(dest[currentPage-pageDiff], dest[currentPage], PAGE_SIZE);
+				}
+			}
 			u_int i;
 			for (i = 0; i < tifile->flash->pages; i++, page--) {
 				memcpy(dest[page], tifile->flash->data[i], PAGE_SIZE);
+			}
+			//note that this does not fix the old marks, only ensures that
+			//the new order of apps has the correct parts marked
+			applist_t applist;
+			state_build_applist(cpu, &applist);
+			for (i = 0; i < applist.count; i++) {
+				fix_certificate(cpu, applist.apps[i].page);
 			}
 			printf("Found already\n");
 			return LERR_SUCCESS;
@@ -584,24 +649,16 @@ static LINK_ERR forceload_app(CPU_t *cpu, TIFILE_t *tifile) {
 	if (page < upages.end)
 		return LERR_MEM;
 
-	//there is probably some logic here that im missing...
-	//the 83p wtf is up with that offset
-	int offset = 0x1E50;
-	if (cpu->pio.model == TI_83P)
-		offset = 0x1F18;
-	//erase the part of the certifcate that marks it as a trial app
-	dest[cpu->mem_c->flash_pages-2][offset + 2 * (upages.start - page)] = 0x80;
-	dest[cpu->mem_c->flash_pages-2][offset+1 + 2 * (upages.start - page)] = 0x00;
+	//mark the app as non trial
+	fix_certificate(cpu, page);
+	//force reset the applist says BrandonW. seems to work, apps show up :P
+	mem_write(cpu->mem_c, 0x9C87, 0x00);
 
 	u_char *space = &dest[page][PAGE_SIZE - 1];
 	u_int i;
 	// Make sure the subsequent pages are empty
-	for (i = 0; i < tifile->flash->pages * PAGE_SIZE; i++, space--) {
-		if (*space != 0xFF) {
-			printf("Subsequent pages not empty\n");
-			return LERR_MEM;
-		}
-	}
+	if (!check_flashpage_empty(dest, page, tifile->flash->pages))
+		return LERR_MEM;
 	for (i = 0; i < tifile->flash->pages; i++, page--) {
 		memcpy(dest[page], tifile->flash->data[i], PAGE_SIZE);
 	}
@@ -619,6 +676,52 @@ static LINK_ERR forceload_app(CPU_t *cpu, TIFILE_t *tifile) {
 #ifdef _DEBUG
 static void print_command_ID(uint8_t command_ID) {
 	char buffer[256];
+#ifdef WINVER
+	switch (command_ID) {
+		case CID_ACK:
+		strcpy_s(buffer, "ACK");
+		break;
+		case CID_CTS:
+		strcpy_s(buffer, "CTS");
+		break;
+		case CID_DATA:
+		strcpy_s(buffer, "DATA");
+		break;
+		case CID_DEL:
+		strcpy_s(buffer, "DEL");
+		break;
+		case CID_EOT:
+		strcpy_s(buffer, "EOT");
+		break;
+		case CID_ERR:
+		strcpy_s(buffer, "ERR");
+		break;
+		case CID_EXIT:
+		strcpy_s(buffer, "SKIP/EXIT");
+		break;
+		case CID_RDY:
+		strcpy_s(buffer, "RDY");
+		break;
+		case CID_REQ:
+		strcpy_s(buffer, "REQ");
+		break;
+		case CID_RTS:
+		strcpy_s(buffer, "RTS");
+		break;
+		case CID_SCR:
+		strcpy_s(buffer, "SCR");
+		break;
+		case CID_VAR:
+		strcpy_s(buffer, "VAR");
+		break;
+		case CID_VER:
+		strcpy_s(buffer, "VER");
+		break;
+		default:
+		strcpy_s(buffer, "error");
+		break;
+	}
+#else
 	switch (command_ID) {
 		case CID_ACK:
 		strcpy(buffer, "ACK");
@@ -655,7 +758,6 @@ static void print_command_ID(uint8_t command_ID) {
 		break;
 		case CID_VAR:
 		strcpy(buffer, "VAR");
-
 		break;
 		case CID_VER:
 		strcpy(buffer, "VER");
@@ -664,6 +766,7 @@ static void print_command_ID(uint8_t command_ID) {
 		strcpy(buffer, "error");
 		break;
 	}
+#endif
 	printf(buffer);
 }
 #endif
@@ -724,27 +827,40 @@ int ReadIntelHex(FILE* ifile, intelhex_t *ihex) {
 	if (!fgets((char*)str, 580, ifile))
 		return 0;
 	if (str[0] == 0) memcpy(str, str+1, 579);
+#ifdef WINVER
+	if (sscanf_s((const char*)str, ":%02X%04X%02X%*s", &size, &addr, &type) != 3)
+#else
 	if (sscanf((const char*)str, ":%02X%04X%02X%*s", &size, &addr, &type) != 3)
+#endif
 		return 0;
 	ihex->size = size;
 	ihex->address = addr;
 	ihex->type = type;
 	memset(ihex->data, 0x00, 256);
 	for (i = 0; i < size; i++) {
+#ifdef WINVER
+		if (sscanf_s((const char*)str + 9 + (i * 2), "%02X", &byte) != 1)
+#else
 		if (sscanf((const char*)str + 9 + (i * 2), "%02X", &byte) != 1)
+#endif
 			return 0;
 		ihex->data[i] = byte;
 	}
+#ifdef WINVER
+	if (sscanf_s((const char*)str + 9 + (i * 2), "%02X", &byte) != 1)
+#else
 	if (sscanf((const char*)str + 9 + (i * 2), "%02X", &byte) != 1)
+#endif
 		return 0;
 	ihex->chksum = byte;
 	return 1;
 }
 
-void writeboot(FILE* infile) {
+void writeboot(FILE* infile, int page) {
 	intelhex_t ihex;
 	if (!infile) return;
-	int curpage = calcs[gslot].mem_c.flash_pages - 1;			//last page is boot page
+	if (page == -1)
+		page += calcs[gslot].mem_c.flash_pages;			//last page is boot page
 	unsigned char (*flash)[16384] = (uint8_t(*)[16384]) calcs[gslot].mem_c.flash;
 	while(1) {
 		if (!ReadIntelHex(infile,&ihex)) {
@@ -752,7 +868,7 @@ void writeboot(FILE* infile) {
 		}
 		switch(ihex.type) {
 			case 0x00:
-				memcpy(flash[curpage]+(ihex.address&0x3FFF),ihex.data,ihex.size);
+				memcpy(flash[page]+(ihex.address&0x3FFF),ihex.data,ihex.size);
 				break;
 			case 0x02:
 				break;

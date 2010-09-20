@@ -1,8 +1,4 @@
-#include <stdlib.h>
-#include <string.h>
-
 #ifdef WINVER
-#include <windows.h>
 #include "sound.h"
 #endif
 
@@ -16,6 +12,7 @@
 
 
 static int SlotSave =-1;
+static wxWindow *mainWindow = NULL;
 
 typedef struct SENDFILES {
 	char* FileNames;
@@ -32,38 +29,42 @@ int SizeofFileList(char* FileNames) {
 }
 
 char* AppendName(char* FileNames, char* fn) {
-	int length;
+	size_t length;
 	char* pnt;
 	int i;
 	length = strlen(fn);
 	if (FileNames == NULL) {
-		FileNames = malloc(length+2);
+		FileNames = (char *) malloc(length+2);
 		memset(FileNames,0,length+2);
 		pnt = FileNames;
 	} else {
 		for(i = 0; FileNames[i]!=0 || FileNames[i+1]!=0; i++);
 		i++;
-		FileNames = realloc(FileNames,i+length+2);
+		FileNames = (char *) realloc(FileNames,i+length+2);
 		pnt = FileNames+i;
 		memset(pnt,0,length+2);
 	}
+#ifdef WINVER
+	strcpy_s(pnt, length+1, fn);
+#else
 	strcpy(pnt,fn);
+#endif
 	return FileNames;
 }
-	
 
 void SendFile( char* FileName , int ram ) {
-	TIFILE_t *var = importvar(FileName);
+	bool is_link_connected = link_connected(SlotSave);
+	TIFILE_t *var = importvar(FileName, SlotSave, ram);
 	LINK_ERR result;
 	if (var != NULL) {
 		switch(var->type) {
 			case BACKUP_TYPE:
 			case VAR_TYPE:
 			case FLASH_TYPE:
-				calcs[gslot].SendSize = var->length;
-				calcs[gslot].cpu.pio.link->vlink_send = 0;
-				result = link_send_var(&calcs[SlotSave].cpu, var, ram);
-				#ifdef WINVER
+				calcs[SlotSave].SendSize = var->length;
+				calcs[SlotSave].cpu.pio.link->vlink_send = 0;
+				result = link_send_var(&calcs[SlotSave].cpu, var, (SEND_FLAG) ram);
+#ifdef WINVER
 				switch (result) {
 				case LERR_MEM:
 					switch (ram) {
@@ -100,15 +101,15 @@ void SendFile( char* FileName , int ram ) {
 					MessageBox(NULL, "The file was unable to be sent because it is corrupt", "Error", MB_OK);
 					break;
 				}
-				
-				#endif
+
+#endif
 				if (var->type == FLASH_TYPE) {
 					// Rebuild the applist
 					state_build_applist(&calcs[SlotSave].cpu, &calcs[SlotSave].applist);
-					
-					int i;
+
+					u_int i;
 					for (i = 0; i < calcs[SlotSave].applist.count; i++) {
-						if (strncmp(var->flash->name, calcs[SlotSave].applist.apps[i].name, 8) == 0) {
+						if (strncmp((char *) var->flash->name, calcs[SlotSave].applist.apps[i].name, 8) == 0) {
 							calcs[SlotSave].last_transferred_app = &calcs[SlotSave].applist.apps[i];
 							break;
 						}
@@ -119,45 +120,51 @@ void SendFile( char* FileName , int ram ) {
 			case SAV_TYPE:
 				FreeTiFile(var);
 				var = NULL;
-				rom_load(SlotSave,FileName);
+				rom_load(SlotSave, FileName);
+				//SendMessage(calcs[SlotSave].hwndFrame, WM_USER, 0, 0);
 				break;
-			case LABEL_TYPE:
-			{
+			case LABEL_TYPE: {
+#ifdef WINVER
+				strcpy_s(calcs[SlotSave].labelfn,FileName);
+#else
 				strcpy(calcs[SlotSave].labelfn,FileName);
+#endif
 				printf("loading label file for slot %d: %s\n", SlotSave, FileName);
 				VoidLabels(SlotSave);
 				labels_app_load(SlotSave, calcs[SlotSave].labelfn);
 
 				break;
 			}
+			case SKIP_TYPE:
 			case BREAKPOINT_TYPE:
-			{
-				
-			}
+				break;
 			default:
-				#ifdef WINVER
+#ifdef WINVER
 				MessageBox(NULL, "The file was an invalid or unspecified type","Error",MB_OK);
-				#endif
+#endif
 				break;
 		}
-	if (var) FreeTiFile(var);
+		if (var)
+			FreeTiFile(var);
+		if (is_link_connected)
+			link_connect(&calcs[0].cpu, &calcs[1].cpu);
 	} else {
-		#ifdef WINVER
+#ifdef WINVER
 		MessageBox(NULL, "Invalid file format","Error",MB_OK);
-		#endif
+#endif
 	}
 }
 
 #ifdef WINVER
 extern HINSTANCE g_hInst;
 HWND hwndSend;
-static char *current_file_sending;
 #endif
+static char *current_file_sending;
 
 void SendFiles( char* FileNames , int ram ) {
 	int i;
 	int modelsave;
-	unsigned char* fn = FileNames;
+	unsigned char* fn = (unsigned char *)  FileNames;
 	calcs[SlotSave].send = TRUE;
 	calcs[SlotSave].running = FALSE;
 	calcs[SlotSave].CurrentFile = 0;
@@ -169,11 +176,11 @@ void SendFiles( char* FileNames , int ram ) {
 		calcs[SlotSave].FileCnt++;
 	}
 
-	while (fn[0]!=0) {
+	while (fn[0] != 0) {
 		modelsave = calcs[SlotSave].model;
 		calcs[SlotSave].CurrentFile++;
-		current_file_sending = fn;
-		SendFile(fn,ram);
+		current_file_sending = (char *) fn;
+		SendFile((char *) fn,ram);
 #ifdef WINVER
 		SendMessage(hwndSend, WM_USER, 0, 0);
 #endif
@@ -198,7 +205,7 @@ static int CALLBACK EnumFontFamExProc(
 ) {
 	LOGFONT *lplf = &lpelfe->elfLogFont;
 	lplf->lfHeight = -MulDiv(9, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72);
-	lplf->lfWidth = 0;	
+	lplf->lfWidth = 0;
 	*((HFONT *) lParam) = CreateFontIndirect(lplf);
 	return 0;
 }
@@ -214,16 +221,24 @@ static LRESULT CALLBACK SendProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 	{
 		LOGFONT lfSegoe;
 		memset(&lfSegoe, 0, sizeof(LOGFONT));
+#ifdef WINVER
+		strcpy_s(lfSegoe.lfFaceName, "Segoe UI");
+#else
 		strcpy(lfSegoe.lfFaceName, "Segoe UI");
-		
+#endif
+
 		if (EnumFontFamiliesEx(GetDC(NULL), &lfSegoe, (FONTENUMPROC) EnumFontFamExProc, (LPARAM) &hfontSegoe, 0) != 0) {
-			strcpy(lfSegoe.lfFaceName, "Tahoma");
+#ifdef WINVER
+			strcpy_s(lfSegoe.lfFaceName, "Tahoma");
+#else
+			strcpy(lfSegoe.lfFaceName, "Segoe UI");
+#endif
 			EnumFontFamiliesEx(GetDC(NULL), &lfSegoe, (FONTENUMPROC) EnumFontFamExProc, (LPARAM) &hfontSegoe, 0);
 		}
-		
+
 		SelectObject(GetDC(hwnd), hfontSegoe);
 		GetTextMetrics(GetDC(hwnd), &tm);
-		
+
 		hwndProgress = CreateWindowEx(
 				0,
 				PROGRESS_CLASS,
@@ -232,7 +247,21 @@ static LRESULT CALLBACK SendProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 				tm.tmAveCharWidth*2, tm.tmHeight * 4, 1, 1,
 				hwnd, (HMENU) 0, g_hInst, NULL
 		);
-		
+
+		return 0;
+	}
+	case WM_GETMINMAXINFO: {
+		MINMAXINFO *info = (MINMAXINFO *) lParam;
+		RECT rc;
+		GetWindowRect(calcs[SlotSave].hwndLCD, &rc);
+
+		DWORD SendWidth = (rc.right - rc.left) * 9 / 10;
+		DWORD SendHeight = 110;
+		AdjustWindowRect(&rc, WS_SIZEBOX | WS_POPUP, FALSE);
+		info->ptMinTrackSize.x = SendWidth;
+		info->ptMinTrackSize.y = SendHeight;
+		info->ptMaxTrackSize.x = SendWidth;
+		info->ptMaxTrackSize.y = SendHeight;
 		return 0;
 	}
 	case WM_SIZE:
@@ -240,49 +269,53 @@ static LRESULT CALLBACK SendProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 		RECT rc;
 		GetClientRect(hwnd, &rc);
 		SetWindowPos(hwndProgress, NULL, 0, 0, rc.right - rc.left - tm.tmAveCharWidth*4, tm.tmHeight*3/2, SWP_NOMOVE | SWP_NOZORDER);
-		
+
 		rc.top = 0;
 		rc.bottom = tm.tmHeight * 6;
 		AdjustWindowRect(&rc, WS_SIZEBOX | WS_POPUP, FALSE);
 		SetWindowPos(hwnd, NULL, 0, 0, rc.right - rc.left, rc.bottom - rc.top, SWP_NOMOVE | SWP_NOZORDER);
-		
+
 		return 0;
 	}
 	case WM_PAINT:
 	{
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hwnd, &ps);
-				
+
 		SetBkMode(hdc, TRANSPARENT);
 		SelectObject(hdc, hfontSegoe);
-		
+
 		char szFile[256];
+#ifdef WINVER
+		sprintf_s(szFile, "Sending file %d of %d", calcs[SlotSave].CurrentFile, calcs[SlotSave].FileCnt);
+#else
 		sprintf(szFile, "Sending file %d of %d", calcs[SlotSave].CurrentFile, calcs[SlotSave].FileCnt);
+#endif
 		RECT r;
 		GetClientRect(hwnd, &r);
 		r.bottom = tm.tmHeight*5/2 + tm.tmHeight;
-		FillRect(hdc, &r, GetStockObject(WHITE_BRUSH));
-		
+		FillRect(hdc, &r, GetStockBrush(WHITE_BRUSH));
+
 		SelectObject(hdc, GetStockObject(DC_PEN));
 		SetDCPenColor(hdc, RGB(223,223,233));
 		MoveToEx(hdc, 0, r.bottom-1, NULL);
 		LineTo(hdc, r.right, r.bottom-1);
-		
+
 		r.left = tm.tmAveCharWidth*2;
 		r.top = tm.tmHeight*3/4;
 		r.right -= tm.tmAveCharWidth*2;
 		SetTextColor(hdc, RGB(0, 0, 0));
 		DrawText(hdc, szFile, -1, &r, DT_SINGLELINE);
-		
-		
+
+
 		OffsetRect(&r, 0, tm.tmHeight);
 		r.left += tm.tmAveCharWidth;
 		SetTextColor(hdc, RGB(90, 90, 90));
 
 		DrawText(hdc, current_file_sending, -1, &r, DT_SINGLELINE | DT_PATH_ELLIPSIS);
-		
 
-		
+
+
 		EndPaint(hwnd, &ps);
 		return 0;
 	}
@@ -290,9 +323,9 @@ static LRESULT CALLBACK SendProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 	{
 		// Update the progress bar
 		SendMessage(hwndProgress, PBM_SETSTEP, 1, 0);
-		SendMessage(hwndProgress, PBM_SETRANGE, 0, MAKELPARAM(0, calcs[SlotSave].cpu.pio.link->vlink_size/4)); 
+		SendMessage(hwndProgress, PBM_SETRANGE, 0, MAKELPARAM(0, calcs[SlotSave].cpu.pio.link->vlink_size/4));
 		SendMessage(hwndProgress, PBM_SETPOS, calcs[SlotSave].cpu.pio.link->vlink_send/4, 0);
-		
+
 		InvalidateRect(hwnd, NULL, FALSE);
 		UpdateWindow(hwnd);
 		return 0;
@@ -306,42 +339,37 @@ static LRESULT CALLBACK SendProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 }
 
 DWORD WINAPI ThreadSendStart( LPVOID lpParam ) {
-	SENDFILES_t* sf = lpParam;
+	SENDFILES_t* sf = (SENDFILES_t *) lpParam;
 	int save = 0;
-	
+
 	if (calcs[SlotSave].audio->enabled) {
 		save = 1;
 		pausesound();
 	}
 
-	
-	SendFiles(sf->FileNames,sf->ram);
+
+	SendFiles(sf->FileNames, sf->ram);
 	if (save==1) playsound();
-	free(sf);	
+	free(sf);
 	SlotSave = -1;
-	
+
 	PostMessage(hwndSend, WM_CLOSE, 0, 0);
-	
-    return 0; 
-} 
+
+    return 0;
+}
 
 
-void ThreadSend( char* FileNames , int ram ) {
+void ThreadSend(char *FileNames, int ram, int slot) {
 	static HANDLE hdlSend = NULL;
 	SENDFILES_t* sf;
 
 	if (FileNames == NULL) return;
 
-	if (SlotSave == -1) {
-		SlotSave = gslot;
+	if (SlotSave != -1 || calcs[SlotSave].send == TRUE) {
+		MessageBox(NULL, "Currently sending files please wait...","Error",MB_OK);
+		return;
 	} else {
-		MessageBox(NULL, "Currently sending files please wait...","Error",MB_OK);
-		return;
-	}
-	
-	if (calcs[SlotSave].send == TRUE)  {
-		MessageBox(NULL, "Currently sending files please wait...","Error",MB_OK);
-		return;
+		SlotSave = slot;
 	}
 
 	if (hdlSend != NULL) {
@@ -349,7 +377,7 @@ void ThreadSend( char* FileNames , int ram ) {
 		hdlSend = NULL;
 	}
 
-	sf =  malloc(sizeof(SENDFILES_t));
+	sf = (SENDFILES_t *) malloc(sizeof(SENDFILES_t));
 	if (sf != NULL) {
 		sf->FileNames	= FileNames;
 		sf->ram			= ram;
@@ -358,7 +386,7 @@ void ThreadSend( char* FileNames , int ram ) {
 
 	WNDCLASSEX wcx;
 	ZeroMemory(&wcx, sizeof(wcx));
-	
+
 	wcx.cbSize = sizeof(wcx);
 	wcx.style = CS_DBLCLKS;
 	wcx.lpszClassName = "WabbitSendClass";
@@ -366,14 +394,14 @@ void ThreadSend( char* FileNames , int ram ) {
 	wcx.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wcx.hbrBackground = (HBRUSH) (COLOR_BTNFACE+1);
 	RegisterClassEx(&wcx);
-	
-	
+
+
 	RECT r;
 	GetWindowRect(calcs[SlotSave].hwndLCD, &r);
-	
+
 	DWORD SendWidth = (r.right - r.left) * 9 / 10;
 	DWORD SendHeight = 90; //10 * HIWORD(GetDialogBaseUnits());
-	
+
 	hwndSend = CreateWindowEx(
 			0,
 			"WabbitSendClass",
@@ -383,8 +411,8 @@ void ThreadSend( char* FileNames , int ram ) {
 			calcs[SlotSave].hwndLCD, NULL, g_hInst, 0
 	);
 	
-    hdlSend = CreateThread(NULL,0,ThreadSendStart, sf, 0, NULL);  
-    
+    hdlSend = CreateThread(NULL,0,ThreadSendStart, sf, 0, NULL);
+
     if ( hdlSend  == NULL) {
 		SlotSave = -1;
 		free(sf);
@@ -392,22 +420,23 @@ void ThreadSend( char* FileNames , int ram ) {
 		MessageBox(NULL, "Could not create thread to send","Error",MB_OK);
 		return;
 	}
+
 	return;
 }
 #endif
 
-void NoThreadSend(const char* FileNames, int ram) {
+void NoThreadSend(const char* FileNames, int ram, int slot) {
 	if (SlotSave == -1) {
-		SlotSave = gslot;
+		SlotSave = slot;
 	} else {
 		// error;
 	}
-	
+
 	SendFiles((char*) FileNames, ram);
 }
 
 
 
-	
-	
-	
+
+
+

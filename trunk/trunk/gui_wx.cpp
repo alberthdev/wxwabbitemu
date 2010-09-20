@@ -1,4 +1,5 @@
 #include "gui_wx.h"
+#include "guiopenfile.h"
 #include "calc.h"
 
 bool gif_anim_advance;
@@ -93,9 +94,10 @@ bool MyApp::OnInit()
 			else return FALSE;
 		} else return FALSE;
 	}
+	calcs[slot].wxFrame->SetFocus();
 	timer = new wxTimer();
 	timer->Connect(wxEVT_TIMER, (wxObjectEventFunction) &MyApp::OnTimer);
-	timer->Start(FPS);
+	timer->Start(FPS, false);
     return TRUE;
 }
 
@@ -109,13 +111,13 @@ void MyApp::OnTimer(wxTimerEvent& event) {
 	struct timeval time;
 	gettimeofday(&time, NULL);
 	
-
 	// How different the timer is from where it should be
 	// guard from erroneous timer calls with an upper bound
 	// that's the limit of time it will take before the
 	// calc gives up and claims it lost time
 	difference += ((time.tv_sec - prevTimer.tv_sec) & 0x003F) - TPF;
 	prevTimer = time;
+	//printf("%d", difference);
 	//this is for updating the progress bar
 	//we will use this later
 	/*int i;
@@ -135,12 +137,12 @@ void MyApp::OnTimer(wxTimerEvent& event) {
 
 	// Are we greater than Ticks Per Frame that would call for
 	// a frame skip?
-	if (difference > -TPF) {
+	//if (difference > -TPF) {
 		calc_run_all();
-		while (difference >= TPF) {
+		/*while (difference >= TPF) {
 			calc_run_all();
 			difference -= TPF;
-		}
+		}*/
 
 		int i;
 		for (i = 0; i < MAX_CALCS; i++) {
@@ -149,14 +151,16 @@ void MyApp::OnTimer(wxTimerEvent& event) {
 			}
 		}
 	// Frame skip if we're too far ahead.
-	} else difference += TPF;
+	//} else difference += TPF;
 }
 
 
 int gui_draw(int slot) {
 	gslot = slot;
 	calcs[slot].wxLCD->Refresh();
-	//UpdateWindow(calcs[slot].hwndLCD);
+	calcs[slot].wxLCD->Update();
+	calcs[slot].wxLCD->frameLCD->Refresh();
+	calcs[slot].wxLCD->frameLCD->Update();
 
 	//UpdateDebugTrack();
 	if (calcs[slot].gif_disp_state != GDS_IDLE) {
@@ -174,7 +178,6 @@ int gui_frame(int slot) {
 		calcs[slot].Scale = 2;
 	// Set gslot so the CreateWindow functions operate on the correct calc
 	gslot = slot;
-	
 	calcs[slot].wxFrame = new MyFrame(slot);
 	calcs[slot].wxFrame->frameMain->Show(true);
 	
@@ -182,9 +185,7 @@ int gui_frame(int slot) {
 	calcs[slot].wxLCD->frameLCD->Show(true);
 	if (calcs[slot].wxFrame == NULL /*|| calcs[slot].hwndLCD == NULL*/) return -1;
 	calcs[slot].running = TRUE;
-	calcs[slot].speed = 100;
-	wxMenuBar *wxMenu = calcs[slot].wxFrame->frameMain->GetMenuBar();
-	//CheckMenuRadioItem(GetSubMenu(GetSubMenu(hmenu, 2),4), IDM_SPEED_QUARTER, IDM_SPEED_MAX, IDM_SPEED_NORMAL, MF_BYCOMMAND);
+	calcs[slot].wxFrame->SetSpeed(100);
 	gui_frame_update(slot);
 	return 0;
 }
@@ -198,10 +199,9 @@ int gui_frame_update(int slot) {
 			wxStatusBar *wxStatus = calcs[slot].wxFrame->frameMain->GetStatusBar();
 			if (wxStatus == NULL)
 				wxStatus = calcs[slot].wxFrame->frameMain->CreateStatusBar(1, wxST_SIZEGRIP, wxID_ANY );
-			int iStatusWidths[] = {100, -1};
-			wxStatus->SetStatusWidths(2, iStatusWidths);
+			const int iStatusWidths[] = {100, -1};
+			wxStatus->SetFieldsCount(2, iStatusWidths);
 			wxStatus->SetStatusText(wxT(CalcModelTxt[calcs[slot].model]), 0);
-			//wxMessageBox(CalcModelTxt[calcs[slot].model], wxT("OnInit"), wxOK, NULL);
 			wxSize skinSize(128*calcs[slot].Scale, 64*calcs[slot].Scale);
 			if (wxMenu)
 				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame->frameMain));
@@ -218,6 +218,7 @@ int gui_frame_update(int slot) {
 			calcs[slot].wxFrame->frameMain->SetClientSize(skinSize);
 		}
 	}
+	calcs[slot].wxFrame->frameMain->SendSizeEvent();
 }
 
 int gui_debug(int slot) {
@@ -338,9 +339,15 @@ MyFrame::MyFrame(int slot) {
 	
 	wxStatusBar *m_statusBar1 = frameMain->CreateStatusBar( 1, wxST_SIZEGRIP, wxID_ANY );
 	
+	frameMain->Connect(ID_File_New, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileNew);
+	frameMain->Connect(ID_File_Open, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileOpen);
 	frameMain->Connect(ID_File_Quit, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileQuit);
 	frameMain->Connect(ID_Help_About, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpAbout);
 	frameMain->Connect(ID_Calc_Skin, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnCalcSkin);
+	frameMain->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyFrame::OnKeyDown);
+	frameMain->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyFrame::OnKeyUp);
+	this->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyFrame::OnKeyDown);
+	this->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyFrame::OnKeyUp);
 	
 	int menuSize = wxSystemSettings::GetMetric(wxSYS_MENU_Y, frameMain);
 	if (calcs[slot].SkinEnabled)
@@ -348,6 +355,66 @@ MyFrame::MyFrame(int slot) {
 	else
 		windowSize.Set(128*calcs[slot].Scale, 64*calcs[slot].Scale + menuSize);
 	frameMain->SetClientSize(windowSize);
+}
+
+void MyFrame::OnFileNew(wxCommandEvent &event) {
+	int slot = calc_slot_new();
+	rom_load(slot, calcs[gslot].rom_path);
+	calcs[slot].SkinEnabled = calcs[gslot].SkinEnabled;
+	calcs[slot].Scale = calcs[gslot].Scale;
+	gui_frame(slot);
+}
+
+void MyFrame::OnFileOpen(wxCommandEvent &event) {
+	GetOpenSendFileName(this->frameMain, 0);
+}
+
+void MyFrame::SetSpeed(int speed) {
+	calcs[gslot].speed = speed;
+	wxMenuBar *wxMenu = calcs[gslot].wxFrame->frameMain->GetMenuBar();
+	
+}
+
+
+void MyFrame::OnKeyDown(wxKeyEvent& event)
+{
+	int keycode = event.GetKeyCode();
+	if (keycode == WXK_F8) {
+		if (calcs[gslot].speed == 100)
+			SetSpeed(400);
+		else
+			SetSpeed(100);
+	}
+	if (keycode == WXK_SHIFT) {
+		wxUint32 raw = event.GetRawKeyCode();
+		if (raw == 65505) {
+			keycode = WXK_LSHIFT;
+		} else {
+			keycode = WXK_RSHIFT;
+		}
+	}
+
+	keyprog_t *kp = keypad_key_press(&calcs[gslot].cpu, keycode);
+	if (kp) {
+		if ((calcs[gslot].cpu.pio.keypad->keys[kp->group][kp->bit] & KEY_STATEDOWN) == 0) {
+			calcs[gslot].cpu.pio.keypad->keys[kp->group][kp->bit] |= KEY_STATEDOWN;
+			this->Update();
+			FinalizeButtons();
+		}
+	}
+	return;
+}
+
+void MyFrame::OnKeyUp(wxKeyEvent& event)
+{
+	int key = event.GetKeyCode();
+	if (key == WXK_SHIFT) {
+		keypad_key_release(&calcs[gslot].cpu, WXK_LSHIFT);
+		keypad_key_release(&calcs[gslot].cpu, WXK_RSHIFT);
+	} else {
+		keypad_key_release(&calcs[gslot].cpu, key);
+	}
+	FinalizeButtons();
 }
 
 void MyFrame::OnFileQuit(wxCommandEvent& WXUNUSED(event))
@@ -364,4 +431,18 @@ void MyFrame::OnCalcSkin(wxCommandEvent& event)
 void MyFrame::OnHelpAbout(wxCommandEvent& WXUNUSED(event))
 {
     wxMessageBox(wxT("Finally works on linux"), wxT("About Wabbitemu"), wxOK | wxICON_INFORMATION, this);
+}
+
+void MyFrame::FinalizeButtons() {
+	int group, bit;
+	keypad_t *kp = calcs[gslot].cpu.pio.keypad;
+	for(group=0;group<7;group++) {
+		for(bit=0;bit<8;bit++) {
+			if ((kp->keys[group][bit] & KEY_STATEDOWN) &&
+				((kp->keys[group][bit] & KEY_MOUSEPRESS) == 0) &&
+				((kp->keys[group][bit] & KEY_KEYBOARDPRESS) == 0)) {
+					kp->keys[group][bit] &= (~KEY_STATEDOWN);
+			}
+		}
+	}
 }

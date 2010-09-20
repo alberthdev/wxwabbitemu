@@ -555,13 +555,13 @@ function LINKLD() {
 		return
 	fi
 	
-	if [ -f "$outfile" ] && [ "$OVERWRITE" = "0" ];then
-		printsdone "Skipping target $outfile"", since it's already built."
-	else	
+	#if [ -f "$outfile" ] && [ "$OVERWRITE" = "0" ];then
+	#	printsdone "Skipping target $outfile"", since it's already built."
+	#else	
 		printwork "Linking $1""..."
 		$CPP $LDFLAGS $1 -o "$outfile"
 		checkfail $? "Linking $1""..."
-	fi
+	#fi
 }
 
 
@@ -599,8 +599,11 @@ parsearg $@
 ########################################################
 COMPILEC core/*.c
 COMPILEC hardware/*.c
+COMPILEC gui/*.c
 COMPILEC utilities/var.c
 COMPILEC utilities/savestate.c
+COMPILEC utilities/sendfiles.c
+COMPILEC utilities/label.c
 COMPILEC interface/state.c
 COMPILEC interface/calc.c
 COMPILECPP gui_wx.cpp
