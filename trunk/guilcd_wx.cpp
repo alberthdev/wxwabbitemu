@@ -7,56 +7,69 @@ enum {
 	ID_LCD,
 };
 
+unsigned char redColors[MAX_SHADES+1];
+unsigned char greenColors[MAX_SHADES+1];
+unsigned char blueColors[MAX_SHADES+1];
 MyLCD::MyLCD() {
 	int scale = calcs[gslot].Scale;
 	const wxPoint startPos(0,0);
 	const wxSize startSize(calcs[gslot].cpu.pio.lcd->width* scale, 64*scale);
 	frameLCD = new wxWindow(calcs[gslot].wxFrame->frameMain, ID_LCD, startPos, startSize);
 	frameLCD->Connect(ID_LCD, wxEVT_PAINT, (wxObjectEventFunction) &MyLCD::OnPaint);
+	frameLCD->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyFrame::OnKeyDown);
+	frameLCD->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyFrame::OnKeyUp);
+	int i;
+#define LCD_HIGH	255
+	for (i = 0; i <= MAX_SHADES; i++) {
+		redColors[i] = (0x9E*(256-(LCD_HIGH/MAX_SHADES)*i))/255;
+		greenColors[i] = (0xAB*(256-(LCD_HIGH/MAX_SHADES)*i))/255;
+		blueColors[i] = (0x88*(256-(LCD_HIGH/MAX_SHADES)*i))/255;
+	}
 }
 
 void MyLCD::OnPaint(wxPaintEvent& event)
 {
-	//wxMessageBox(wxT("Paint"), wxT("OnPaint"), wxOK, NULL);
 	if (frameLCD == NULL)
 		return;
 	wxPaintDC dc(this);
 	PaintLCD(frameLCD, &dc);
 	//TODO: add in fps counter in the status bar
-	//LCD_t *lcd = calcs[gslot].cpu.pio.lcd;
+	LCD_t *lcd = calcs[gslot].cpu.pio.lcd;
+	wxStatusBar *wxStatus = calcs[gslot].wxFrame->frameMain->GetStatusBar();
+	if (wxStatus) {
+		if (clock() > calcs[gslot].sb_refresh + CLOCKS_PER_SEC/2) {
+			char sz_status[32];
+			if (lcd->active)
+				sprintf(sz_status,"FPS: %0.2lf", lcd->ufps);
+			else
+				sprintf(sz_status,"FPS: -");
+			wxStatus->SetStatusText(sz_status, 1);
+			calcs[gslot].sb_refresh = clock();
+		}
+	}
 }
 
 void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 {
 	unsigned char *screen;
 	LCD_t *lcd = calcs[gslot].cpu.pio.lcd;
-	wxPoint drawPoint(0,0);
+	wxPoint drawPoint(32, 0);
 	wxSize rc = wxSize(192,128);//window->GetClientSize();			//GetClientRect(calcs[gslot].hwndLCD, &rc);
 
-	//wxMessageBox(wxT("Paint"), wxT("OnPaint"), wxOK, NULL);
-	//wxClientDC wxMyDC(window), wxDCOverlay;
-	wxMemoryDC wxMemDC;
-	/*if (!wxMyDC.IsOk()) {
-		printf("Creating buffer DC failed\n");
-		return;
-	}*/
+	wxMemoryDC wxMemDC;	
 	if (lcd->active == false) {
-		char lcd_data[128*64];
-		memset(lcd_data, 0xFF0000, sizeof(lcd_data));
-		wxBitmap bmpBuf((const char* ) &lcd_data, wxBITMAP_TYPE_XBM, rc.GetWidth(), rc.GetHeight());
-		/*if (wxBitmap.Create(lcd_data, wxBitmap StretchDIBits(
-			hdc,
-			rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top,
-			0, 0, lcd->width, 64,
-			lcd_data,
-			bi,
-			DIB_RGB_COLORS,
-			SRCCOPY) == 0) {
-
-			printf("error in SetDIBitsToDevice\n");
-		}*/
+		unsigned char lcd_data[128*64];
+		memset(lcd_data, 0, sizeof(lcd_data));
+		unsigned char rgb_data[128*64*3];
+		int i, j;
+		for (i = j = 0; i < 128*64; i++, j+=3) {
+			rgb_data[j] = redColors[lcd_data[i]];
+			rgb_data[j+1] = greenColors[lcd_data[i]];
+			rgb_data[j+2] = blueColors[lcd_data[i]];
+		}
+		wxImage screenImage(128, 64, rgb_data, true);
+		wxBitmap bmpBuf(screenImage.Scale(256, 128).Size(rc, wxPoint(0,0)));
 		wxMemDC.SelectObject(bmpBuf);
-
 		//draw drag panes
 		/*if (calcs[gslot].do_drag == TRUE) {
 
@@ -76,30 +89,26 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 
 		//copy to the screen
 		wxDCDest->Blit(drawPoint.x, drawPoint.y, rc.GetWidth(), rc.GetHeight(), &wxMemDC, 0, 0);
-		/*if (BitBlt(	hdcDest, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top,
-			hdc, 0, 0, SRCCOPY ) == FALSE) printf("BitBlt failed\n");*/
+		wxMemDC.SelectObject(wxNullBitmap);
 
 	} else {
 		screen = LCD_image( calcs[gslot].cpu.pio.lcd ) ;
-		//screen = GIFGREYLCD();
+		unsigned char rgb_data[128*64*3];
+		int i, j;
+		for (i = j = 0; i < 128*64; i++, j+=3) {
+			rgb_data[j] = redColors[screen[i]];
+			rgb_data[j+1] = greenColors[screen[i]];
+			rgb_data[j+2] = blueColors[screen[i]];
+		}
 
 		//this is for the 86, so it doesnt look like complete shit
 		/*if (lcd->width * calcs[gslot].Scale != (rc.right - rc.left))
 			SetStretchBltMode(hdc, HALFTONE);
 		else
 			SetStretchBltMode(hdc, BLACKONWHITE);*/
-		wxBitmap bmpBuf((const char* ) &screen, wxBITMAP_TYPE_XBM, rc.GetWidth(), rc.GetHeight());
-		/*if (StretchDIBits(	hdc,
-							rc.left, rc.top, rc.right - rc.left,  rc.bottom - rc.top,
-							0, 0, lcd->width, 64,
-							screen,
-							bi,
-							DIB_RGB_COLORS,
-							SRCCOPY) == 0) {
-							printf("error in SetDIBitsToDevice\n");
-						}*/
-
-
+		wxImage screenImage(128, 64, rgb_data, true);
+		wxBitmap bmpBuf(screenImage.Scale(256, 128).Size(rc, wxPoint(0,0)));
+		wxMemDC.SelectObject(bmpBuf);
 		//if were dragging something we will draw these nice panes
 		/*BLENDFUNCTION bf;
 		bf.BlendOp = AC_SRC_OVER;
@@ -152,7 +161,8 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 		}*/
 
 		//finally copy up the screen image
-		wxDCDest->Blit(drawPoint.x, drawPoint.y, rc.GetWidth(), rc.GetHeight(), &wxMemDC, 0, 0);
+		wxDCDest->Blit(drawPoint.x, drawPoint.y, (rc.GetWidth() - 32) * 2, rc.GetHeight() *2, &wxMemDC, 0, 0);
+		wxMemDC.SelectObject(wxNullBitmap);
 		/*if (BitBlt(	hdcDest, rc.left, rc.top, rc.right - rc.left,  rc.bottom - rc.top,
 			hdc, 0, 0, SRCCOPY ) == FALSE) printf("Bit blt failed\n");*/
 

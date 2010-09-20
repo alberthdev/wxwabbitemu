@@ -919,7 +919,7 @@ void WriteSave(const char * fn,SAVESTATE_t* save,int compress) {
 	if (compress == 0) {
 		ofile = fopen(fn,"wb");
 	} else {
-		tmpnam(tmpfn);
+		mkstemp(tmpfn);
 		strcpy(temp_save, getenv("appdata"));
 		strcat(temp_save, tmpfn);
 		ofile = fopen(temp_save,"wb");
@@ -997,7 +997,7 @@ SAVESTATE_t* ReadSave(FILE* ifile) {
 	string[8]=0;
 	if (strncmp(DETECT_CMP_STR,string,8)==0) {
 		i = fgetc(ifile);
-		tmpnam(tmpfn);
+		mkstemp(tmpfn);
 		strcpy(temp_save, getenv("appdata"));
 		strcat(temp_save, tmpfn);
 		tmpfile = fopen(temp_save,"wb");

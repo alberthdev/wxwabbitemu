@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-
 #define LABEL_C
 #include "label.h"
 #include "core.h"
@@ -32,7 +29,7 @@ void ClearLabels(int slot) {
 	VoidLabels(slot);
 }
 
-char* FindAddressLabel(int slot, BOOL IsRAM, uint8_t page, uint16_t addr) {
+char* FindAddressLabel(int slot, bool IsRAM, uint8_t page, uint16_t addr) {
 	int i;
 	
 	for (i = 0; calcs[slot].labels[i].name != NULL; i++) {
@@ -46,7 +43,7 @@ char* FindAddressLabel(int slot, BOOL IsRAM, uint8_t page, uint16_t addr) {
 //-------------------------------------------
 // True means label is found and is the same
 //
-BOOL label_search_tios(char *label,int equate) {
+bool label_search_tios(char *label,int equate) {
 	int i,b;
 	
 	if (!label) return FALSE;
@@ -85,7 +82,12 @@ int labels_app_load(int slot, char* fn) {
 	unsigned int equate;
 	label_struct *label = &calcs[slot].labels[0];	
 
+#ifdef WINVER
+	fopen_s(&labelFile, fn,"r");
+	if (!labelFile) {
+#else
     if (!(labelFile = fopen(fn,"r"))) {
+#endif
         puts("Error opening label files.");
         return 1;
     }
@@ -97,20 +99,32 @@ int labels_app_load(int slot, char* fn) {
 		fgets(buffer,256,labelFile);
 		i = 0;
 		if (buffer[0] != ';')
+#ifdef WINVER
 			i = sscanf(buffer,"%s = $%X", name, &equate);
+			//i = sscanf_s(buffer,"%s = $%X", name, &equate);
+#else
+			i = sscanf(buffer,"%s = $%X", name, &equate);
+#endif
 		if (i == 2) {
-			length = strlen(name);
-			if (!label_search_tios(name,equate)) {
+			length = (int) strlen(name);
+			if (!label_search_tios(name, equate)) {
 				
-				label->name = malloc(length + 1);
+				label->name = (char *) malloc(length + 1);
+#ifdef WINVER
+				strcpy_s(label->name, length + 1, name);
+#else
 				strcpy(label->name, name);
+#endif
 				label->addr = equate & 0xFFFF;
 
 				if ( (equate&0x0000FFFF)>=0x4000 && (equate&0x0000FFFF)<0x8000) {
 					int page_offset = (equate >> 16) & 0xFF;
 					
 					label->IsRAM = FALSE;
-					label->page = calcs[slot].last_transferred_app->page - page_offset;
+					if (calcs[slot].last_transferred_app == NULL)
+						label->page = calcs[slot].mem_c.flash_pages - page_offset;
+					else
+						label->page = calcs[slot].last_transferred_app->page - page_offset;
 
 				} else {
 					label->IsRAM = TRUE;

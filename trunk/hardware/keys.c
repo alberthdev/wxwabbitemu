@@ -48,7 +48,7 @@ static keyprog_t keygrps[] = {
 	{ WXK_RETURN , 1 , 0 },
 	{ WXK_DECIMAL , 3 , 0 },
 	//{ VKF_COMMA , 4 , 4 },
-	{ WXK_ADD , 1 , 1 },
+	{ WXK_NUMPAD_ADD , 1 , 1 },
 	{ WXK_SUBTRACT , 1 , 2 },
 	{ WXK_MULTIPLY , 1 , 3 },
 	{ WXK_DIVIDE , 1 , 4 },
@@ -60,9 +60,9 @@ static keyprog_t keygrps[] = {
 	{ WXK_F4 , 6 , 1 },
 	{ WXK_F5 , 6 , 0 },
 	{ WXK_ESCAPE , 6 , 6 },
-	{ WXK_SHIFT , 6 , 5 },			// l shift
+	{ WXK_LSHIFT , 6 , 5 },			// l shift
 	{ WXK_CONTROL, 5 , 7 },			// l control
-	//{ VK_RSHIFT , 1 , 6 },
+	{ WXK_RSHIFT , 1 , 6 },
 	//{ WXF_MINUS , 2 , 0 },
 	{ WXK_NUMPAD_EQUAL , 4 , 7 },
 	//{ VK_PRIOR , 4 , 6 },
