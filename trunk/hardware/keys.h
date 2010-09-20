@@ -22,6 +22,8 @@ typedef struct KEYPROG {
 #define VKF_LBRACKET 0xDB
 #define VKF_RBRACKET 0xDD
 #define VKF_QUOTE	0xDE
+#define WXK_LSHIFT WXK_SPECIAL20+1
+#define WXK_RSHIFT WXK_LSHIFT+1
 
 keypad_t *keypad_init(CPU_t*);
 void keypad(CPU_t *, device_t *);
