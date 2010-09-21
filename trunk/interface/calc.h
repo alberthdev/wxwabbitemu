@@ -14,7 +14,7 @@
 
 #ifdef WINVER
 #include "gui.h" // it would be nice to get this separated somehow
-#include "DropTarget.h"
+#include "droptarget.h"
 #elif WXVER
 #include "gui_wx.h"
 #include "guilcd_wx.h"
@@ -168,7 +168,7 @@ void calc_slot_free(int);
 #ifdef WINVER
 int calc_from_hwnd(HWND);
 #elif WXVER
-int calc_from_frame(wxWindow *frame);
+int calc_from_handle(void *frame);
 #endif
 #endif
 

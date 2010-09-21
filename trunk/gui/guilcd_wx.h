@@ -7,13 +7,13 @@
 #include <wx/palette.h>
 #include "lcd.h"
 
+void SaveStateDialog(int slot);
 #define MAX_SHADES 255
 class MyLCD: public wxWindow
 {
 public:
     MyLCD();
 	wxWindow *frameLCD;
-	wxPalette pallet;
 	void OnPaint(wxPaintEvent& event);
 	void PaintNow();
 protected:
