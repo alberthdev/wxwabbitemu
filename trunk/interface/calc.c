@@ -552,17 +552,15 @@ int calc_from_hwnd(HWND hwnd) {
 	return -1;
 }
 #elif WXVER
-int calc_from_frame(wxWindow *frame) {
+int calc_from_handle(void *frame) {
 	if (frame == NULL)
 		return -1;
-
+	
 	int slot;
 	for (slot = 0; slot < MAX_CALCS; slot++) {
 		if (calcs[slot].active) {
-			if (frame == calcs[slot].wxFrame->frameMain ||
-				frame == calcs[slot].wxLCD->frameLCD) {
+			if (calcs[slot].wxFrame->frameMain->GetHandle() == frame)
 				return slot;
-			}
 		}
 	}
 	return -1;
