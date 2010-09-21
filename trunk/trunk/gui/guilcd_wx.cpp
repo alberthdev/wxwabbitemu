@@ -1,6 +1,7 @@
 #include "guilcd_wx.h"
 #include "calc.h"
 #include "core.h"
+#include "droptarget.h"
 
 
 enum {
@@ -18,6 +19,7 @@ MyLCD::MyLCD() {
 	frameLCD->Connect(ID_LCD, wxEVT_PAINT, (wxObjectEventFunction) &MyLCD::OnPaint);
 	frameLCD->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyFrame::OnKeyDown);
 	frameLCD->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyFrame::OnKeyUp);
+	frameLCD->SetDropTarget(new DnDFile(frameLCD));
 	int i;
 #define LCD_HIGH	255
 	for (i = 0; i <= MAX_SHADES; i++) {
@@ -169,4 +171,27 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 	}
 	//delete wxBitmap;				//DeleteObject(bmpBuf);
 	//delete &wxMemDC; 				//DeleteDC(hdc);
+}
+
+void SaveStateDialog(int slot) {
+	char *FileName;
+	char lpstrFilter[] 	= "\
+Known File types ( *.sav; *.rom; *.bin) |*.sav;*.rom;*.bin|\
+Save States  (*.sav)|*.sav|\
+ROMS  (*.rom; .bin)|*.rom;*.bin|\
+All Files (*.*)|*.*\0";
+	
+	wxFileDialog dialog(calcs[slot].wxLCD->frameLCD, wxT("Wabbitemu Save State"),
+	wxT(""), wxT(""), wxT(lpstrFilter), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+	if (dialog.ShowModal() != wxID_OK)
+		return;
+	FileName = wxStringToChar(dialog.GetPath());
+	
+	SAVESTATE_t* save = SaveSlot(slot);
+
+	strcpy(save->author, "Default");
+	save->comment[0] = '\0';
+	WriteSave(FileName, save, false);
+	//gui_savestate(save, FileName);
+
 }

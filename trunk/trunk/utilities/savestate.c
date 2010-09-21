@@ -905,7 +905,7 @@ char* GetRomOnly(SAVESTATE_t* save,int* size) {
 }
 
 
-void WriteSave(const char * fn,SAVESTATE_t* save,int compress) {
+void WriteSave(const char * fn, SAVESTATE_t* save,int compress) {
 	int i;
 	FILE* ofile;
 	FILE* cfile;
@@ -920,11 +920,10 @@ void WriteSave(const char * fn,SAVESTATE_t* save,int compress) {
 		ofile = fopen(fn,"wb");
 	} else {
 		mkstemp(tmpfn);
-		strcpy(temp_save, getenv("appdata"));
+		strcpy(temp_save, "/tmp/");
 		strcat(temp_save, tmpfn);
 		ofile = fopen(temp_save,"wb");
 	}
-		
 	if (!ofile) {
 		puts("Could not open save file for write");
 		return;
@@ -953,7 +952,7 @@ void WriteSave(const char * fn,SAVESTATE_t* save,int compress) {
 	fclose(ofile);
 	
 	if (compress) {
-		cfile = fopen(fn,"wb");
+		cfile = fopen(fn, "wb");
 		if (!cfile) {
 			puts("Could not open compress file for write");
 			return;
@@ -998,7 +997,7 @@ SAVESTATE_t* ReadSave(FILE* ifile) {
 	if (strncmp(DETECT_CMP_STR,string,8)==0) {
 		i = fgetc(ifile);
 		mkstemp(tmpfn);
-		strcpy(temp_save, getenv("appdata"));
+		strcpy(temp_save, "~/applications");
 		strcat(temp_save, tmpfn);
 		tmpfile = fopen(temp_save,"wb");
 		if (!tmpfile) {

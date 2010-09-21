@@ -36,11 +36,11 @@ CPP="g++"
 LD="ld"
 
 # CCFLAGS - additional arguments to add on to the C compiler.
-CCFLAGS="-c -w -I . `wx-config --version=2.8 --libs --cflags` -I core -I hardware -I utilities -I interface"
+CCFLAGS="-c -w -I . `wx-config --version=2.8 --libs --cflags` -I core -I hardware -I utilities -I gui -I interface"
 CCDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # CPPFLAGS - additional arguments to add on to the C++ compiler.
-CPPFLAGS="-c -w -I . `wx-config --version=2.8 --libs --cppflags` -I core -I hardware -I utilities -I interface"
+CPPFLAGS="-c -w -I . `wx-config --version=2.8 --libs --cppflags` -I core -I hardware -I utilities -I gui -I interface"
 CPPDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # LDFLAGS - additional or required arguments to add on to the linker.
@@ -600,14 +600,13 @@ parsearg $@
 COMPILEC core/*.c
 COMPILEC hardware/*.c
 COMPILEC gui/*.c
+COMPILECPP gui/*.cpp
 COMPILEC utilities/var.c
 COMPILEC utilities/savestate.c
 COMPILEC utilities/sendfiles.c
 COMPILEC utilities/label.c
 COMPILEC interface/state.c
 COMPILEC interface/calc.c
-COMPILECPP gui_wx.cpp
-COMPILECPP guilcd_wx.cpp
 LINKLD "obj/*.o" "wxwabbitemu"
 
 ########################################################

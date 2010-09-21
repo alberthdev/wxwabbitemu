@@ -2,10 +2,7 @@
 #include "calc.h"
 #include "sendfiles.h"
 
-extern char* wxStringToChar(wxString);
-
-void GetOpenSendFileName(wxWindow *frame, int defFilter) {
-	int slot =  0;//calc_from_frame(frame);
+void GetOpenSendFileName(int slot, int defFilter) {
 	int result;
 	char lpstrFilter[] 	= "\
 Known File Types|*.73p;*.82*;*.83p*;*.8xp*;*.8xk;*.73k;*.sav;*.rom;*.lab;*.8xu|\
