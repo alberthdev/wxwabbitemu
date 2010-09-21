@@ -35,6 +35,7 @@ public:
 protected:
 	
 private:
+	//menu items
 	void OnFileQuit(wxCommandEvent& event);
 	void OnFileClose(wxCommandEvent& event);
 	void OnFileSave(wxCommandEvent& event);
@@ -42,6 +43,8 @@ private:
 	void OnFileOpen(wxCommandEvent& event);
     void OnHelpAbout(wxCommandEvent& event);
 	void OnCalcSkin(wxCommandEvent& event);
+	
+	void OnSize(wxSizeEvent& event);
 	void FinalizeButtons();
 };
 
