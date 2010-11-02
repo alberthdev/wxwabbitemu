@@ -1,7 +1,7 @@
 #include "gui_wx.h"
 #include "guiopenfile.h"
 #include "calc.h"
-
+extern wxString CalcModelTxt[11];
 bool gif_anim_advance;
 bool silent_mode = false;
 enum
@@ -62,13 +62,13 @@ char* wxStringToChar(wxString input)
 
 char load_file_buffer[PATH_MAX];
 bool LoadRomIntialDialog() {
-	char *strFilter 	= "\
+	wxString strFilter 	= wxT("\
 Known types ( *.sav; *.rom)|*.sav;*.rom|\
 Save States  (*.sav)|*.sav|\
 ROMs  (*.rom)|*.rom| \
-All Files (*.*)|*.*";
+All Files (*.*)|*.*");
 	wxFileDialog dialog(NULL, wxT("Wabbitemu: Please select a ROM or save state"),
-	wxT(""), wxT(""), wxT(strFilter), wxFD_OPEN | wxFD_FILE_MUST_EXIST);//, wxDefaultPosition,wxDefaultSize, "filedlg")
+	wxT(""), wxT(""), strFilter, wxFD_OPEN | wxFD_FILE_MUST_EXIST);//, wxDefaultPosition,wxDefaultSize, "filedlg")
 	if (dialog.ShowModal() == wxID_OK) {
 		strcpy(load_file_buffer, wxStringToChar(dialog.GetPath()));
 		return true;
@@ -202,7 +202,7 @@ int gui_frame_update(int slot) {
 				wxStatus = calcs[slot].wxFrame->frameMain->CreateStatusBar(1, wxST_SIZEGRIP, wxID_ANY );
 			const int iStatusWidths[] = {100, -1};
 			wxStatus->SetFieldsCount(2, iStatusWidths);
-			wxStatus->SetStatusText(wxT(CalcModelTxt[calcs[slot].model]), 0);
+			wxStatus->SetStatusText(CalcModelTxt[calcs[slot].model], 0);
 			wxSize skinSize(128*calcs[slot].Scale, 64*calcs[slot].Scale);
 			if (wxMenu)
 				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame->frameMain));

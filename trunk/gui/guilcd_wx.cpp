@@ -40,11 +40,11 @@ void MyLCD::OnPaint(wxPaintEvent& event)
 	wxStatusBar *wxStatus = calcs[gslot].wxFrame->frameMain->GetStatusBar();
 	if (wxStatus) {
 		if (clock() > calcs[gslot].sb_refresh + CLOCKS_PER_SEC/2) {
-			char sz_status[32];
+			wxString sz_status;
 			if (lcd->active)
-				sprintf(sz_status,"FPS: %0.2lf", lcd->ufps);
+				sz_status.sprintf(wxT("FPS: %0.2lf"), lcd->ufps);
 			else
-				sprintf(sz_status,"FPS: -");
+				sz_status.sprintf(wxT("FPS: -"));
 			wxStatus->SetStatusText(sz_status, 1);
 			calcs[gslot].sb_refresh = clock();
 		}
@@ -175,14 +175,14 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 
 void SaveStateDialog(int slot) {
 	char *FileName;
-	char lpstrFilter[] 	= "\
+	wxString lpstrFilter 	= wxT("\
 Known File types ( *.sav; *.rom; *.bin) |*.sav;*.rom;*.bin|\
 Save States  (*.sav)|*.sav|\
 ROMS  (*.rom; .bin)|*.rom;*.bin|\
-All Files (*.*)|*.*\0";
+All Files (*.*)|*.*\0");
 	
 	wxFileDialog dialog(calcs[slot].wxLCD->frameLCD, wxT("Wabbitemu Save State"),
-	wxT(""), wxT(""), wxT(lpstrFilter), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+	wxT(""), wxT(""), lpstrFilter, wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 	if (dialog.ShowModal() != wxID_OK)
 		return;
 	FileName = wxStringToChar(dialog.GetPath());
