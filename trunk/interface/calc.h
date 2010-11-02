@@ -199,22 +199,6 @@ GLOBAL bool do_backups;
 GLOBAL bool show_wizard;
 GLOBAL bool sync_cores;
 
-
-GLOBAL const char *CalcModelTxt[]
-#ifdef CALC_C
-= {	//"???",
-	"TI_81",
-	"TI-82",
-	"TI-83",
-	"TI-85",
-	"TI-86",
-	"TI-73",
-	"TI-83+",
-	"TI-83+SE",
-	"TI-84+",
-	"TI-84+SE",
-	"???"}
-#endif
-;
+//GLOBAL wxString CalcModelTxt[11];
 
 #define HAS_CALC_H

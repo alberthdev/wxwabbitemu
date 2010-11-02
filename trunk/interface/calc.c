@@ -9,6 +9,19 @@
 #include "var.h"
 //#include "disassemble.h"
 
+wxString CalcModelTxt[11] = 
+{	wxT("TI_81"),
+	wxT("TI-82"),
+	wxT("TI-83"),
+	wxT("TI-85"),
+	wxT("TI-86"),
+	wxT("TI-73"),
+	wxT("TI-83+"),
+	wxT("TI-83+SE"),
+	wxT("TI-84+"),
+	wxT("TI-84+SE"),
+	wxT("???")};
+
 /* Determine the slot for a new calculator.  Return the slot if found,
  * otherwise, return -1.
  */
