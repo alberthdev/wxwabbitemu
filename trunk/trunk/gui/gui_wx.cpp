@@ -222,7 +222,30 @@ int gui_frame_update(int slot) {
 	calcs[slot].wxFrame->frameMain->SendSizeEvent();
 }
 
+extern wxRect db_rect;
 int gui_debug(int slot) {
+	/*MyDebugger hdebug;
+	wxRect pos = {CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT+600, CW_USEDEFAULT+400};
+	if (db_rect.left != -1) CopyRect(&pos, &db_rect);
+
+	pos.right -= pos.left;
+	pos.bottom -= pos.top;
+
+	if ((hdebug = FindWindow(g_szDebugName, "Debugger"))) {
+		SwitchToThisWindow(hdebug, TRUE);
+		return -1;
+	}
+	calcs[gslot].running = FALSE;
+	hdebug = CreateWindowEx(
+		WS_EX_APPWINDOW,
+		g_szDebugName,
+        "Debugger",
+		WS_VISIBLE | WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
+        pos.left, pos.top, pos.right, pos.bottom,
+        0, 0, g_hInst, NULL);
+
+	calcs[slot].hwndDebug = hdebug;
+	SendMessage(hdebug, WM_SIZE, 0, 0);*/
 	return 0;
 }
 
