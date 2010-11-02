@@ -598,15 +598,17 @@ parsearg $@
 # into one binary.
 ########################################################
 COMPILEC core/*.c
-COMPILEC hardware/*.c
+COMPILEC debugger/*.c
+#COMPILECPP debugger/*.cpp
 COMPILEC gui/*.c
 COMPILECPP gui/*.cpp
+COMPILEC hardware/*.c
+COMPILEC interface/state.c
+COMPILEC interface/calc.c
 COMPILEC utilities/var.c
 COMPILEC utilities/savestate.c
 COMPILEC utilities/sendfiles.c
 COMPILEC utilities/label.c
-COMPILEC interface/state.c
-COMPILEC interface/calc.c
 LINKLD "obj/*.o" "wxwabbitemu"
 
 ########################################################
