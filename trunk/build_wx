@@ -36,15 +36,15 @@ CPP="g++"
 LD="ld"
 
 # CCFLAGS - additional arguments to add on to the C compiler.
-CCFLAGS="-c -w -I . `wx-config --version=2.8 --libs --cflags` -I core -I hardware -I utilities -I gui -I interface"
+CCFLAGS="-c -w -I . `wx-config --version=2.8 --cflags` -I core -I hardware -I utilities -I gui -I interface"
 CCDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # CPPFLAGS - additional arguments to add on to the C++ compiler.
-CPPFLAGS="-c -w -I . `wx-config --version=2.8 --libs --cppflags` -I core -I hardware -I utilities -I gui -I interface"
+CPPFLAGS="-c -w -I . `wx-config --version=2.8 --cppflags` -I core -I hardware -I utilities -I gui -I interface"
 CPPDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # LDFLAGS - additional or required arguments to add on to the linker.
-LDFLAGS="`wx-config --version=2.8 --cppflags --libs`"
+LDFLAGS="`wx-config --version=2.8 --libs`"
 
 ########################################################
 # That's all! DO NOT CHANGE ANY VARIABLES BELOW!
@@ -559,7 +559,7 @@ function LINKLD() {
 	#	printsdone "Skipping target $outfile"", since it's already built."
 	#else	
 		printwork "Linking $1""..."
-		$CPP $LDFLAGS $1 -o "$outfile"
+		$CPP $1 $LDFLAGS -o "$outfile"
 		checkfail $? "Linking $1""..."
 	#fi
 }

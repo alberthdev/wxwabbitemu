@@ -1,0 +1,76 @@
+TODO
+=====
+This is a non-exculsive TODO list for wxWabbitemu.
+This is a "take and work on it" kind of thing, so don't worry
+about time constraints for implementing these features! ;)
+
+This file is best viewed in a text editor with monospaced
+font (also known as fixed width font - examples include
+Courier New).
+
+If you are appending to this list, follow this format:
+= Feature/things
+++++ Suggested by: username/name
+++++ Rationale: why does this need to be implemented?
+++++ Who's working on it: username/name working on it, as well
+++++                      as suggestions on who could do it
+++++ Implementor's notes: notes by the implementor
+
+Separate them into a new line if they get too long, and indent
+with spaces to the end of the colon+space.
+
+That said, here are the things to be done:
+
+= Image based keypad support
+++++ Suggested by: alberthrocks
+++++ Rationale: meet the current featureset of Wabbitemu
+++++ Who's working on it: Nobody (Buckeye should, since this is probably
+++++                      MUCH easier to implement from Wabbitemu. :P
+++++                      (As he said, it requires some kind of resource
+++++                      inclusion in which is available in wxWidgets,
+++++                      but is somewhat tricky, and is kinda similar to
+++++                      Windows' resource inclusion.)
+++++ Implementor's notes: N/A
+
+= GUI button based keypad support
+++++ Suggested by: alberthrocks
+++++ Rationale: meet the current featureset of Wabbitemu
+++++ Who's working on it: alberthrocks (GUI code, and possibly button
+++++                                    event binding as well - may
+++++                                    need help with that)
+++++ Implementor's notes: I'll be using wxGlade (exporting C++) to create
+++++                      the GUI, since it's pretty fast and easy to use.
+++++                      Event binding will probably either be done
+++++                      inside wxGlade or outside (in the code).
+
+= GIF recording
+++++ Suggested by: alberthrocks
+++++ Rationale: meet the current featureset of Wabbitemu
+++++ Who's working on it: Nobody
+++++ Implementor's notes: N/A
+
+= Debugger
+++++ Suggested by: alberthrocks
+++++ Rationale: meet the current featureset of Wabbitemu
+++++ Who's working on it: Buckeye, but may need support of other people to
+                          finish the port
+++++ Implementor's notes: N/A
+
+= Sound
+++++ Suggested by: alberthrocks
+++++ Rationale: meet the current featureset of Wabbitemu
+++++ Who's working on it: Nobody
+++++ Implementor's notes: N/A
+
+= Emulation Adjustment (pausing, speed modifying, resetting)
+++++ Suggested by: alberthrocks
+++++ Rationale: meet the current featureset of Wabbitemu
+++++ Who's working on it: Nobody
+++++ Implementor's notes: N/A
+
+= Linking
+++++ Suggested by: alberthrocks
+++++ Rationale: meet the current featureset of Wabbitemu
+++++ Who's working on it: Nobody
+++++ Implementor's notes: N/A
+= ?? (add more stuff here!)
