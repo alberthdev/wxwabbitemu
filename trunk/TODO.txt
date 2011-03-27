@@ -23,7 +23,8 @@ That said, here are the things to be done:
 
 = Image based keypad support
 ++++ Suggested by: alberthrocks
-++++ Rationale: meet the current featureset of Wabbitemu
+++++ Rationale: meet the current featureset of Wabbitemu, is a MUST
+++++            (no one likes memorizing keys :P)
 ++++ Who's working on it: Nobody (Buckeye should, since this is probably
 ++++                      MUCH easier to implement from Wabbitemu. :P
 ++++                      (As he said, it requires some kind of resource
@@ -34,7 +35,8 @@ That said, here are the things to be done:
 
 = GUI button based keypad support
 ++++ Suggested by: alberthrocks
-++++ Rationale: meet the current featureset of Wabbitemu
+++++ Rationale: meet the current featureset of Wabbitemu, is a MUST
+++++            (no one likes memorizing keys :P)
 ++++ Who's working on it: alberthrocks (GUI code, and possibly button
 ++++                                    event binding as well - may
 ++++                                    need help with that)
@@ -73,4 +75,43 @@ That said, here are the things to be done:
 ++++ Rationale: meet the current featureset of Wabbitemu
 ++++ Who's working on it: Nobody
 ++++ Implementor's notes: N/A
+
+= Send/Extract files to and from emulated calculator
+++++ Suggested by: alberthrocks
+++++ Rationale: meet the current featureset of Wabbitemu, is a MUST
+++++ Who's working on it: Nobody
+++++ Implementor's notes: N/A
+
+= CLI interface for wxWabbitEmu
+++++ Suggested by: alberthrocks
+++++ Rationale: offer an alternative interface - basically, this should be
+++++            either a client to daemon call, or a socket/stdin/stdout
+++++            interface, or both! :) This offers anyone more flexible
+++++            with CLI an intuitive interface, or (more likely) an
+++++            opportunity for applications to connect and interact
+++++            with wxWabbitemu. Note that CLI shouldn't need X unless
+++++            explicitly requested. Loading/extracting files, GIF recording,
+++++            keypresses, etc. are things that are available in the CLI 
+++++            interface.
+++++ Who's working on it: Nobody                                
+++++ Implementor's notes: N/A
+
+= Wabbitemu shared library
+++++ Suggested by: alberthrocks
+++++ Rationale: Allow developers to include Wabbitemu in a library for
+++++            their own use in their app. Code from here will probably
+++++            be copied back to the original Wabbitemu project, since
+++++            demand for such a library exists! ;)
+++++ Who's working on it: Nobody
+++++ Implementor's notes: N/A
+
+= Control emulated calculator with real calculator
+++++ Suggested by: alberthrocks
+++++ Rationale: Allow users to use their real calculator to control
+++++            instead of using a mouse or keyboard. This will need
+++++            a LOT of help from ASM devs, TiLP devs. and others.
+++++            It may be possible to simply use a bit of remote8x code.
+++++ Who's working on it: Nobody
+++++ Implementor's notes: N/A
+
 = ?? (add more stuff here!)
