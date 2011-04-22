@@ -12,14 +12,17 @@ void SaveStateDialog(int slot);
 class MyLCD: public wxWindow
 {
 public:
-    MyLCD();
-	wxWindow *frameLCD;
-	void OnPaint(wxPaintEvent& event);
+    MyLCD(int curslot);
+
 	void PaintNow();
 protected:
 	
 private:
+	void OnKeyDown(wxKeyEvent& event);
+	void OnKeyUp(wxKeyEvent& event);
 	void PaintLCD(wxWindow *, wxPaintDC *);
+	void OnPaint(wxPaintEvent& event);
+	int slot;
 };
 
 #endif
