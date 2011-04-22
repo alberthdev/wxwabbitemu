@@ -11,15 +11,15 @@ enum {
 unsigned char redColors[MAX_SHADES+1];
 unsigned char greenColors[MAX_SHADES+1];
 unsigned char blueColors[MAX_SHADES+1];
-MyLCD::MyLCD() {
-	int scale = calcs[gslot].Scale;
-	const wxPoint startPos(0,0);
-	const wxSize startSize(calcs[gslot].cpu.pio.lcd->width* scale, 64*scale);
-	frameLCD = new wxWindow(calcs[gslot].wxFrame->frameMain, ID_LCD, startPos, startSize);
-	frameLCD->Connect(ID_LCD, wxEVT_PAINT, (wxObjectEventFunction) &MyLCD::OnPaint);
-	frameLCD->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyFrame::OnKeyDown);
-	frameLCD->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyFrame::OnKeyUp);
-	frameLCD->SetDropTarget(new DnDFile(frameLCD));
+MyLCD::MyLCD(int curslot)
+	: wxWindow(calcs[curslot].wxFrame, ID_LCD, wxPoint(0,0),
+		wxSize(calcs[curslot].cpu.pio.lcd->width * calcs[curslot].Scale, 64 * calcs[curslot].Scale)) {
+	this->slot = curslot;
+	int scale = calcs[curslot].Scale;
+	this->Connect(ID_LCD, wxEVT_PAINT, (wxObjectEventFunction) &MyLCD::OnPaint);
+	this->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyLCD::OnKeyDown);
+	this->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyLCD::OnKeyUp);
+	this->SetDropTarget(new DnDFile(this));
 	int i;
 #define LCD_HIGH	255
 	for (i = 0; i <= MAX_SHADES; i++) {
@@ -29,34 +29,42 @@ MyLCD::MyLCD() {
 	}
 }
 
+void MyLCD::OnKeyDown(wxKeyEvent& event)
+{
+	calcs[slot].wxFrame->OnKeyDown(event);
+}
+
+void MyLCD::OnKeyUp(wxKeyEvent& event)
+{
+	calcs[slot].wxFrame->OnKeyUp(event);
+}
+
 void MyLCD::OnPaint(wxPaintEvent& event)
 {
-	if (frameLCD == NULL)
-		return;
-	wxPaintDC dc(this);
-	PaintLCD(frameLCD, &dc);
-	//TODO: add in fps counter in the status bar
-	LCD_t *lcd = calcs[gslot].cpu.pio.lcd;
-	wxStatusBar *wxStatus = calcs[gslot].wxFrame->frameMain->GetStatusBar();
+	wxPaintDC *dc = new wxPaintDC(this);
+	PaintLCD(this, dc);
+	LCD_t *lcd = calcs[slot].cpu.pio.lcd;
+	wxStatusBar *wxStatus = calcs[slot].wxFrame->GetStatusBar();
 	if (wxStatus) {
-		if (clock() > calcs[gslot].sb_refresh + CLOCKS_PER_SEC/2) {
+		if (clock() > calcs[slot].sb_refresh + CLOCKS_PER_SEC/2) {
 			wxString sz_status;
 			if (lcd->active)
 				sz_status.sprintf(wxT("FPS: %0.2lf"), lcd->ufps);
 			else
 				sz_status.sprintf(wxT("FPS: -"));
 			wxStatus->SetStatusText(sz_status, 1);
-			calcs[gslot].sb_refresh = clock();
+			calcs[slot].sb_refresh = clock();
 		}
 	}
+	delete dc;
 }
 
 void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 {
 	unsigned char *screen;
-	LCD_t *lcd = calcs[gslot].cpu.pio.lcd;
+	LCD_t *lcd = calcs[slot].cpu.pio.lcd;
 	wxPoint drawPoint(32, 0);
-	wxSize rc = wxSize(192,128);//window->GetClientSize();			//GetClientRect(calcs[gslot].hwndLCD, &rc);
+	wxSize rc = wxSize(192,128);//window->GetClientSize();			//GetClientRect(calcs[this->slot].hwndLCD, &rc);
 
 	wxMemoryDC wxMemDC;	
 	if (lcd->active == false) {
@@ -73,7 +81,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 		wxBitmap bmpBuf(screenImage.Scale(256, 128).Size(rc, wxPoint(0,0)));
 		wxMemDC.SelectObject(bmpBuf);
 		//draw drag panes
-		/*if (calcs[gslot].do_drag == TRUE) {
+		/*if (calcs[this->slot].do_drag == TRUE) {
 
 			hdcOverlay = DrawDragPanes(hwnd, hdcDest, 0);
 			BLENDFUNCTION bf;
@@ -104,7 +112,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 		}
 
 		//this is for the 86, so it doesnt look like complete shit
-		/*if (lcd->width * calcs[gslot].Scale != (rc.right - rc.left))
+		/*if (lcd->width * calcs[this->slot].Scale != (rc.right - rc.left))
 			SetStretchBltMode(hdc, HALFTONE);
 		else
 			SetStretchBltMode(hdc, BLACKONWHITE);*/
@@ -118,7 +126,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 		bf.SourceConstantAlpha = 160;
 		bf.AlphaFormat = 0;
 
-		if (calcs[gslot].do_drag == TRUE) {
+		if (calcs[this->slot].do_drag == TRUE) {
 
 			hdcOverlay = DrawDragPanes(hwnd, hdcDest, 0);
 
@@ -132,7 +140,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 
 
 		//if were sending something we can draw the sending shtuff
-		/*if (calcs[gslot].send == TRUE) {
+		/*if (calcs[this->slot].send == TRUE) {
 			bf.SourceConstantAlpha = 192;
 			hdcOverlay = DrawSending(hwnd, hdcDest);
 
@@ -154,7 +162,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 
 		if (alphablendfail<100 && lcd->width != 138) {
 			if (AlphaBlend(	hdc, rc.left, rc.top, rc.right,  rc.bottom,
-				calcs[gslot].hdcSkin, calcs[gslot].rectLCD.left, calcs[gslot].rectLCD.top,
+				calcs[this->slot].hdcSkin, calcs[this->slot].rectLCD.left, calcs[this->slot].rectLCD.top,
 				(rc.right - rc.left), 128,
 					bf )  == FALSE){
 				//printf("alpha blend 2 failed\n");
@@ -181,7 +189,7 @@ Save States  (*.sav)|*.sav|\
 ROMS  (*.rom; .bin)|*.rom;*.bin|\
 All Files (*.*)|*.*\0");
 	
-	wxFileDialog dialog(calcs[slot].wxLCD->frameLCD, wxT("Wabbitemu Save State"),
+	wxFileDialog dialog(calcs[slot].wxLCD, wxT("Wabbitemu Save State"),
 	wxT(""), wxT(""), lpstrFilter, wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 	if (dialog.ShowModal() != wxID_OK)
 		return;

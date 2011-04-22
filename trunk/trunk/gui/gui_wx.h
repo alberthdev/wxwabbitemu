@@ -5,6 +5,7 @@
 #include <wx/frame.h>
 #include <wx/wx.h>
 #include <wx/dnd.h>
+#include <wx/mstream.h>
 #include <sys/time.h>
 #if (wxUSE_UNICODE)
 #include <wx/encconv.h> 
@@ -13,6 +14,14 @@
 #if (wxUSE_UNICODE)
 #include <wx/encconv.h>
 #endif
+
+#include "skins/ti83p.h"
+ #define wxGetBitmapFromMemory(name) _wxGetBitmapFromMemory(name ## _png, sizeof(name ## _png))
+
+ inline wxBitmap _wxGetBitmapFromMemory(const unsigned char *data, int length) {
+   wxMemoryInputStream is(data, length);
+   return wxBitmap(wxImage(is, wxBITMAP_TYPE_PNG, -1), -1);
+ }
 
 
 int gui_draw(int);
@@ -24,8 +33,7 @@ char* wxStringToChar(wxString);
 class MyFrame: public wxFrame
 {
 public:
-    MyFrame(int slot);
-	wxFrame *frameMain;
+    MyFrame(int curslot);
 
 	void OnKeyDown(wxKeyEvent& event);
 	void OnKeyUp(wxKeyEvent& event);
@@ -43,6 +51,8 @@ private:
 	void OnFileOpen(wxCommandEvent& event);
     void OnHelpAbout(wxCommandEvent& event);
 	void OnCalcSkin(wxCommandEvent& event);
+	void OnPaint(wxPaintEvent& event);
+	int slot;
 	
 	void OnSize(wxSizeEvent& event);
 	void FinalizeButtons();

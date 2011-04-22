@@ -22,7 +22,7 @@ All Files (*.*)|*.*\0");
 	filepath[0] = '\0';
 	filestr[0] = '\0';
 	
-	wxFileDialog dialog(calcs[slot].wxLCD->frameLCD, wxT("Wabbitemu Open File"),
+	wxFileDialog dialog(calcs[slot].wxLCD, wxT("Wabbitemu Open File"),
 	wxT(""), wxT(""), lpstrFilter, wxFD_OPEN | wxFD_FILE_MUST_EXIST | wxFD_MULTIPLE);//, wxDefaultPosition,wxDefaultSize, "filedlg")
 	if (dialog.ShowModal() != wxID_OK)
 		return;
