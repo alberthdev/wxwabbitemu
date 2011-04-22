@@ -572,7 +572,7 @@ int calc_from_handle(void *frame) {
 	int slot;
 	for (slot = 0; slot < MAX_CALCS; slot++) {
 		if (calcs[slot].active) {
-			if (calcs[slot].wxFrame->frameMain->GetHandle() == frame)
+			if (calcs[slot].wxFrame->GetHandle() == frame)
 				return slot;
 		}
 	}

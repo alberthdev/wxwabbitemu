@@ -95,6 +95,7 @@ typedef struct calc {
 #elif WXVER
 	MyFrame *wxFrame;
 	MyLCD *wxLCD;
+	wxBitmap calcSkin;
 	int Scale;
 	bool SkinEnabled;
 	wxSize SkinSize;

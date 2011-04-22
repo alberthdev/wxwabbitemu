@@ -79,10 +79,12 @@ All Files (*.*)|*.*");
 
 bool MyApp::OnInit()
 {
+	wxImage::AddHandler(new wxPNGHandler);
+
 	memset(calcs, 0, sizeof(calcs));
 	int slot = calc_slot_new();
 	calcs[slot].SkinEnabled = false;
-	slot = rom_load(slot, calcs[gslot].rom_path);
+	slot = rom_load(slot, calcs[slot].rom_path);
 	if (slot != -1) gui_frame(slot);
 	else {
 		bool loadFile = LoadRomIntialDialog();
@@ -160,10 +162,9 @@ int gui_draw(int slot) {
 	gslot = slot;
 	calcs[slot].wxLCD->Refresh();
 	calcs[slot].wxLCD->Update();
-	calcs[slot].wxLCD->frameLCD->Refresh();
-	calcs[slot].wxLCD->frameLCD->Update();
+	/*calcs[slot].wxFrame->Refresh();
+	calcs[slot].wxFrame->Update();*/
 
-	//UpdateDebugTrack();
 	if (calcs[slot].gif_disp_state != GDS_IDLE) {
 		static int skip = 0;
 		if (skip == 0) {
@@ -180,10 +181,10 @@ int gui_frame(int slot) {
 	// Set gslot so the CreateWindow functions operate on the correct calc
 	gslot = slot;
 	calcs[slot].wxFrame = new MyFrame(slot);
-	calcs[slot].wxFrame->frameMain->Show(true);
+	calcs[slot].wxFrame->Show(true);
 	
-	calcs[slot].wxLCD = new MyLCD();
-	calcs[slot].wxLCD->frameLCD->Show(true);
+	calcs[slot].wxLCD = new MyLCD(slot);
+	calcs[slot].wxLCD->Show(true);
 	if (calcs[slot].wxFrame == NULL /*|| calcs[slot].hwndLCD == NULL*/) return -1;
 	calcs[slot].running = TRUE;
 	calcs[slot].wxFrame->SetSpeed(100);
@@ -192,34 +193,36 @@ int gui_frame(int slot) {
 }
 
 int gui_frame_update(int slot) {
-	wxMenuBar *wxMenu = calcs[slot].wxFrame->frameMain->GetMenuBar();
+	wxMenuBar *wxMenu = calcs[slot].wxFrame->GetMenuBar();
 	if (wxMenu != NULL) {
 		if (!calcs[slot].SkinEnabled) {
 			wxMenu->Check(ID_Calc_Skin, false);
 			// Create status bar
-			wxStatusBar *wxStatus = calcs[slot].wxFrame->frameMain->GetStatusBar();
+			wxStatusBar *wxStatus = calcs[slot].wxFrame->GetStatusBar();
 			if (wxStatus == NULL)
-				wxStatus = calcs[slot].wxFrame->frameMain->CreateStatusBar(1, wxST_SIZEGRIP, wxID_ANY );
+				wxStatus = calcs[slot].wxFrame->CreateStatusBar(1, wxST_SIZEGRIP, wxID_ANY );
 			const int iStatusWidths[] = {100, -1};
 			wxStatus->SetFieldsCount(2, iStatusWidths);
 			wxStatus->SetStatusText(CalcModelTxt[calcs[slot].model], 0);
 			wxSize skinSize(128*calcs[slot].Scale, 64*calcs[slot].Scale);
 			if (wxMenu)
-				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame->frameMain));
-			calcs[slot].wxFrame->frameMain->SetClientSize(skinSize);
+				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame));
+			calcs[slot].wxFrame->SetClientSize(skinSize);
 		} else {
 			wxMenu->Check(ID_Calc_Skin, true);
-			wxStatusBar *wxStatus = calcs[slot].wxFrame->frameMain->GetStatusBar();
+			wxStatusBar *wxStatus = calcs[slot].wxFrame->GetStatusBar();
 			if (wxStatus != NULL) {
 				wxStatus->Destroy();
 			}
 			wxSize skinSize(350, 725);
 			if (wxMenu)
-				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame->frameMain));
-			calcs[slot].wxFrame->frameMain->SetClientSize(skinSize);
+				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame));
+			calcs[slot].wxFrame->SetClientSize(skinSize);
+
+			calcs[slot].calcSkin = wxGetBitmapFromMemory(TI_83p);
 		}
 	}
-	calcs[slot].wxFrame->frameMain->SendSizeEvent();
+	calcs[slot].wxFrame->SendSizeEvent();
 }
 
 extern wxRect db_rect;
@@ -235,7 +238,7 @@ int gui_debug(int slot) {
 		SwitchToThisWindow(hdebug, TRUE);
 		return -1;
 	}
-	calcs[gslot].running = FALSE;
+	calcs[slot].running = FALSE;
 	hdebug = CreateWindowEx(
 		WS_EX_APPWINDOW,
 		g_szDebugName,
@@ -249,10 +252,12 @@ int gui_debug(int slot) {
 	return 0;
 }
 
-MyFrame::MyFrame(int slot) {
+MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
+	slot = curslot;
+
 	wxSize windowSize;
-	frameMain = new wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"));// wxDefaultPosition, wxDefaultSize);
-	frameMain->SetSizeHints( wxDefaultSize, wxDefaultSize );
+	this->SetSizeHints( wxDefaultSize, wxDefaultSize );
+
 	wxMenuBar *m_menubar = new wxMenuBar( 0 );
 	wxMenu *m_fileMenu = new wxMenu();	
 	wxMenuItem* m_newMenuItem;
@@ -359,34 +364,40 @@ MyFrame::MyFrame(int slot) {
 	
 	m_menubar->Append( m_helpMenu, wxT("Help") );
 	
-	frameMain->SetMenuBar( m_menubar );
+	this->SetMenuBar( m_menubar );
 	
-	wxStatusBar *m_statusBar1 = frameMain->CreateStatusBar( 1, wxST_SIZEGRIP, wxID_ANY );
+	wxStatusBar *m_statusBar1 = new wxStatusBar(this);
+	this->SetStatusBar(m_statusBar1);
 	
-	frameMain->Connect(ID_File_New, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileNew);
-	frameMain->Connect(ID_File_Open, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileOpen);
-	frameMain->Connect(ID_File_Save, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileSave);
-	frameMain->Connect(ID_File_Close, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileClose);
-	frameMain->Connect(ID_File_Quit, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileQuit);
-	frameMain->Connect(ID_Help_About, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpAbout);
-	frameMain->Connect(ID_Calc_Skin, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnCalcSkin);
-	frameMain->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyFrame::OnKeyDown);
-	frameMain->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyFrame::OnKeyUp);
+	//this->Connect(wxID_ANY, wxEVT_PAINT, (wxObjectEventFunction) &MyFrame::OnPaint);
+	this->Connect(ID_File_New, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileNew);
+	this->Connect(ID_File_Open, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileOpen);
+	this->Connect(ID_File_Save, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileSave);
+	this->Connect(ID_File_Close, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileClose);
+	this->Connect(ID_File_Quit, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileQuit);
+	this->Connect(ID_Help_About, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpAbout);
+	this->Connect(ID_Calc_Skin, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnCalcSkin);
 	this->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyFrame::OnKeyDown);
 	this->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyFrame::OnKeyUp);
 	
-	int menuSize = wxSystemSettings::GetMetric(wxSYS_MENU_Y, frameMain);
+	int menuSize = wxSystemSettings::GetMetric(wxSYS_MENU_Y, this);
 	if (calcs[slot].SkinEnabled)
 		windowSize = calcs[slot].SkinSize;
 	else
-		windowSize.Set(128*calcs[slot].Scale, 64*calcs[slot].Scale + menuSize);
-	frameMain->SetClientSize(windowSize);
+		windowSize.Set(128 * calcs[slot].Scale, 64 * calcs[slot].Scale + menuSize);
+	this->SetClientSize(windowSize);
+}
+
+void MyFrame::OnPaint(wxPaintEvent& event)
+{
+	/*wxPaintDC *dc = new wxPaintDC(this);
+	dc->DrawBitmap(wxGetBitmapFromMemory(TI_83p), 0, 0, true);*/
 }
 
 /*void MyFrame::OnSize(wxSizeEvent& event) {
-	if (calcs[gslot].SkinEnabled)
+	if (calcs[slot].SkinEnabled)
 		return TRUE;
-	wxSize size = calcs[gslot]->frameMain->GetClientSize();
+	wxSize size = calcs[slot]->frameMain->GetClientSize();
 	LONG ClientAdjustWidth, ClientAdjustHeight;
 	LONG AdjustWidth, AdjustHeight;
 
@@ -396,8 +407,8 @@ MyFrame::MyFrame(int slot) {
 	rc.bottom += GetSystemMetrics(SM_CYMENU);
 
 	RECT src;
-	if (calcs[gslot].hwndStatusBar != NULL) {
-		GetWindowRect(calcs[gslot].hwndStatusBar, &src);
+	if (calcs[slot].hwndStatusBar != NULL) {
+		GetWindowRect(calcs[slot].hwndStatusBar, &src);
 		rc.bottom += src.bottom - src.top;
 	}
 
@@ -430,7 +441,7 @@ MyFrame::MyFrame(int slot) {
 
 	// Make sure the width is a nice clean proportional sizing
 	AdjustWidth = (prc->right - prc->left - ClientAdjustWidth) % 128;
-	//AdjustHeight = (prc->bottom - prc->top) % calcs[gslot].cpu.pio.lcd->height;
+	//AdjustHeight = (prc->bottom - prc->top) % calcs[slot].cpu.pio.lcd->height;
 	AdjustHeight = (prc->bottom - prc->top - ClientAdjustHeight) % 64;
 
 	int cx_mult = (prc->right - prc->left - ClientAdjustWidth) / 128;
@@ -446,7 +457,7 @@ MyFrame::MyFrame(int slot) {
 	else if (cy_mult > cx_mult)
 		AdjustHeight += (cy_mult - cx_mult) * 64;
 
-	calcs[gslot].Scale = max(cx_mult, cy_mult);
+	calcs[slot].Scale = max(cx_mult, cy_mult);
 
 	switch (wParam) {
 	case WMSZ_BOTTOMLEFT:
@@ -476,19 +487,24 @@ MyFrame::MyFrame(int slot) {
 }*/
 
 void MyFrame::OnFileNew(wxCommandEvent &event) {
+	char *newFilePath = (char *) malloc(PATH_MAX);
+	strcpy(newFilePath, calcs[slot].rom_path);
 	int slot = calc_slot_new();
-	rom_load(slot, calcs[gslot].rom_path);
-	calcs[slot].SkinEnabled = calcs[gslot].SkinEnabled;
-	calcs[slot].Scale = calcs[gslot].Scale;
-	gui_frame(slot);
+	if (rom_load(slot, newFilePath) != -1) {
+		calcs[slot].SkinEnabled = calcs[slot].SkinEnabled;
+		calcs[slot].Scale = calcs[slot].Scale;
+		gui_frame(slot);
+	} else {
+		wxMessageBox(wxT("Failed to create new calc"));
+	}
 }
 
 void MyFrame::OnFileOpen(wxCommandEvent &event) {
-	GetOpenSendFileName(gslot, 0);
+	GetOpenSendFileName(slot, 0);
 }
 
 void MyFrame::OnFileSave(wxCommandEvent &event) {
-	SaveStateDialog(gslot);
+	SaveStateDialog(slot);
 }
 
 void MyFrame::OnFileClose(wxCommandEvent &event) {
@@ -496,8 +512,8 @@ void MyFrame::OnFileClose(wxCommandEvent &event) {
 }
 
 void MyFrame::SetSpeed(int speed) {
-	calcs[gslot].speed = speed;
-	wxMenuBar *wxMenu = calcs[gslot].wxFrame->frameMain->GetMenuBar();
+	calcs[slot].speed = speed;
+	wxMenuBar *wxMenu = calcs[slot].wxFrame->GetMenuBar();
 	
 }
 
@@ -505,7 +521,7 @@ void MyFrame::OnKeyDown(wxKeyEvent& event)
 {
 	int keycode = event.GetKeyCode();
 	if (keycode == WXK_F8) {
-		if (calcs[gslot].speed == 100)
+		if (calcs[slot].speed == 100)
 			SetSpeed(400);
 		else
 			SetSpeed(100);
@@ -519,10 +535,10 @@ void MyFrame::OnKeyDown(wxKeyEvent& event)
 		}
 	}
 
-	keyprog_t *kp = keypad_key_press(&calcs[gslot].cpu, keycode);
+	keyprog_t *kp = keypad_key_press(&calcs[slot].cpu, keycode);
 	if (kp) {
-		if ((calcs[gslot].cpu.pio.keypad->keys[kp->group][kp->bit] & KEY_STATEDOWN) == 0) {
-			calcs[gslot].cpu.pio.keypad->keys[kp->group][kp->bit] |= KEY_STATEDOWN;
+		if ((calcs[slot].cpu.pio.keypad->keys[kp->group][kp->bit] & KEY_STATEDOWN) == 0) {
+			calcs[slot].cpu.pio.keypad->keys[kp->group][kp->bit] |= KEY_STATEDOWN;
 			this->Update();
 			FinalizeButtons();
 		}
@@ -534,10 +550,10 @@ void MyFrame::OnKeyUp(wxKeyEvent& event)
 {
 	int key = event.GetKeyCode();
 	if (key == WXK_SHIFT) {
-		keypad_key_release(&calcs[gslot].cpu, WXK_LSHIFT);
-		keypad_key_release(&calcs[gslot].cpu, WXK_RSHIFT);
+		keypad_key_release(&calcs[slot].cpu, WXK_LSHIFT);
+		keypad_key_release(&calcs[slot].cpu, WXK_RSHIFT);
 	} else {
-		keypad_key_release(&calcs[gslot].cpu, key);
+		keypad_key_release(&calcs[slot].cpu, key);
 	}
 	FinalizeButtons();
 }
@@ -549,8 +565,9 @@ void MyFrame::OnFileQuit(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnCalcSkin(wxCommandEvent& event)
 {
-    calcs[gslot].SkinEnabled = !calcs[gslot].SkinEnabled;
-	gui_frame_update(gslot);
+    calcs[slot].SkinEnabled = !calcs[slot].SkinEnabled;
+	gui_frame_update(slot);
+	this->Refresh();
 }
  
 void MyFrame::OnHelpAbout(wxCommandEvent& WXUNUSED(event))
@@ -560,7 +577,7 @@ void MyFrame::OnHelpAbout(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::FinalizeButtons() {
 	int group, bit;
-	keypad_t *kp = calcs[gslot].cpu.pio.keypad;
+	keypad_t *kp = calcs[slot].cpu.pio.keypad;
 	for(group=0;group<7;group++) {
 		for(bit=0;bit<8;bit++) {
 			if ((kp->keys[group][bit] & KEY_STATEDOWN) &&
