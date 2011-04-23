@@ -421,8 +421,7 @@ int calc_run_all(void) {
 	for (i = 0; i < FRAME_SUBDIVISIONS; i++) {
 		for (j = 0; j < MAX_CALCS; j++) {
 			if (calcs[j].active) {
-				//i have no clue why this runs 1/2 normal speed :/
-				int time = ((long long) calcs[j].speed*calcs[j].timer_c.freq/FPS/50)/FRAME_SUBDIVISIONS/2;
+				int time = ((long long) calcs[j].speed*calcs[j].timer_c.freq/FPS/100)/FRAME_SUBDIVISIONS/2;
 				calc_run_tstates(j, time);
 				frame_counter += time;
 #ifdef WITH_BACKUPS
