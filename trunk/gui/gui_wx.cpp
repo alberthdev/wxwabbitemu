@@ -108,44 +108,37 @@ bool MyApp::OnInit()
 	
 }*/
 
+unsigned GetTickCount()
+{
+        struct timeval tv;
+        if(gettimeofday(&tv, NULL) != 0)
+                return 0;
+
+        return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
+}
+
+
 void MyApp::OnTimer(wxTimerEvent& event) {
 	static int difference;
-	static struct timeval prevTimer;
-	struct timeval time;
-	gettimeofday(&time, NULL);
+	static unsigned prevTimer;
+	unsigned dwTimer = GetTickCount();
 	
 	// How different the timer is from where it should be
 	// guard from erroneous timer calls with an upper bound
 	// that's the limit of time it will take before the
 	// calc gives up and claims it lost time
-	difference += ((time.tv_sec - prevTimer.tv_sec) & 0x003F) - TPF;
-	prevTimer = time;
+	difference += ((dwTimer - prevTimer) & 0x003F) - TPF;
+	prevTimer = dwTimer;
 	//printf("%d", difference);
-	//this is for updating the progress bar
-	//we will use this later
-	/*int i;
-	for (i = 0; i < MAX_CALCS; i++) {
-		if (calcs[i].active && calcs[i].send == TRUE) {
-			static int frameskip = 0;
-			frameskip = (frameskip + 1) % 3;
-
-			if (frameskip == 0) {
-				extern HWND hwndSend;
-				SendMessage(hwndSend, WM_USER, 0, 0);
-				difference = 0;
-				return;
-			}
-		}
-	}*/
 
 	// Are we greater than Ticks Per Frame that would call for
 	// a frame skip?
-	//if (difference > -TPF) {
+	if (difference > -TPF) {
 		calc_run_all();
-		/*while (difference >= TPF) {
+		while (difference >= TPF) {
 			calc_run_all();
 			difference -= TPF;
-		}*/
+		}
 
 		int i;
 		for (i = 0; i < MAX_CALCS; i++) {
@@ -154,7 +147,10 @@ void MyApp::OnTimer(wxTimerEvent& event) {
 			}
 		}
 	// Frame skip if we're too far ahead.
-	//} else difference += TPF;
+	} else {
+		difference += TPF;
+		usleep(100000);
+	}
 }
 
 
@@ -162,8 +158,8 @@ int gui_draw(int slot) {
 	gslot = slot;
 	calcs[slot].wxLCD->Refresh();
 	calcs[slot].wxLCD->Update();
-	/*calcs[slot].wxFrame->Refresh();
-	calcs[slot].wxFrame->Update();*/
+	//calcs[slot].wxFrame->Refresh();
+	//calcs[slot].wxFrame->Update();
 
 	if (calcs[slot].gif_disp_state != GDS_IDLE) {
 		static int skip = 0;
@@ -390,8 +386,8 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 
 void MyFrame::OnPaint(wxPaintEvent& event)
 {
-	/*wxPaintDC *dc = new wxPaintDC(this);
-	dc->DrawBitmap(wxGetBitmapFromMemory(TI_83p), 0, 0, true);*/
+	wxPaintDC *dc = new wxPaintDC(this);
+	dc->DrawBitmap(wxGetBitmapFromMemory(TI_83p), 0, 0, true);
 }
 
 /*void MyFrame::OnSize(wxSizeEvent& event) {
