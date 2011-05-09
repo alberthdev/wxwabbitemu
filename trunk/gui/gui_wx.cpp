@@ -147,10 +147,15 @@ void MyApp::OnTimer(wxTimerEvent& event) {
 			}
 		}
 	// Frame skip if we're too far ahead.
+<<<<<<< .mine
+	} else
+		difference += TPF;
+=======
 	} else {
 		difference += TPF;
 		usleep(100000);
 	}
+>>>>>>> .r27
 }
 
 
@@ -158,8 +163,13 @@ int gui_draw(int slot) {
 	gslot = slot;
 	calcs[slot].wxLCD->Refresh();
 	calcs[slot].wxLCD->Update();
+<<<<<<< .mine
+	calcs[slot].wxFrame->Refresh();
+	calcs[slot].wxFrame->Update();
+=======
 	//calcs[slot].wxFrame->Refresh();
 	//calcs[slot].wxFrame->Update();
+>>>>>>> .r27
 
 	if (calcs[slot].gif_disp_state != GDS_IDLE) {
 		static int skip = 0;
@@ -199,7 +209,7 @@ int gui_frame_update(int slot) {
 				wxStatus = calcs[slot].wxFrame->CreateStatusBar(1, wxST_SIZEGRIP, wxID_ANY );
 			const int iStatusWidths[] = {100, -1};
 			wxStatus->SetFieldsCount(2, iStatusWidths);
-			wxStatus->SetStatusText(CalcModelTxt[calcs[slot].model], 0);
+			wxStatus->SetStatusText(CalcModelTxt[calcs[slot].model], 1);
 			wxSize skinSize(128*calcs[slot].Scale, 64*calcs[slot].Scale);
 			if (wxMenu)
 				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame));
@@ -365,6 +375,16 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	wxStatusBar *m_statusBar1 = new wxStatusBar(this);
 	this->SetStatusBar(m_statusBar1);
 	
+<<<<<<< .mine
+	this->Connect(wxEVT_PAINT, wxPaintEventHandler(MyFrame::OnPaint));
+	this->Connect(ID_File_New, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileNew);
+	this->Connect(ID_File_Open, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileOpen);
+	this->Connect(ID_File_Save, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileSave);
+	this->Connect(ID_File_Close, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileClose);
+	this->Connect(ID_File_Quit, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileQuit);
+	this->Connect(ID_Help_About, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpAbout);
+	this->Connect(ID_Calc_Skin, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnCalcSkin);
+=======
 	//this->Connect(wxID_ANY, wxEVT_PAINT, (wxObjectEventFunction) &MyFrame::OnPaint);
 	this->Connect(ID_File_New, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileNew);
 	this->Connect(ID_File_Open, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileOpen);
@@ -373,23 +393,45 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	this->Connect(ID_File_Quit, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileQuit);
 	this->Connect(ID_Help_About, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpAbout);
 	this->Connect(ID_Calc_Skin, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnCalcSkin);
+>>>>>>> .r27
 	this->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyFrame::OnKeyDown);
 	this->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyFrame::OnKeyUp);
 	
+<<<<<<< .mine
+	//int menuSize = wxSystemSettings::GetMetric(wxSYS_MENU_Y);
+=======
 	int menuSize = wxSystemSettings::GetMetric(wxSYS_MENU_Y, this);
+>>>>>>> .r27
 	if (calcs[slot].SkinEnabled)
-		windowSize = calcs[slot].SkinSize;
+		windowSize = *calcs[slot].SkinSize;
 	else
+<<<<<<< .mine
+		windowSize.Set(128 * calcs[slot].Scale, 64 * calcs[slot].Scale);
+	this->SetClientSize(windowSize);
+=======
 		windowSize.Set(128 * calcs[slot].Scale, 64 * calcs[slot].Scale + menuSize);
 	this->SetClientSize(windowSize);
+>>>>>>> .r27
 }
 
+<<<<<<< .mine
+void MyFrame::OnPaint(wxPaintEvent& event)
+{
+	wxPaintDC dc(this);
+	if (calcs[slot].SkinEnabled) {
+		wxBitmap test = wxGetBitmapFromMemory(TI_83p);
+		dc.DrawBitmap(test, 0, 0, true);
+	}
+}
+
+=======
 void MyFrame::OnPaint(wxPaintEvent& event)
 {
 	wxPaintDC *dc = new wxPaintDC(this);
 	dc->DrawBitmap(wxGetBitmapFromMemory(TI_83p), 0, 0, true);
 }
 
+>>>>>>> .r27
 /*void MyFrame::OnSize(wxSizeEvent& event) {
 	if (calcs[slot].SkinEnabled)
 		return TRUE;
@@ -561,9 +603,16 @@ void MyFrame::OnFileQuit(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnCalcSkin(wxCommandEvent& event)
 {
+<<<<<<< .mine
     calcs[slot].SkinEnabled = !calcs[slot].SkinEnabled;
 	gui_frame_update(slot);
 	this->Refresh();
+	this->Update();
+=======
+    calcs[slot].SkinEnabled = !calcs[slot].SkinEnabled;
+	gui_frame_update(slot);
+	this->Refresh();
+>>>>>>> .r27
 }
  
 void MyFrame::OnHelpAbout(wxCommandEvent& WXUNUSED(event))
