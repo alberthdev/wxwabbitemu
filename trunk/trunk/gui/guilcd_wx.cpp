@@ -11,6 +11,17 @@ enum {
 unsigned char redColors[MAX_SHADES+1];
 unsigned char greenColors[MAX_SHADES+1];
 unsigned char blueColors[MAX_SHADES+1];
+<<<<<<< .mine
+MyLCD::MyLCD(int curslot)
+	: wxWindow(calcs[curslot].wxFrame, ID_LCD, wxPoint(0,0),
+		wxSize(calcs[curslot].cpu.pio.lcd->width * calcs[curslot].Scale, 64 * calcs[curslot].Scale)) {
+	this->slot = curslot;
+	int scale = calcs[curslot].Scale;
+	this->Connect(wxEVT_PAINT, wxPaintEventHandler(MyLCD::OnPaint));
+	this->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyLCD::OnKeyDown);
+	this->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyLCD::OnKeyUp);
+	this->SetDropTarget(new DnDFile(this));
+=======
 MyLCD::MyLCD(int curslot)
 	: wxWindow(calcs[curslot].wxFrame, ID_LCD, wxPoint(0,0),
 		wxSize(calcs[curslot].cpu.pio.lcd->width * calcs[curslot].Scale, 64 * calcs[curslot].Scale)) {
@@ -20,6 +31,7 @@ MyLCD::MyLCD(int curslot)
 	this->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyLCD::OnKeyDown);
 	this->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyLCD::OnKeyUp);
 	this->SetDropTarget(new DnDFile(this));
+>>>>>>> .r27
 	int i;
 #define LCD_HIGH	255
 	for (i = 0; i <= MAX_SHADES; i++) {
@@ -46,14 +58,23 @@ void MyLCD::OnPaint(wxPaintEvent& event)
 	LCD_t *lcd = calcs[slot].cpu.pio.lcd;
 	wxStatusBar *wxStatus = calcs[slot].wxFrame->GetStatusBar();
 	if (wxStatus) {
+<<<<<<< .mine
+		if (clock() > calcs[slot].sb_refresh + CLOCKS_PER_SEC / 2) {
+=======
 		if (clock() > calcs[slot].sb_refresh + CLOCKS_PER_SEC/2) {
+>>>>>>> .r27
 			wxString sz_status;
 			if (lcd->active)
 				sz_status.sprintf(wxT("FPS: %0.2lf"), lcd->ufps);
 			else
 				sz_status.sprintf(wxT("FPS: -"));
+<<<<<<< .mine
+			wxStatus->SetStatusText(sz_status, 0);
+			calcs[slot].sb_refresh = clock();
+=======
 			wxStatus->SetStatusText(sz_status, 1);
 			calcs[slot].sb_refresh = clock();
+>>>>>>> .r27
 		}
 	}
 	delete dc;
@@ -62,11 +83,20 @@ void MyLCD::OnPaint(wxPaintEvent& event)
 void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 {
 	unsigned char *screen;
+<<<<<<< .mine
+	LCD_t *lcd = calcs[slot].cpu.pio.lcd;
+	wxSize rc = calcs[slot].wxFrame->GetClientSize();			//GetClientRect(calcs[this->slot].hwndLCD, &rc);
+	int draw_width = lcd->width * calcs[slot].Scale;
+	int draw_height = 64 * calcs[slot].Scale;
+	int scale = calcs[slot].Scale;
+	wxPoint drawPoint((rc.GetWidth() - draw_width) / 2, 0);
+=======
 	LCD_t *lcd = calcs[slot].cpu.pio.lcd;
 	wxPoint drawPoint(32, 0);
 	wxSize rc = wxSize(192,128);//window->GetClientSize();			//GetClientRect(calcs[this->slot].hwndLCD, &rc);
+>>>>>>> .r27
 
-	wxMemoryDC wxMemDC;	
+	wxMemoryDC wxMemDC;
 	if (lcd->active == false) {
 		unsigned char lcd_data[128*64];
 		memset(lcd_data, 0, sizeof(lcd_data));
@@ -78,7 +108,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 			rgb_data[j+2] = blueColors[lcd_data[i]];
 		}
 		wxImage screenImage(128, 64, rgb_data, true);
-		wxBitmap bmpBuf(screenImage.Scale(256, 128).Size(rc, wxPoint(0,0)));
+		wxBitmap bmpBuf(screenImage.Scale(128 * scale, 64 * scale).Size(rc, wxPoint(0,0)));
 		wxMemDC.SelectObject(bmpBuf);
 		//draw drag panes
 		/*if (calcs[this->slot].do_drag == TRUE) {
@@ -98,7 +128,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 		}*/
 
 		//copy to the screen
-		wxDCDest->Blit(drawPoint.x, drawPoint.y, rc.GetWidth(), rc.GetHeight(), &wxMemDC, 0, 0);
+		wxDCDest->Blit(drawPoint.x, drawPoint.y, draw_width, draw_height, &wxMemDC, 0, 0);
 		wxMemDC.SelectObject(wxNullBitmap);
 
 	} else {
@@ -117,7 +147,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 		else
 			SetStretchBltMode(hdc, BLACKONWHITE);*/
 		wxImage screenImage(128, 64, rgb_data, true);
-		wxBitmap bmpBuf(screenImage.Scale(256, 128).Size(rc, wxPoint(0,0)));
+		wxBitmap bmpBuf(screenImage.Scale(128 * scale, 64 * scale).Size(rc, wxPoint(0,0)));
 		wxMemDC.SelectObject(bmpBuf);
 		//if were dragging something we will draw these nice panes
 		/*BLENDFUNCTION bf;
@@ -138,6 +168,8 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 
 		}*/
 
+<<<<<<< .mine
+=======
 
 		//if were sending something we can draw the sending shtuff
 		/*if (calcs[this->slot].send == TRUE) {
@@ -151,6 +183,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 			DeleteDC(hdcOverlay);
 		}*/
 
+>>>>>>> .r27
 		//this alphablends the skin to the screen making it look nice
 		/*bf.SourceConstantAlpha = 108;
 
@@ -171,7 +204,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 		}*/
 
 		//finally copy up the screen image
-		wxDCDest->Blit(drawPoint.x, drawPoint.y, (rc.GetWidth() - 32) * 2, rc.GetHeight() *2, &wxMemDC, 0, 0);
+		wxDCDest->Blit(drawPoint.x, drawPoint.y, draw_width, draw_height, &wxMemDC, 0, 0);
 		wxMemDC.SelectObject(wxNullBitmap);
 		/*if (BitBlt(	hdcDest, rc.left, rc.top, rc.right - rc.left,  rc.bottom - rc.top,
 			hdc, 0, 0, SRCCOPY ) == FALSE) printf("Bit blt failed\n");*/

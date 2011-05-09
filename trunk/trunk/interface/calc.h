@@ -98,9 +98,12 @@ typedef struct calc {
 	wxBitmap calcSkin;
 	int Scale;
 	bool SkinEnabled;
-	wxSize SkinSize;
-	wxSize LCDSize;
+	wxSize *SkinSize;
+	wxSize *LCDSize;
 	clock_t sb_refresh;
+	bool bCustomSkin;
+	char skin_path[256];
+	char keymap_path[256];
 #else
 	pthread_t hdlThread;
 #endif
