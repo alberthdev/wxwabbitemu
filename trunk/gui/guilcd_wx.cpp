@@ -11,7 +11,6 @@ enum {
 unsigned char redColors[MAX_SHADES+1];
 unsigned char greenColors[MAX_SHADES+1];
 unsigned char blueColors[MAX_SHADES+1];
-<<<<<<< .mine
 MyLCD::MyLCD(int curslot)
 	: wxWindow(calcs[curslot].wxFrame, ID_LCD, wxPoint(0,0),
 		wxSize(calcs[curslot].cpu.pio.lcd->width * calcs[curslot].Scale, 64 * calcs[curslot].Scale)) {
@@ -21,17 +20,6 @@ MyLCD::MyLCD(int curslot)
 	this->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyLCD::OnKeyDown);
 	this->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyLCD::OnKeyUp);
 	this->SetDropTarget(new DnDFile(this));
-=======
-MyLCD::MyLCD(int curslot)
-	: wxWindow(calcs[curslot].wxFrame, ID_LCD, wxPoint(0,0),
-		wxSize(calcs[curslot].cpu.pio.lcd->width * calcs[curslot].Scale, 64 * calcs[curslot].Scale)) {
-	this->slot = curslot;
-	int scale = calcs[curslot].Scale;
-	this->Connect(ID_LCD, wxEVT_PAINT, (wxObjectEventFunction) &MyLCD::OnPaint);
-	this->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyLCD::OnKeyDown);
-	this->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyLCD::OnKeyUp);
-	this->SetDropTarget(new DnDFile(this));
->>>>>>> .r27
 	int i;
 #define LCD_HIGH	255
 	for (i = 0; i <= MAX_SHADES; i++) {
@@ -58,23 +46,14 @@ void MyLCD::OnPaint(wxPaintEvent& event)
 	LCD_t *lcd = calcs[slot].cpu.pio.lcd;
 	wxStatusBar *wxStatus = calcs[slot].wxFrame->GetStatusBar();
 	if (wxStatus) {
-<<<<<<< .mine
 		if (clock() > calcs[slot].sb_refresh + CLOCKS_PER_SEC / 2) {
-=======
-		if (clock() > calcs[slot].sb_refresh + CLOCKS_PER_SEC/2) {
->>>>>>> .r27
 			wxString sz_status;
 			if (lcd->active)
 				sz_status.sprintf(wxT("FPS: %0.2lf"), lcd->ufps);
 			else
 				sz_status.sprintf(wxT("FPS: -"));
-<<<<<<< .mine
 			wxStatus->SetStatusText(sz_status, 0);
 			calcs[slot].sb_refresh = clock();
-=======
-			wxStatus->SetStatusText(sz_status, 1);
-			calcs[slot].sb_refresh = clock();
->>>>>>> .r27
 		}
 	}
 	delete dc;
@@ -83,19 +62,12 @@ void MyLCD::OnPaint(wxPaintEvent& event)
 void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 {
 	unsigned char *screen;
-<<<<<<< .mine
 	LCD_t *lcd = calcs[slot].cpu.pio.lcd;
 	wxSize rc = calcs[slot].wxFrame->GetClientSize();			//GetClientRect(calcs[this->slot].hwndLCD, &rc);
 	int draw_width = lcd->width * calcs[slot].Scale;
 	int draw_height = 64 * calcs[slot].Scale;
 	int scale = calcs[slot].Scale;
 	wxPoint drawPoint((rc.GetWidth() - draw_width) / 2, 0);
-=======
-	LCD_t *lcd = calcs[slot].cpu.pio.lcd;
-	wxPoint drawPoint(32, 0);
-	wxSize rc = wxSize(192,128);//window->GetClientSize();			//GetClientRect(calcs[this->slot].hwndLCD, &rc);
->>>>>>> .r27
-
 	wxMemoryDC wxMemDC;
 	if (lcd->active == false) {
 		unsigned char lcd_data[128*64];
@@ -167,23 +139,6 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 			DeleteDC(hdcOverlay);
 
 		}*/
-
-<<<<<<< .mine
-=======
-
-		//if were sending something we can draw the sending shtuff
-		/*if (calcs[this->slot].send == TRUE) {
-			bf.SourceConstantAlpha = 192;
-			hdcOverlay = DrawSending(hwnd, hdcDest);
-
-			if (AlphaBlend(	hdc, 0, 0, rc.right, rc.bottom,
-						hdcOverlay, 0, 0, rc.right, rc.bottom,
-						bf ) == FALSE) printf("alpha blend send failed\n");
-
-			DeleteDC(hdcOverlay);
-		}*/
-
->>>>>>> .r27
 		//this alphablends the skin to the screen making it look nice
 		/*bf.SourceConstantAlpha = 108;
 
