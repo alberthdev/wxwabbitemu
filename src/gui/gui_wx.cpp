@@ -1,6 +1,7 @@
 #include "gui_wx.h"
 #include "guiopenfile.h"
 #include "calc.h"
+
 extern wxString CalcModelTxt[11];
 bool gif_anim_advance;
 bool silent_mode = false;
@@ -575,7 +576,7 @@ void MyFrame::OnHelpAbout(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnHelpWebsite(wxCommandEvent& WXUNUSED(event))
 {
-    //This function should open wxwabbitemu website
+    system("xdg-open http://code.google.com/p/wxwabbitemu/");
 }
 
 void MyFrame::FinalizeButtons() {
