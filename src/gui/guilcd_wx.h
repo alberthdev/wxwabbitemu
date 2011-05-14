@@ -6,6 +6,7 @@
 #include <wx/wx.h>
 #include <wx/palette.h>
 #include "lcd.h"
+#include <stdlib.h>
 
 void SaveStateDialog(int slot);
 #define MAX_SHADES 255
