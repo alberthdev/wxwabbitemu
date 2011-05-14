@@ -50,6 +50,9 @@ private:
 	void OnFileNew(wxCommandEvent& event);
 	void OnFileOpen(wxCommandEvent& event);
     void OnHelpAbout(wxCommandEvent& event);
+    
+    void OnHelpWebsite(wxCommandEvent& event);
+    
 	void OnCalcSkin(wxCommandEvent& event);
 	void OnPaint(wxPaintEvent& event);
 	int slot;

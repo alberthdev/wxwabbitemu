@@ -575,7 +575,7 @@ void MyFrame::OnHelpAbout(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnHelpWebsite(wxCommandEvent& WXUNUSED(event))
 {
-    
+    //This function should open wxwabbitemu website
 }
 
 void MyFrame::FinalizeButtons() {
