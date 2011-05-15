@@ -370,6 +370,7 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	this->Connect(ID_File_Save, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileSave);
 	this->Connect(ID_File_Close, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileClose);
 	this->Connect(ID_File_Quit, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileQuit);
+	this->Connect(ID_Calc_Pause, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnPauseEmulation);
 	this->Connect(ID_Help_About, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpAbout);
 	this->Connect(ID_Help_Website, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpWebsite);
 	this->Connect(ID_Calc_Skin, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnCalcSkin);
@@ -509,10 +510,13 @@ void MyFrame::OnFileClose(wxCommandEvent &event) {
 	Close(TRUE);
 }
 
+void MyFrame::OnPauseEmulation() {
+    //To do: Pause emulation
+}
+
 void MyFrame::SetSpeed(int speed) {
 	calcs[slot].speed = speed;
 	wxMenuBar *wxMenu = calcs[slot].wxFrame->GetMenuBar();
-	
 }
 
 void MyFrame::OnKeyDown(wxKeyEvent& event)
