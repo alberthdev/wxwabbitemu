@@ -16,6 +16,7 @@
 #endif
 
 #include "skins/ti83p.h"
+
  #define wxGetBitmapFromMemory(name) _wxGetBitmapFromMemory(name ## _png, sizeof(name ## _png))
 
  inline wxBitmap _wxGetBitmapFromMemory(const unsigned char *data, int length) {
