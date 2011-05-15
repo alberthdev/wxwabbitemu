@@ -66,7 +66,7 @@ bool LoadRomIntialDialog() {
 	wxString strFilter 	= wxT("\
 Known types ( *.sav; *.rom)|*.sav;*.rom|\
 Save States  (*.sav)|*.sav|\
-ROMs  (*.rom)|*.rom| \
+ROMs  (*.rom)|*.rom|\
 All Files (*.*)|*.*");
 	wxFileDialog dialog(NULL, wxT("Wabbitemu: Please select a ROM or save state"),
 	wxT(""), wxT(""), strFilter, wxFD_OPEN | wxFD_FILE_MUST_EXIST);//, wxDefaultPosition,wxDefaultSize, "filedlg")
@@ -517,12 +517,12 @@ void MyFrame::OnPauseEmulation(wxCommandEvent &event) {
 	 * uncheck itself (does that even work??), and of course the user. 
 	 * Will add menu checking in a very near future revision.
 	 */
-	if (calcs[gslot].running) {
+	if (calcs[this->slot].running) {
 		//m_calcMenu.Check(ID_Calc_Pause, TRUE);
-		calcs[gslot].running = FALSE;
+		calcs[this->slot].running = FALSE;
 	} else {
 		//calcMenu.Check(ID_Calc_Pause, FALSE);
-		calcs[gslot].running = TRUE;
+		calcs[this->slot].running = TRUE;
 	}
 }
 
