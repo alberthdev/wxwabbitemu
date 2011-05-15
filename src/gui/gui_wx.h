@@ -55,6 +55,8 @@ private:
     void OnHelpWebsite(wxCommandEvent& event);
     
 	void OnCalcSkin(wxCommandEvent& event);
+	void OnPauseEmulation(wxCommandEvent& event);
+	
 	void OnPaint(wxPaintEvent& event);
 	int slot;
 	

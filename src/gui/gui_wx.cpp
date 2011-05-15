@@ -510,8 +510,20 @@ void MyFrame::OnFileClose(wxCommandEvent &event) {
 	Close(TRUE);
 }
 
-void MyFrame::OnPauseEmulation() {
-    //To do: Pause emulation
+void MyFrame::OnPauseEmulation(wxCommandEvent &event) {
+	/*wxMenuBar *wxMenu = calcs[slot].wxFrame->GetMenuBar();
+	 *wxMenu *calcMenu = wxMenu.FindItem(wxT("Calculator"));*/
+	/* Dirty dirty hack - will depend on the internel menu to check and
+	 * uncheck itself (does that even work??), and of course the user. 
+	 * Will add menu checking in a very near future revision.
+	 */
+	if (calcs[gslot].running) {
+		//m_calcMenu.Check(ID_Calc_Pause, TRUE);
+		calcs[gslot].running = FALSE;
+	} else {
+		//calcMenu.Check(ID_Calc_Pause, FALSE);
+		calcs[gslot].running = TRUE;
+	}
 }
 
 void MyFrame::SetSpeed(int speed) {
