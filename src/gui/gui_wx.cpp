@@ -260,7 +260,7 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	m_fileMenu->Append( m_newMenuItem );
 	
 	wxMenuItem* m_openMenuItem;
-	m_openMenuItem = new wxMenuItem( m_fileMenu, ID_File_Open, wxString( wxT("Open...") ) + wxT('\t') + wxT("F10"), wxEmptyString, wxITEM_NORMAL );
+	m_openMenuItem = new wxMenuItem( m_fileMenu, ID_File_Open, wxString( wxT("Open...") ) + wxT('\t') + wxT("CTRL+O"), wxEmptyString, wxITEM_NORMAL );
 	m_fileMenu->Append( m_openMenuItem );
 	
 	wxMenuItem* m_saveMenuItem;
