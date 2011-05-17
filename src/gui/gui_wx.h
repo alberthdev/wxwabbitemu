@@ -35,7 +35,7 @@ class MyFrame: public wxFrame
 {
 public:
     MyFrame(int curslot);
-
+    
 	void OnKeyDown(wxKeyEvent& event);
 	void OnKeyUp(wxKeyEvent& event);
 	void SetSpeed(int speed);

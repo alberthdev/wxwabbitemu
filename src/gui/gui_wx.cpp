@@ -253,6 +253,8 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	wxSize windowSize;
 	this->SetSizeHints( wxDefaultSize, wxDefaultSize );
 
+    
+
 	wxMenuBar *m_menubar = new wxMenuBar( 0 );
 	wxMenu *m_fileMenu = new wxMenu();	
 	wxMenuItem* m_newMenuItem;
@@ -517,9 +519,13 @@ void MyFrame::OnPauseEmulation(wxCommandEvent &event) {
 	 * uncheck itself (does that even work??), and of course the user. 
 	 * Will add menu checking in a very near future revision.
 	 */
+	
 	if (calcs[this->slot].running) {
 		//m_calcMenu.Check(ID_Calc_Pause, TRUE);
 		calcs[this->slot].running = FALSE;
+		
+		
+		
 	} else {
 		//calcMenu.Check(ID_Calc_Pause, FALSE);
 		calcs[this->slot].running = TRUE;
