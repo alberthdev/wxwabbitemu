@@ -253,8 +253,6 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	wxSize windowSize;
 	this->SetSizeHints( wxDefaultSize, wxDefaultSize );
 
-    
-
 	wxMenuBar *m_menubar = new wxMenuBar( 0 );
 	wxMenu *m_fileMenu = new wxMenu();	
 	wxMenuItem* m_newMenuItem;
@@ -313,7 +311,7 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	m_separator3 = m_calcMenu->AppendSeparator();
 	
 	wxMenuItem* m_pauseMenuItem;
-	m_pauseMenuItem = new wxMenuItem( m_calcMenu, ID_Calc_Pause, wxString( wxT("Pause Emulation") ) , wxEmptyString, wxITEM_NORMAL );
+	m_pauseMenuItem = new wxMenuItem( m_calcMenu, ID_Calc_Pause, wxString( wxT("Pause Emulation") ) , wxEmptyString, wxITEM_CHECK );
 	m_calcMenu->Append( m_pauseMenuItem );
 	
 	wxMenu *m_speedMenu = new wxMenu();
@@ -513,21 +511,9 @@ void MyFrame::OnFileClose(wxCommandEvent &event) {
 }
 
 void MyFrame::OnPauseEmulation(wxCommandEvent &event) {
-	/*wxMenuBar *wxMenu = calcs[slot].wxFrame->GetMenuBar();
-	 *wxMenu *calcMenu = wxMenu.FindItem(wxT("Calculator"));*/
-	/* Dirty dirty hack - will depend on the internel menu to check and
-	 * uncheck itself (does that even work??), and of course the user. 
-	 * Will add menu checking in a very near future revision.
-	 */
-	
 	if (calcs[this->slot].running) {
-		//m_calcMenu.Check(ID_Calc_Pause, TRUE);
 		calcs[this->slot].running = FALSE;
-		
-		
-		
 	} else {
-		//calcMenu.Check(ID_Calc_Pause, FALSE);
 		calcs[this->slot].running = TRUE;
 	}
 }
