@@ -199,7 +199,7 @@ int gui_frame_update(int slot) {
 			const int iStatusWidths[] = {100, -1};
 			wxStatus->SetFieldsCount(2, iStatusWidths);
 			wxStatus->SetStatusText(CalcModelTxt[calcs[slot].model], 1);
-			wxSize skinSize(128*calcs[slot].Scale, 64*calcs[slot].Scale);
+			wxSize skinSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+4);
 			if (wxMenu)
 				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame));
 			calcs[slot].wxFrame->SetClientSize(skinSize);
@@ -382,8 +382,11 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 		windowSize = *calcs[slot].SkinSize;
 	else
 		windowSize.Set(128 * calcs[slot].Scale, 64 * calcs[slot].Scale);
+
+
 	this->SetClientSize(windowSize);
-	}
+    
+}
 
 void MyFrame::OnPaint(wxPaintEvent& event)
 {
@@ -512,8 +515,10 @@ void MyFrame::OnFileClose(wxCommandEvent &event) {
 
 void MyFrame::OnPauseEmulation(wxCommandEvent &event) {
 	if (calcs[this->slot].running) {
+	    //Tick is checked and emulation stops
 		calcs[this->slot].running = FALSE;
 	} else {
+	    //Tick is unchecked and emulation resumes
 		calcs[this->slot].running = TRUE;
 	}
 }
@@ -584,6 +589,7 @@ void MyFrame::OnHelpAbout(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnHelpWebsite(wxCommandEvent& WXUNUSED(event))
 {
+    //This function is currently linux only
     system("xdg-open http://code.google.com/p/wxwabbitemu/");
 }
 
