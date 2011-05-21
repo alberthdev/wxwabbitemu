@@ -514,12 +514,15 @@ void MyFrame::OnFileClose(wxCommandEvent &event) {
 }
 
 void MyFrame::OnPauseEmulation(wxCommandEvent &event) {
+    wxMenuBar *wxMenu = calcs[slot].wxFrame->GetMenuBar();
 	if (calcs[this->slot].running) {
 	    //Tick is checked and emulation stops
 		calcs[this->slot].running = FALSE;
+		wxMenu->Check(ID_Calc_Pause, true);
 	} else {
 	    //Tick is unchecked and emulation resumes
 		calcs[this->slot].running = TRUE;
+		wxMenu->Check(ID_Calc_Pause, false);
 	}
 }
 
