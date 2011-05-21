@@ -61,6 +61,7 @@ private:
 	int slot;
 	
 	void OnSize(wxSizeEvent& event);
+	void OnQuit(wxCloseEvent& event);
 	void FinalizeButtons();
 };
 

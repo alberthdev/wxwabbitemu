@@ -39,10 +39,12 @@ END_EVENT_TABLE()*/
 
 class MyApp: public wxApp
 {
-    virtual bool OnInit();
+	virtual bool OnInit();
 	//virtual int MainLoop();
 	void OnTimer(wxTimerEvent& event);
 	wxTimer *timer;
+public:
+	void getTimer(int slot);
 };
 
 IMPLEMENT_APP(MyApp)
@@ -151,7 +153,6 @@ void MyApp::OnTimer(wxTimerEvent& event) {
 	} else
 		difference += TPF;
 }
-
 
 int gui_draw(int slot) {
 	gslot = slot;
@@ -376,6 +377,8 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	this->Connect(ID_Calc_Skin, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnCalcSkin);
 	this->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyFrame::OnKeyDown);
 	this->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyFrame::OnKeyUp);
+	/* OnQuit */
+	this->Connect(wxEVT_CLOSE_WINDOW, wxCloseEventHandler(MyFrame::OnQuit));
 	
 	//int menuSize = wxSystemSettings::GetMetric(wxSYS_MENU_Y);
 	if (calcs[slot].SkinEnabled)
@@ -514,7 +517,7 @@ void MyFrame::OnFileClose(wxCommandEvent &event) {
 }
 
 void MyFrame::OnPauseEmulation(wxCommandEvent &event) {
-    wxMenuBar *wxMenu = calcs[slot].wxFrame->GetMenuBar();
+    wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
 	if (calcs[this->slot].running) {
 	    //Tick is checked and emulation stops
 		calcs[this->slot].running = FALSE;
@@ -594,6 +597,17 @@ void MyFrame::OnHelpWebsite(wxCommandEvent& WXUNUSED(event))
 {
     //This function is currently linux only
     system("xdg-open http://code.google.com/p/wxwabbitemu/");
+}
+
+void MyFrame::OnQuit(wxCloseEvent& event)
+{
+	printf("[wxTextEditor] OnQuit called! \n");
+	/* Created event in preparation to fix crash bug - this should NOT
+	 * affect normal operation. */
+	//printf("[wxTextEditor] [OnQuit] Killing all timers in current window... \n");
+	//wxTimer *thetimer = calcs[this->slot].wxFrame.timer;
+	//wxTimer *thetimer = MyApp::timer;
+	Destroy();
 }
 
 void MyFrame::FinalizeButtons() {
