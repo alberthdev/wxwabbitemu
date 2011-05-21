@@ -24,6 +24,10 @@ enum
 	ID_Calc_Vars,
 	ID_Calc_Options,
 	
+	/* Test code - requested by Scout */
+	ID_Speed_Test,
+	/* End test code */
+	
 	ID_Debug_Reset,
 	ID_Debug_Open,
 	
@@ -317,6 +321,12 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	
 	wxMenu *m_speedMenu = new wxMenu();
 	m_calcMenu->Append( -1, wxT("Speed"), m_speedMenu );
+	
+	/* Test code - requested by Scout */
+	wxMenuItem* m_testSpeedMenuItem;
+	m_testSpeedMenuItem = new wxMenuItem( m_speedMenu, ID_Speed_Test, wxString( wxT("Test") ) , wxEmptyString, wxITEM_CHECK );
+	m_speedMenu->Append( m_testSpeedMenuItem );
+	/* End test code */
 	
 	wxMenuItem* m_separator4;
 	m_separator4 = m_calcMenu->AppendSeparator();
