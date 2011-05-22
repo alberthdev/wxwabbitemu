@@ -51,11 +51,20 @@ private:
 	void OnFileNew(wxCommandEvent& event);
 	void OnFileOpen(wxCommandEvent& event);
     void OnHelpAbout(wxCommandEvent& event);
-    
     void OnHelpWebsite(wxCommandEvent& event);
     
 	void OnCalcSkin(wxCommandEvent& event);
 	void OnPauseEmulation(wxCommandEvent& event);
+	
+	void OnSetSpeed400(wxCommandEvent& event);
+	void OnSetSpeed300(wxCommandEvent& event);
+	void OnSetSpeed200(wxCommandEvent& event);
+	void OnSetSpeed125(wxCommandEvent& event);
+	void OnSetSpeed100(wxCommandEvent& event);
+	void OnSetSpeed75(wxCommandEvent& event);
+	void OnSetSpeed50(wxCommandEvent& event);
+	void OnSetSpeed25(wxCommandEvent& event);
+	
 	
 	void OnPaint(wxPaintEvent& event);
 	int slot;
