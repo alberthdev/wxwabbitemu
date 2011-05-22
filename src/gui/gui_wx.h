@@ -57,11 +57,8 @@ private:
 	void OnPauseEmulation(wxCommandEvent& event);
 	
 	void OnSetSpeed400(wxCommandEvent& event);
-	void OnSetSpeed300(wxCommandEvent& event);
 	void OnSetSpeed200(wxCommandEvent& event);
-	void OnSetSpeed125(wxCommandEvent& event);
 	void OnSetSpeed100(wxCommandEvent& event);
-	void OnSetSpeed75(wxCommandEvent& event);
 	void OnSetSpeed50(wxCommandEvent& event);
 	void OnSetSpeed25(wxCommandEvent& event);
 	

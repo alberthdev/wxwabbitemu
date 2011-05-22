@@ -25,11 +25,8 @@ enum
 	ID_Calc_Options,
 	
 	ID_Speed_400,
-	ID_Speed_300,
 	ID_Speed_200,
-	ID_Speed_125,
 	ID_Speed_100,
-	ID_Speed_75,
 	ID_Speed_50,
 	ID_Speed_25,
 	
@@ -331,25 +328,13 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	m_setSpeed400 = new wxMenuItem( m_speedMenu, ID_Speed_400, wxString( wxT("400%") ) , wxEmptyString, wxITEM_CHECK );
 	m_speedMenu->Append( m_setSpeed400 );
 	
-	wxMenuItem* m_setSpeed300;
-	m_setSpeed300 = new wxMenuItem( m_speedMenu, ID_Speed_300, wxString( wxT("300%") ) , wxEmptyString, wxITEM_CHECK );
-	m_speedMenu->Append( m_setSpeed300 );
-	
 	wxMenuItem* m_setSpeed200;
 	m_setSpeed200 = new wxMenuItem( m_speedMenu, ID_Speed_200, wxString( wxT("200%") ) , wxEmptyString, wxITEM_CHECK );
 	m_speedMenu->Append( m_setSpeed200 );
 	
-	wxMenuItem* m_setSpeed125;
-	m_setSpeed125 = new wxMenuItem( m_speedMenu, ID_Speed_125, wxString( wxT("125%") ) , wxEmptyString, wxITEM_CHECK );
-	m_speedMenu->Append( m_setSpeed125 );
-	
 	wxMenuItem* m_setSpeed100;
 	m_setSpeed100 = new wxMenuItem( m_speedMenu, ID_Speed_100, wxString( wxT("100%") ) , wxEmptyString, wxITEM_CHECK );
 	m_speedMenu->Append( m_setSpeed100 );
-	
-	wxMenuItem* m_setSpeed75;
-	m_setSpeed75 = new wxMenuItem( m_speedMenu, ID_Speed_75, wxString( wxT("75%") ) , wxEmptyString, wxITEM_CHECK );
-	m_speedMenu->Append( m_setSpeed75 );
 	
 	wxMenuItem* m_setSpeed50;
 	m_setSpeed50 = new wxMenuItem( m_speedMenu, ID_Speed_50, wxString( wxT("50%") ) , wxEmptyString, wxITEM_CHECK );
@@ -415,11 +400,8 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	this->Connect(ID_Calc_Pause, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnPauseEmulation);
 	
 	this->Connect(ID_Speed_400, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed400);
-	this->Connect(ID_Speed_300, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed300);
 	this->Connect(ID_Speed_200, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed200);
-	this->Connect(ID_Speed_125, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed125);
 	this->Connect(ID_Speed_100, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed100);
-	this->Connect(ID_Speed_75, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed75);
 	this->Connect(ID_Speed_50, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed50);
 	this->Connect(ID_Speed_25, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed25);
 	
@@ -573,24 +555,8 @@ void MyFrame::OnSetSpeed400(wxCommandEvent &event) {
     wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
     calcs[slot].wxFrame->SetSpeed(400);
     wxMenu->Check(ID_Speed_400, true);
-    wxMenu->Check(ID_Speed_300, false);
     wxMenu->Check(ID_Speed_200, false);
-    wxMenu->Check(ID_Speed_125, false);
     wxMenu->Check(ID_Speed_100, false);
-    wxMenu->Check(ID_Speed_75, false);
-    wxMenu->Check(ID_Speed_50, false);
-    wxMenu->Check(ID_Speed_25, false);
-}
-
-void MyFrame::OnSetSpeed300(wxCommandEvent &event) {
-    wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
-    calcs[slot].wxFrame->SetSpeed(300);
-    wxMenu->Check(ID_Speed_400, false);
-    wxMenu->Check(ID_Speed_300, true);
-    wxMenu->Check(ID_Speed_200, false);
-    wxMenu->Check(ID_Speed_125, false);
-    wxMenu->Check(ID_Speed_100, false);
-    wxMenu->Check(ID_Speed_75, false);
     wxMenu->Check(ID_Speed_50, false);
     wxMenu->Check(ID_Speed_25, false);
 }
@@ -599,24 +565,8 @@ void MyFrame::OnSetSpeed200(wxCommandEvent &event) {
     wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
     calcs[slot].wxFrame->SetSpeed(200);
     wxMenu->Check(ID_Speed_400, false);
-    wxMenu->Check(ID_Speed_300, false);
     wxMenu->Check(ID_Speed_200, true);
-    wxMenu->Check(ID_Speed_125, false);
     wxMenu->Check(ID_Speed_100, false);
-    wxMenu->Check(ID_Speed_75, false);
-    wxMenu->Check(ID_Speed_50, false);
-    wxMenu->Check(ID_Speed_25, false);
-}
-
-void MyFrame::OnSetSpeed125(wxCommandEvent &event) {
-    wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
-    calcs[slot].wxFrame->SetSpeed(125);
-    wxMenu->Check(ID_Speed_400, false);
-    wxMenu->Check(ID_Speed_300, false);
-    wxMenu->Check(ID_Speed_200, false);
-    wxMenu->Check(ID_Speed_125, true);
-    wxMenu->Check(ID_Speed_100, false);
-    wxMenu->Check(ID_Speed_75, false);
     wxMenu->Check(ID_Speed_50, false);
     wxMenu->Check(ID_Speed_25, false);
 }
@@ -625,24 +575,8 @@ void MyFrame::OnSetSpeed100(wxCommandEvent &event) {
     wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
     calcs[slot].wxFrame->SetSpeed(100);
     wxMenu->Check(ID_Speed_400, false);
-    wxMenu->Check(ID_Speed_300, false);
     wxMenu->Check(ID_Speed_200, false);
-    wxMenu->Check(ID_Speed_125, false);
     wxMenu->Check(ID_Speed_100, true);
-    wxMenu->Check(ID_Speed_75, false);
-    wxMenu->Check(ID_Speed_50, false);
-    wxMenu->Check(ID_Speed_25, false);
-}
-
-void MyFrame::OnSetSpeed75(wxCommandEvent &event) {
-    wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
-    calcs[slot].wxFrame->SetSpeed(75);
-    wxMenu->Check(ID_Speed_400, false);
-    wxMenu->Check(ID_Speed_300, false);
-    wxMenu->Check(ID_Speed_200, false);
-    wxMenu->Check(ID_Speed_125, false);
-    wxMenu->Check(ID_Speed_100, false);
-    wxMenu->Check(ID_Speed_75, true);
     wxMenu->Check(ID_Speed_50, false);
     wxMenu->Check(ID_Speed_25, false);
 }
@@ -651,11 +585,8 @@ void MyFrame::OnSetSpeed50(wxCommandEvent &event) {
     wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
     calcs[slot].wxFrame->SetSpeed(50);
     wxMenu->Check(ID_Speed_400, false);
-    wxMenu->Check(ID_Speed_300, false);
     wxMenu->Check(ID_Speed_200, false);
-    wxMenu->Check(ID_Speed_125, false);
     wxMenu->Check(ID_Speed_100, false);
-    wxMenu->Check(ID_Speed_75, false);
     wxMenu->Check(ID_Speed_50, true);
     wxMenu->Check(ID_Speed_25, false);
 }
@@ -664,11 +595,8 @@ void MyFrame::OnSetSpeed25(wxCommandEvent &event) {
     wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
     calcs[slot].wxFrame->SetSpeed(25);
     wxMenu->Check(ID_Speed_400, false);
-    wxMenu->Check(ID_Speed_300, false);
     wxMenu->Check(ID_Speed_200, false);
-    wxMenu->Check(ID_Speed_125, false);
     wxMenu->Check(ID_Speed_100, false);
-    wxMenu->Check(ID_Speed_75, false);
     wxMenu->Check(ID_Speed_50, false);
     wxMenu->Check(ID_Speed_25, true);
 }
