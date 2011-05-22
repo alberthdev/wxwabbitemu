@@ -413,6 +413,7 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	/* OnQuit */
 	this->Connect(wxEVT_CLOSE_WINDOW, wxCloseEventHandler(MyFrame::OnQuit));
 	
+	//Speed starts at 100%
 	m_menubar->Check(ID_Speed_100, true);
 	
 	//int menuSize = wxSystemSettings::GetMetric(wxSYS_MENU_Y);
