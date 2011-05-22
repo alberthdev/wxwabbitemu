@@ -611,7 +611,7 @@ void MyFrame::OnHelpWebsite(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnQuit(wxCloseEvent& event)
 {
-	printf("[wxTextEditor] OnQuit called! \n");
+	printf("[wxWabbitemu] OnQuit called! \n");
 	/* Created event in preparation to fix crash bug - this should NOT
 	 * affect normal operation. */
 	//printf("[wxTextEditor] [OnQuit] Killing all timers in current window... \n");
