@@ -614,6 +614,7 @@ LINKLD "obj/*.o" "wxwabbitemu"
 ########################################################
 # END COMPILE ACTIONS
 ########################################################
-
-printbold "Building complete! Executing wxwabbitemu now"
-./wxwabbitemu
+if [ ! "$CLEAN_EVERYTHING" = "1" ];then
+	printbold "Building complete! Executing wxwabbitemu now"
+	./wxwabbitemu
+fi
