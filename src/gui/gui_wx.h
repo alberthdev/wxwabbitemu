@@ -56,12 +56,7 @@ private:
 	void OnCalcSkin(wxCommandEvent& event);
 	void OnPauseEmulation(wxCommandEvent& event);
 	
-	void OnSetSpeed400(wxCommandEvent& event);
-	void OnSetSpeed200(wxCommandEvent& event);
-	void OnSetSpeed100(wxCommandEvent& event);
-	void OnSetSpeed50(wxCommandEvent& event);
-	void OnSetSpeed25(wxCommandEvent& event);
-	
+	void OnSetSpeed(wxCommandEvent& event);
 	
 	void OnPaint(wxPaintEvent& event);
 	int slot;
