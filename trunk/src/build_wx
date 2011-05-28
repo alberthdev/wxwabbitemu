@@ -614,7 +614,8 @@ LINKLD "obj/*.o" "wxwabbitemu"
 ########################################################
 # END COMPILE ACTIONS
 ########################################################
-
-printbold "Building complete! If everything went well, a nice little program"
-printbold "called wxwabbitemu is ready to run"'!'
-printbold '(Run with ./wxwabbitemu)'
+if [ ! "$CLEAN_EVERYTHING" = "1" ];then
+	printbold "Building complete! If everything went well, a nice little program"
+	printbold "called wxwabbitemu is ready to run"'!'
+	printbold '(Run with ./wxwabbitemu)'
+fi

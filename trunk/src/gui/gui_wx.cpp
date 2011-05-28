@@ -5,6 +5,7 @@
 extern wxString CalcModelTxt[11];
 bool gif_anim_advance;
 bool silent_mode = false;
+bool DEBUG = true;
 enum
 {
 	ID_File_New,
@@ -98,7 +99,7 @@ bool MyApp::OnInit()
 	else {
 		bool loadFile = LoadRomIntialDialog();
 		//wxMessageBox(string, wxT("OnInit"), wxOK, NULL);
-		//printf("hello", string);
+		//printf_d("hello", string);
 		if (loadFile) {
 			slot = calc_slot_new();
 			slot = rom_load(slot, load_file_buffer);
@@ -138,7 +139,7 @@ void MyApp::OnTimer(wxTimerEvent& event) {
 	// calc gives up and claims it lost time
 	difference += ((dwTimer - prevTimer) & 0x003F) - TPF;
 	prevTimer = dwTimer;
-	//printf("%d", difference);
+	//printf_d("%d", difference);
 
 	// Are we greater than Ticks Per Frame that would call for
 	// a frame skip?
@@ -252,6 +253,15 @@ int gui_debug(int slot) {
 	calcs[slot].hwndDebug = hdebug;
 	SendMessage(hdebug, WM_SIZE, 0, 0);*/
 	return 0;
+}
+
+void printf_d( const char* format, ... ) {
+	if (DEBUG == false) return;
+    va_list args;
+    //fprintf( stdout, "Error: " );
+    va_start( args, format );
+    vfprintf( stdout, format, args );
+    va_end( args );
 }
 
 MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
@@ -399,11 +409,11 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	this->Connect(ID_File_Quit, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileQuit);
 	this->Connect(ID_Calc_Pause, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnPauseEmulation);
 	
-	this->Connect(ID_Speed_400, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed400);
-	this->Connect(ID_Speed_200, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed200);
-	this->Connect(ID_Speed_100, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed100);
-	this->Connect(ID_Speed_50, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed50);
-	this->Connect(ID_Speed_25, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed25);
+	this->Connect(ID_Speed_400, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
+	this->Connect(ID_Speed_200, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
+	this->Connect(ID_Speed_100, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
+	this->Connect(ID_Speed_50, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
+	this->Connect(ID_Speed_25, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
 	
 	this->Connect(ID_Help_About, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpAbout);
 	this->Connect(ID_Help_Website, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpWebsite);
@@ -552,54 +562,48 @@ void MyFrame::OnFileClose(wxCommandEvent &event) {
 	Close(TRUE);
 }
 
-void MyFrame::OnSetSpeed400(wxCommandEvent &event) {
+void MyFrame::OnSetSpeed(wxCommandEvent &event) {
+	printf_d("[wxWabbitemu] [OnSetSpeed] Function called! \n");
     wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
-    calcs[slot].wxFrame->SetSpeed(400);
-    wxMenu->Check(ID_Speed_400, true);
-    wxMenu->Check(ID_Speed_200, false);
-    wxMenu->Check(ID_Speed_100, false);
-    wxMenu->Check(ID_Speed_50, false);
-    wxMenu->Check(ID_Speed_25, false);
-}
-
-void MyFrame::OnSetSpeed200(wxCommandEvent &event) {
-    wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
-    calcs[slot].wxFrame->SetSpeed(200);
-    wxMenu->Check(ID_Speed_400, false);
-    wxMenu->Check(ID_Speed_200, true);
-    wxMenu->Check(ID_Speed_100, false);
-    wxMenu->Check(ID_Speed_50, false);
-    wxMenu->Check(ID_Speed_25, false);
-}
-
-void MyFrame::OnSetSpeed100(wxCommandEvent &event) {
-    wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
-    calcs[slot].wxFrame->SetSpeed(100);
-    wxMenu->Check(ID_Speed_400, false);
-    wxMenu->Check(ID_Speed_200, false);
-    wxMenu->Check(ID_Speed_100, true);
-    wxMenu->Check(ID_Speed_50, false);
-    wxMenu->Check(ID_Speed_25, false);
-}
-
-void MyFrame::OnSetSpeed50(wxCommandEvent &event) {
-    wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
-    calcs[slot].wxFrame->SetSpeed(50);
-    wxMenu->Check(ID_Speed_400, false);
-    wxMenu->Check(ID_Speed_200, false);
-    wxMenu->Check(ID_Speed_100, false);
-    wxMenu->Check(ID_Speed_50, true);
-    wxMenu->Check(ID_Speed_25, false);
-}
-
-void MyFrame::OnSetSpeed25(wxCommandEvent &event) {
-    wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
-    calcs[slot].wxFrame->SetSpeed(25);
+    int eventID;
     wxMenu->Check(ID_Speed_400, false);
     wxMenu->Check(ID_Speed_200, false);
     wxMenu->Check(ID_Speed_100, false);
     wxMenu->Check(ID_Speed_50, false);
-    wxMenu->Check(ID_Speed_25, true);
+    wxMenu->Check(ID_Speed_25, false);
+    
+    eventID = event.GetId();
+    printf_d("[wxWabbitemu] [OnSetSpeed] Got widget ID that called this function: %d \n",eventID);
+    switch (eventID) {
+		case ID_Speed_100:
+			calcs[slot].wxFrame->SetSpeed(100);
+			wxMenu->Check(ID_Speed_100, true);
+			printf_d("[wxWabbitemu] [OnSetSpeed] Setting emulated calc speed to 100%%. \n");
+			break;
+		case ID_Speed_200:
+			calcs[slot].wxFrame->SetSpeed(200);
+			wxMenu->Check(ID_Speed_200, true);
+			printf_d("[wxWabbitemu] [OnSetSpeed] Setting emulated calc speed to 200%%. \n");
+			break;
+		case ID_Speed_25:
+			calcs[slot].wxFrame->SetSpeed(25);
+			wxMenu->Check(ID_Speed_25, true);
+			printf_d("[wxWabbitemu] [OnSetSpeed] Setting emulated calc speed to 25%%. \n");
+			break;
+		case ID_Speed_400:
+			calcs[slot].wxFrame->SetSpeed(400);
+			wxMenu->Check(ID_Speed_400, true);
+			printf_d("[wxWabbitemu] [OnSetSpeed] Setting emulated calc speed to 400%%. \n");
+			break;
+		case ID_Speed_50:
+			calcs[slot].wxFrame->SetSpeed(50);
+			wxMenu->Check(ID_Speed_50, true);
+			printf_d("[wxWabbitemu] [OnSetSpeed] Setting emulated calc speed to 50%%. \n");
+			break;
+		default:
+			printf_d("[wxWabbitemu] [W] [OnSetSpeed] Some strange, evil thing called this function. Disregarding. \n");
+			break;
+	}
 }
 
 void MyFrame::OnPauseEmulation(wxCommandEvent &event) {
@@ -687,10 +691,10 @@ void MyFrame::OnHelpWebsite(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnQuit(wxCloseEvent& event)
 {
-	printf("[wxWabbitemu] OnQuit called! \n");
+	printf_d("[wxWabbitemu] OnQuit called! \n");
 	/* Created event in preparation to fix crash bug - this should NOT
 	 * affect normal operation. */
-	//printf("[wxTextEditor] [OnQuit] Killing all timers in current window... \n");
+	//printf_d("[wxTextEditor] [OnQuit] Killing all timers in current window... \n");
 	//wxTimer *thetimer = calcs[this->slot].wxFrame.timer;
 	//wxTimer *thetimer = MyApp::timer;
 	Destroy();
