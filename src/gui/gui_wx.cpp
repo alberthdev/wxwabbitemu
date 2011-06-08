@@ -34,14 +34,14 @@ enum
 	ID_Debug_Reset,
 	ID_Debug_Open,
 	
-    ID_Help_About,
+	ID_Help_About,
 	ID_Help_Website
 };
 
 /*BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 	EVT_SHOW(MyFrame::OnShow)
-    EVT_MENU(ID_Quit, MyFrame::OnQuit)
-    EVT_MENU(ID_About, MyFrame::OnAbout)
+	EVT_MENU(ID_Quit, MyFrame::OnQuit)
+	EVT_MENU(ID_About, MyFrame::OnAbout)
 END_EVENT_TABLE()*/
 
 class MyApp: public wxApp
@@ -58,15 +58,15 @@ IMPLEMENT_APP(MyApp)
 char* wxStringToChar(wxString input)
 {
 #if (wxUSE_UNICODE)
-        size_t size = input.size() + 1;
-        char *buffer = new char[size];//No need to multiply by 4, converting to 1 byte char only.
-        memset(buffer, 0, size); //Good Practice, Can use buffer[0] = '&#65533;' also.
-        wxEncodingConverter wxec;
-        wxec.Init(wxFONTENCODING_ISO8859_1, wxFONTENCODING_ISO8859_1, wxCONVERT_SUBSTITUTE);
-        wxec.Convert(input.mb_str(), buffer);
-        return buffer; //To free this buffer memory is user responsibility.
+		size_t size = input.size() + 1;
+		char *buffer = new char[size];//No need to multiply by 4, converting to 1 byte char only.
+		memset(buffer, 0, size); //Good Practice, Can use buffer[0] = '&#65533;' also.
+		wxEncodingConverter wxec;
+		wxec.Init(wxFONTENCODING_ISO8859_1, wxFONTENCODING_ISO8859_1, wxCONVERT_SUBSTITUTE);
+		wxec.Convert(input.mb_str(), buffer);
+		return buffer; //To free this buffer memory is user responsibility.
 #else
-        return (char *)(input.c_str());
+		return (char *)(input.c_str());
 #endif
 }
 
@@ -111,7 +111,7 @@ bool MyApp::OnInit()
 	timer = new wxTimer();
 	timer->Connect(wxEVT_TIMER, (wxObjectEventFunction) &MyApp::OnTimer);
 	timer->Start(FPS, false);
-    return TRUE;
+	return TRUE;
 }
 
 /*int MyApp::MainLoop() {
@@ -120,11 +120,11 @@ bool MyApp::OnInit()
 
 unsigned GetTickCount()
 {
-        struct timeval tv;
-        if(gettimeofday(&tv, NULL) != 0)
-                return 0;
+		struct timeval tv;
+		if(gettimeofday(&tv, NULL) != 0)
+				return 0;
 
-        return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
+		return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
 }
 
 
@@ -245,10 +245,10 @@ int gui_debug(int slot) {
 	hdebug = CreateWindowEx(
 		WS_EX_APPWINDOW,
 		g_szDebugName,
-        "Debugger",
+		"Debugger",
 		WS_VISIBLE | WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
-        pos.left, pos.top, pos.right, pos.bottom,
-        0, 0, g_hInst, NULL);
+		pos.left, pos.top, pos.right, pos.bottom,
+		0, 0, g_hInst, NULL);
 
 	calcs[slot].hwndDebug = hdebug;
 	SendMessage(hdebug, WM_SIZE, 0, 0);*/
@@ -257,11 +257,11 @@ int gui_debug(int slot) {
 
 void printf_d( const char* format, ... ) {
 	if (DEBUG == false) return;
-    va_list args;
-    //fprintf( stdout, "Error: " );
-    va_start( args, format );
-    vfprintf( stdout, format, args );
-    va_end( args );
+	va_list args;
+	//fprintf( stdout, "Error: " );
+	va_start( args, format );
+	vfprintf( stdout, format, args );
+	va_end( args );
 }
 
 MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
@@ -434,7 +434,7 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 
 
 	this->SetClientSize(windowSize);
-    
+	
 }
 
 void MyFrame::OnPaint(wxPaintEvent& event)
@@ -564,17 +564,17 @@ void MyFrame::OnFileClose(wxCommandEvent &event) {
 
 void MyFrame::OnSetSpeed(wxCommandEvent &event) {
 	printf_d("[wxWabbitemu] [OnSetSpeed] Function called! \n");
-    wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
-    int eventID;
-    wxMenu->Check(ID_Speed_400, false);
-    wxMenu->Check(ID_Speed_200, false);
-    wxMenu->Check(ID_Speed_100, false);
-    wxMenu->Check(ID_Speed_50, false);
-    wxMenu->Check(ID_Speed_25, false);
-    
-    eventID = event.GetId();
-    printf_d("[wxWabbitemu] [OnSetSpeed] Got widget ID that called this function: %d \n",eventID);
-    switch (eventID) {
+	wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
+	int eventID;
+	wxMenu->Check(ID_Speed_400, false);
+	wxMenu->Check(ID_Speed_200, false);
+	wxMenu->Check(ID_Speed_100, false);
+	wxMenu->Check(ID_Speed_50, false);
+	wxMenu->Check(ID_Speed_25, false);
+	
+	eventID = event.GetId();
+	printf_d("[wxWabbitemu] [OnSetSpeed] Got widget ID that called this function: %d \n",eventID);
+	switch (eventID) {
 		case ID_Speed_100:
 			calcs[slot].wxFrame->SetSpeed(100);
 			wxMenu->Check(ID_Speed_100, true);
@@ -607,13 +607,13 @@ void MyFrame::OnSetSpeed(wxCommandEvent &event) {
 }
 
 void MyFrame::OnPauseEmulation(wxCommandEvent &event) {
-    wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
+	wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
 	if (calcs[this->slot].running) {
-	    //Tick is checked and emulation stops
+		//Tick is checked and emulation stops
 		calcs[this->slot].running = FALSE;
 		wxMenu->Check(ID_Calc_Pause, true);
 	} else {
-	    //Tick is unchecked and emulation resumes
+		//Tick is unchecked and emulation resumes
 		calcs[this->slot].running = TRUE;
 		wxMenu->Check(ID_Calc_Pause, false);
 	}
@@ -672,7 +672,7 @@ void MyFrame::OnFileQuit(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnCalcSkin(wxCommandEvent& event)
 {
-    calcs[slot].SkinEnabled = !calcs[slot].SkinEnabled;
+	calcs[slot].SkinEnabled = !calcs[slot].SkinEnabled;
 	gui_frame_update(slot);
 	this->Refresh();
 	this->Update();
@@ -680,13 +680,13 @@ void MyFrame::OnCalcSkin(wxCommandEvent& event)
  
 void MyFrame::OnHelpAbout(wxCommandEvent& WXUNUSED(event))
 {
-    wxMessageBox(wxT("wxWabbitEmu is a port of Wabbitemu that is cross-platform."), wxT("About Wabbitemu"), wxOK | wxICON_INFORMATION, this);
+	wxMessageBox(wxT("wxWabbitEmu is a port of Wabbitemu that is cross-platform."), wxT("About Wabbitemu"), wxOK | wxICON_INFORMATION, this);
 }
 
 void MyFrame::OnHelpWebsite(wxCommandEvent& WXUNUSED(event))
 {
-    //This function is currently linux only
-    system("xdg-open http://code.google.com/p/wxwabbitemu/");
+	//This function is currently linux only
+	system("xdg-open http://code.google.com/p/wxwabbitemu/");
 }
 
 void MyFrame::OnQuit(wxCloseEvent& event)
