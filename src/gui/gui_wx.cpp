@@ -192,7 +192,7 @@ int gui_frame(int slot) {
 	calcs[slot].running = TRUE;
 	calcs[slot].wxFrame->SetSpeed(100);
 	
-	calcs[slot].wxFrame->Centre(0);
+	calcs[slot].wxFrame->Centre(0);   //Centres the frame
 	
 	gui_frame_update(slot);
 	return 0;
@@ -210,6 +210,7 @@ int gui_frame_update(int slot) {
 			const int iStatusWidths[] = {100, -1};
 			wxStatus->SetFieldsCount(2, iStatusWidths);
 			wxStatus->SetStatusText(CalcModelTxt[calcs[slot].model], 1);
+			
 			wxSize skinSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+4);
 			if (wxMenu)
 				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame));
@@ -228,6 +229,7 @@ int gui_frame_update(int slot) {
 			calcs[slot].calcSkin = wxGetBitmapFromMemory(TI_83p);
 		}
 	}
+	
 	calcs[slot].wxFrame->SendSizeEvent();
 }
 
