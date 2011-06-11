@@ -191,6 +191,9 @@ int gui_frame(int slot) {
 	if (calcs[slot].wxFrame == NULL /*|| calcs[slot].hwndLCD == NULL*/) return -1;
 	calcs[slot].running = TRUE;
 	calcs[slot].wxFrame->SetSpeed(100);
+	
+	calcs[slot].wxFrame->Centre(0);
+	
 	gui_frame_update(slot);
 	return 0;
 }
@@ -431,7 +434,6 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 		windowSize = *calcs[slot].SkinSize;
 	else
 		windowSize.Set(128 * calcs[slot].Scale, 64 * calcs[slot].Scale);
-
 
 	this->SetClientSize(windowSize);
 	
