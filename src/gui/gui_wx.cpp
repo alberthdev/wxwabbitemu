@@ -270,6 +270,7 @@ void printf_d( const char* format, ... ) {
 }
 
 MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
+
 	slot = curslot;
 
 	wxSize windowSize;
