@@ -318,6 +318,13 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	m_pasteMenuItem = new wxMenuItem( m_editMenu, ID_Edit_Paste, wxString( wxT("Paste") ) + wxT('\t') + wxT("CTRL+V"), wxEmptyString, wxITEM_NORMAL );
 	m_editMenu->Append( m_pasteMenuItem );
 	
+	wxMenuItem* m_separator5;
+	m_separator5 = m_editMenu->AppendSeparator();
+	
+	wxMenuItem* m_optionsMenuItem;
+	m_optionsMenuItem = new wxMenuItem( m_editMenu, ID_Calc_Options, wxString( wxT("Preferences") ) , wxEmptyString, wxITEM_NORMAL );
+	m_editMenu->Append( m_optionsMenuItem );
+	
 	m_menubar->Append( m_editMenu, wxT("Edit") );
 	
 	wxMenu *m_calcMenu = new wxMenu();
@@ -372,10 +379,6 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	wxMenuItem* m_varsMenuItem;
 	m_varsMenuItem = new wxMenuItem( m_calcMenu, ID_Calc_Vars, wxString( wxT("Variables...") ) , wxEmptyString, wxITEM_NORMAL );
 	m_calcMenu->Append( m_varsMenuItem );
-	
-	wxMenuItem* m_optionsMenuItem;
-	m_optionsMenuItem = new wxMenuItem( m_calcMenu, ID_Calc_Options, wxString( wxT("Options...") ) , wxEmptyString, wxITEM_NORMAL );
-	m_calcMenu->Append( m_optionsMenuItem );
 	
 	m_menubar->Append( m_calcMenu, wxT("Calculator") );
 	
