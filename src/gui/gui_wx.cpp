@@ -322,7 +322,7 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	m_separator5 = m_editMenu->AppendSeparator();
 	
 	wxMenuItem* m_optionsMenuItem;
-	m_optionsMenuItem = new wxMenuItem( m_editMenu, ID_Calc_Options, wxString( wxT("Preferences") ) , wxEmptyString, wxITEM_NORMAL );
+	m_optionsMenuItem = new wxMenuItem( m_editMenu, ID_Calc_Options, wxString( wxT("Preferences\tCtrl+Q") ) , wxEmptyString, wxITEM_NORMAL );
 	m_editMenu->Append( m_optionsMenuItem );
 	
 	m_menubar->Append( m_editMenu, wxT("Edit") );
