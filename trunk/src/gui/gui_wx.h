@@ -57,6 +57,7 @@ private:
 	void OnPauseEmulation(wxCommandEvent& event);
 	
 	void OnSetSpeed(wxCommandEvent& event);
+	void OnSetSize(wxCommandEvent& event);
 	
 	void OnPaint(wxPaintEvent& event);
 	int slot;

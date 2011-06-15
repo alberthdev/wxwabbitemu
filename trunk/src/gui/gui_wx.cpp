@@ -31,6 +31,10 @@ enum
 	ID_Speed_50,
 	ID_Speed_25,
 	
+	ID_Size_100,
+	ID_Size_200,
+	ID_Size_300,
+	
 	ID_Debug_Reset,
 	ID_Debug_Open,
 	
@@ -180,7 +184,10 @@ int gui_draw(int slot) {
 
 int gui_frame(int slot) {
 	if (!calcs[slot].Scale)
-		calcs[slot].Scale = 2;
+    	calcs[slot].Scale = 2;
+    	
+    
+	
 	// Set gslot so the CreateWindow functions operate on the correct calc
 	gslot = slot;
 	calcs[slot].wxFrame = new MyFrame(slot);
@@ -367,6 +374,21 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	m_setSpeed25 = new wxMenuItem( m_speedMenu, ID_Speed_25, wxString( wxT("25%") ) , wxEmptyString, wxITEM_CHECK );
 	m_speedMenu->Append( m_setSpeed25 );
 	
+	wxMenu *m_sizeMenu = new wxMenu();
+	m_calcMenu->Append(-1,wxT("Size"), m_sizeMenu);
+	
+	wxMenuItem* m_setSize100;
+	m_setSize100 = new wxMenuItem( m_sizeMenu, ID_Size_100, wxString( wxT("100%") ) , wxEmptyString, wxITEM_CHECK );
+	m_sizeMenu->Append( m_setSize100 );
+	
+	wxMenuItem* m_setSize200;
+	m_setSize200 = new wxMenuItem( m_sizeMenu, ID_Size_200, wxString( wxT("200%") ) , wxEmptyString, wxITEM_CHECK );
+	m_sizeMenu->Append( m_setSize200 );
+	
+	wxMenuItem* m_setSize300;
+	m_setSize300 = new wxMenuItem( m_sizeMenu, ID_Size_300, wxString( wxT("300%") ) , wxEmptyString, wxITEM_CHECK );
+	m_sizeMenu->Append( m_setSize300 );
+	
 	wxMenuItem* m_separator4;
 	m_separator4 = m_calcMenu->AppendSeparator();
 	
@@ -424,6 +446,10 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	this->Connect(ID_Speed_50, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
 	this->Connect(ID_Speed_25, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
 	
+	this->Connect(ID_Size_100, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSize);
+	this->Connect(ID_Size_200, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSize);
+	this->Connect(ID_Size_300, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSize);
+	
 	this->Connect(ID_Help_About, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpAbout);
 	this->Connect(ID_Help_Website, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpWebsite);
 	this->Connect(ID_Calc_Skin, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnCalcSkin);
@@ -434,6 +460,7 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	
 	//Speed starts at 100%
 	m_menubar->Check(ID_Speed_100, true);
+	m_menubar->Check(ID_Size_100, true);
 	
 	//int menuSize = wxSystemSettings::GetMetric(wxSYS_MENU_Y);
 	if (calcs[slot].SkinEnabled)
@@ -442,6 +469,7 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 		windowSize.Set(128 * calcs[slot].Scale, 64 * calcs[slot].Scale);
 
 	this->SetClientSize(windowSize);
+	
 	
 }
 
@@ -568,6 +596,37 @@ void MyFrame::OnFileSave(wxCommandEvent &event) {
 
 void MyFrame::OnFileClose(wxCommandEvent &event) {
 	Close(TRUE);
+}
+
+void MyFrame::OnSetSize(wxCommandEvent &event) {
+    wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
+    int eventID;
+    wxMenu->Check(ID_Size_100,false);
+    wxMenu->Check(ID_Size_200,false);
+    wxMenu->Check(ID_Size_300,false);
+    
+    eventID = event.GetId();
+    
+    switch (eventID) {
+        case ID_Size_100:
+            calcs[slot].Scale = 2;
+            wxMenu->Check(ID_Size_100,true);
+            printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 100% \n");
+            break;
+        case ID_Size_200:
+            calcs[slot].Scale = 4;
+            wxMenu->Check(ID_Size_200,true);
+            printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 200% \n");
+            break;
+        case ID_Size_300:
+            calcs[slot].Scale = 6;
+            wxMenu->Check(ID_Size_300,true);
+            printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 300% \n");
+            break;
+        default:
+			printf_d("[wxWabbitemu] [W] [OnSetSize] Some strange, evil thing called this function. Disregarding. \n");
+			break;
+    }
 }
 
 void MyFrame::OnSetSpeed(wxCommandEvent &event) {
