@@ -34,6 +34,7 @@ enum
 	ID_Size_100,
 	ID_Size_200,
 	ID_Size_300,
+	ID_Size_400,
 	
 	ID_Debug_Reset,
 	ID_Debug_Open,
@@ -207,6 +208,7 @@ int gui_frame(int slot) {
 
 int gui_frame_update(int slot) {
 	wxMenuBar *wxMenu = calcs[slot].wxFrame->GetMenuBar();
+	
 	if (wxMenu != NULL) {
 		if (!calcs[slot].SkinEnabled) {
 			wxMenu->Check(ID_Calc_Skin, false);
@@ -218,7 +220,8 @@ int gui_frame_update(int slot) {
 			wxStatus->SetFieldsCount(2, iStatusWidths);
 			wxStatus->SetStatusText(CalcModelTxt[calcs[slot].model], 1);
 			
-			wxSize skinSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+4);
+			wxSize skinSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+4); //The +4 is important to show all LCD
+			
 			if (wxMenu)
 				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame));
 			calcs[slot].wxFrame->SetClientSize(skinSize);
@@ -324,7 +327,7 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	
 	wxMenuItem* m_pasteMenuItem;
 	m_pasteMenuItem = new wxMenuItem( m_editMenu, ID_Edit_Paste, wxString( wxT("Paste") ) + wxT('\t') + wxT("CTRL+V"), wxEmptyString, wxITEM_NORMAL );
-	m_editMenu->Append( m_pasteMenuItem );
+	m_editMenu->Append( m_pasteMenuItem );this->SetSizeHints( wxDefaultSize, wxDefaultSize );
 	
 	wxMenuItem* m_separator5;
 	m_separator5 = m_editMenu->AppendSeparator();
@@ -389,6 +392,10 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	m_setSize300 = new wxMenuItem( m_sizeMenu, ID_Size_300, wxString( wxT("300%") ) , wxEmptyString, wxITEM_CHECK );
 	m_sizeMenu->Append( m_setSize300 );
 	
+	wxMenuItem* m_setSize400;
+	m_setSize400 = new wxMenuItem( m_sizeMenu, ID_Size_400, wxString( wxT("400%") ) , wxEmptyString, wxITEM_CHECK );
+	m_sizeMenu->Append( m_setSize400 );
+	
 	wxMenuItem* m_separator4;
 	m_separator4 = m_calcMenu->AppendSeparator();
 	
@@ -449,6 +456,7 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	this->Connect(ID_Size_100, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSize);
 	this->Connect(ID_Size_200, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSize);
 	this->Connect(ID_Size_300, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSize);
+	this->Connect(ID_Size_400, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSize);
 	
 	this->Connect(ID_Help_About, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpAbout);
 	this->Connect(ID_Help_Website, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpWebsite);
@@ -460,7 +468,8 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	
 	//Speed starts at 100%
 	m_menubar->Check(ID_Speed_100, true);
-	m_menubar->Check(ID_Size_100, true);
+	//Size starts at 200%
+	m_menubar->Check(ID_Size_200, true);
 	
 	//int menuSize = wxSystemSettings::GetMetric(wxSYS_MENU_Y);
 	if (calcs[slot].SkinEnabled)
@@ -604,24 +613,30 @@ void MyFrame::OnSetSize(wxCommandEvent &event) {
     wxMenu->Check(ID_Size_100,false);
     wxMenu->Check(ID_Size_200,false);
     wxMenu->Check(ID_Size_300,false);
+    wxMenu->Check(ID_Size_400,false);
     
     eventID = event.GetId();
     
     switch (eventID) {
         case ID_Size_100:
-            calcs[slot].Scale = 2;
+            calcs[slot].Scale = 1;
             wxMenu->Check(ID_Size_100,true);
             printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 100% \n");
             break;
         case ID_Size_200:
-            calcs[slot].Scale = 4;
+            calcs[slot].Scale = 2;
             wxMenu->Check(ID_Size_200,true);
             printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 200% \n");
             break;
         case ID_Size_300:
-            calcs[slot].Scale = 6;
+            calcs[slot].Scale = 3;
             wxMenu->Check(ID_Size_300,true);
             printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 300% \n");
+            break;
+        case ID_Size_400:
+            calcs[slot].Scale = 4;
+            wxMenu->Check(ID_Size_400,true);
+            printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 400% \n");
             break;
         default:
 			printf_d("[wxWabbitemu] [W] [OnSetSize] Some strange, evil thing called this function. Disregarding. \n");
