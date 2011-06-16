@@ -609,6 +609,7 @@ void MyFrame::OnFileClose(wxCommandEvent &event) {
 }
 
 void MyFrame::OnSetSize(wxCommandEvent &event) {
+	/* This function is called when user changes size of LCD in menu */
     wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
     int eventID;
     wxMenu->Check(ID_Size_100,false);
@@ -620,12 +621,12 @@ void MyFrame::OnSetSize(wxCommandEvent &event) {
     
     switch (eventID) {
         case ID_Size_100:
-            calcs[slot].Scale = 1;
+            calcs[slot].Scale = 1;  //This is half of the Wabbit default, but equals real LCD
             wxMenu->Check(ID_Size_100,true);
             printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 100% \n");
             break;
         case ID_Size_200:
-            calcs[slot].Scale = 2;
+            calcs[slot].Scale = 2; //Wabbit default, twice the LCD
             wxMenu->Check(ID_Size_200,true);
             printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 200% \n");
             break;
@@ -644,6 +645,7 @@ void MyFrame::OnSetSize(wxCommandEvent &event) {
 			break;
     }
     if (!calcs[slot].SkinEnabled) {
+		/* Update size of frame to match the new LCD Size */
         calcs[slot].wxFrame->SetSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+60);
     }
 }
