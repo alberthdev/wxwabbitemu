@@ -621,21 +621,33 @@ void MyFrame::OnSetSize(wxCommandEvent &event) {
         case ID_Size_100:
             calcs[slot].Scale = 1;
             wxMenu->Check(ID_Size_100,true);
+            if (!calcs[slot].SkinEnabled) {
+                calcs[slot].wxFrame->SetSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+60);
+            }
             printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 100% \n");
             break;
         case ID_Size_200:
             calcs[slot].Scale = 2;
             wxMenu->Check(ID_Size_200,true);
+            if (!calcs[slot].SkinEnabled) {
+                calcs[slot].wxFrame->SetSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+55);
+            }
             printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 200% \n");
             break;
         case ID_Size_300:
             calcs[slot].Scale = 3;
             wxMenu->Check(ID_Size_300,true);
+            if (!calcs[slot].SkinEnabled) {
+                calcs[slot].wxFrame->SetSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+60);
+            }
             printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 300% \n");
             break;
         case ID_Size_400:
             calcs[slot].Scale = 4;
             wxMenu->Check(ID_Size_400,true);
+            if (!calcs[slot].SkinEnabled) {
+                calcs[slot].wxFrame->SetSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+60);
+            }
             printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 400% \n");
             break;
         default:
