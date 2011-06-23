@@ -494,18 +494,24 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	if (calcs[slot].SkinEnabled)
 		windowSize = *calcs[slot].SkinSize;
 	else
-		windowSize.Set(128 * calcs[slot].Scale, 64 * calcs[slot].Scale);
+		windowSize.Set(128 * calcs[slot].Scale, 64 * calcs[slot].Scale+60);
 
-	this->SetClientSize(windowSize);
+	int widthOfFrame = 128*calcs[slot].Scale;
+	int heightOfFrame = 65*calcs[slot].Scale+60;
 	
-	
+	this->SetSize(windowSize);
 }
 
 // Resize function
 void MyFrame::OnResize(wxSizeEvent& event) {
-	printf_d("[wxWabbitemu] [OnResize] Function called! (The window is being resized!)\n");
-	// Note to Scout/David - if you let this event continue without skips, you will see some very nasty
-	// drawing gliches. event.Skip should be removed, but not without fixing this glitch.
+	if (!calcs[slot].SkinEnabled) {
+		
+		int currentWidth = event.GetSize().GetWidth();
+		int currentHeight = event.GetSize().GetHeight();
+		
+		calcs[slot].Scale = currentWidth / 128;
+		calcs[slot].Scale = (currentHeight-60) / 64;
+	}
 	event.Skip(true);
 }
 
