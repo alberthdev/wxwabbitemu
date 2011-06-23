@@ -3,6 +3,7 @@
 
 #include <wx/statusbr.h>
 #include <wx/frame.h>
+#include <wx/numdlg.h>
 #include <wx/wx.h>
 #include <wx/dnd.h>
 #include <wx/mstream.h>
@@ -57,6 +58,7 @@ private:
 	void OnPauseEmulation(wxCommandEvent& event);
 	
 	void OnSetSpeed(wxCommandEvent& event);
+	void OnSetSpeedCustom(wxCommandEvent& event);
 	void OnSetSize(wxCommandEvent& event);
 	
 	void OnPaint(wxPaintEvent& event);

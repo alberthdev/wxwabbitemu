@@ -36,11 +36,11 @@ CPP="g++"
 LD="ld"
 
 # CCFLAGS - additional arguments to add on to the C compiler.
-CCFLAGS="-c -w -I . `wx-config --version=2.8 --cflags` -ggdb -I core -I hardware -I utilities -I gui -I interface"
+CCFLAGS="-c -g -w -I . `wx-config --version=2.8 --cflags` -ggdb -I core -I hardware -I utilities -I gui -I interface"
 CCDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # CPPFLAGS - additional arguments to add on to the C++ compiler.
-CPPFLAGS="-c -w -I . `wx-config --version=2.8 --cppflags` -ggdb -I core -I hardware -I utilities -I gui -I interface"
+CPPFLAGS="-c -g -w -I . `wx-config --version=2.8 --cppflags` -ggdb -I core -I hardware -I utilities -I gui -I interface"
 CPPDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # LDFLAGS - additional or required arguments to add on to the linker.
