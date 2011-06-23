@@ -187,10 +187,8 @@ int gui_draw(int slot) {
 
 int gui_frame(int slot) {
 	if (!calcs[slot].Scale)
-    	calcs[slot].Scale = 2;
+    	calcs[slot].Scale = 2; //Set original scale
     	
-    
-	
 	// Set gslot so the CreateWindow functions operate on the correct calc
 	gslot = slot;
 	calcs[slot].wxFrame = new MyFrame(slot);
@@ -495,9 +493,6 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 		windowSize = *calcs[slot].SkinSize;
 	else
 		windowSize.Set(128 * calcs[slot].Scale, 64 * calcs[slot].Scale+60);
-
-	int widthOfFrame = 128*calcs[slot].Scale;
-	int heightOfFrame = 65*calcs[slot].Scale+60;
 	
 	this->SetSize(windowSize);
 }
@@ -506,11 +501,8 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 void MyFrame::OnResize(wxSizeEvent& event) {
 	if (!calcs[slot].SkinEnabled) {
 		
-		int currentWidth = event.GetSize().GetWidth();
-		int currentHeight = event.GetSize().GetHeight();
-		
-		calcs[slot].Scale = currentWidth / 128;
-		calcs[slot].Scale = (currentHeight-60) / 64;
+		calcs[slot].Scale = event.GetSize().GetWidth() / 128;
+		calcs[slot].Scale = (event.GetSize().GetHeight()-60) / 64;
 	}
 	event.Skip(true);
 }
