@@ -454,6 +454,9 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	this->SetStatusBar(m_statusBar1);
 	
 	this->Connect(wxEVT_PAINT, wxPaintEventHandler(MyFrame::OnPaint));
+	// Resize event connection
+	this->Connect(wxEVT_SIZE, (wxObjectEventFunction) &MyFrame::OnResize);
+	
 	this->Connect(ID_File_New, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileNew);
 	this->Connect(ID_File_Open, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileOpen);
 	this->Connect(ID_File_Save, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileSave);
@@ -496,6 +499,14 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	this->SetClientSize(windowSize);
 	
 	
+}
+
+// Resize function
+void MyFrame::OnResize(wxSizeEvent& event) {
+	printf_d("[wxWabbitemu] [OnResize] Function called! (The window is being resized!)\n");
+	// Note to Scout/David - if you let this event continue without skips, you will see some very nasty
+	// drawing gliches. event.Skip should be removed, but not without fixing this glitch.
+	event.Skip(true);
 }
 
 void MyFrame::OnPaint(wxPaintEvent& event)
@@ -638,26 +649,26 @@ void MyFrame::OnSetSize(wxCommandEvent &event) {
         case ID_Size_100:
             calcs[slot].Scale = 1;  //This is half of the Wabbit default, but equals real LCD
             wxMenu->Check(ID_Size_100,true);
-            printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 100% \n");
+            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 100% \n");
             break;
         case ID_Size_200:
             calcs[slot].Scale = 2; //Wabbit default, twice the LCD
             wxMenu->Check(ID_Size_200,true);
-            printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 200% \n");
+            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 200% \n");
             break;
         case ID_Size_300:
             calcs[slot].Scale = 3;
             wxMenu->Check(ID_Size_300,true);
-            printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 300% \n");
+            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 300% \n");
             break;
         case ID_Size_400:
             calcs[slot].Scale = 4;
             wxMenu->Check(ID_Size_400,true);
-            printf_d("[wxWabbitemu] [W] [OnSetSize] Set Scale 400% \n");
+            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 400% \n");
             break;
         default:
-			printf_d("[wxWabbitemu] [W] [OnSetSize] Some strange, evil thing called this function. Disregarding. \n");
-			break;
+	    printf_d("[wxWabbitemu] [W] [OnSetSize] Some strange, evil thing called this function. Disregarding. \n");
+	    break;
     }
     if (!calcs[slot].SkinEnabled) {
 		/* Update size of frame to match the new LCD Size */

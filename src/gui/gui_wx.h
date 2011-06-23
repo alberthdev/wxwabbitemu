@@ -51,8 +51,8 @@ private:
 	void OnFileSave(wxCommandEvent& event);
 	void OnFileNew(wxCommandEvent& event);
 	void OnFileOpen(wxCommandEvent& event);
-    void OnHelpAbout(wxCommandEvent& event);
-    void OnHelpWebsite(wxCommandEvent& event);
+	void OnHelpAbout(wxCommandEvent& event);
+	void OnHelpWebsite(wxCommandEvent& event);
     
 	void OnCalcSkin(wxCommandEvent& event);
 	void OnPauseEmulation(wxCommandEvent& event);
@@ -62,6 +62,8 @@ private:
 	void OnSetSize(wxCommandEvent& event);
 	
 	void OnPaint(wxPaintEvent& event);
+	// Resize
+	void OnResize(wxSizeEvent& event);
 	int slot;
 	
 	void OnSize(wxSizeEvent& event);
