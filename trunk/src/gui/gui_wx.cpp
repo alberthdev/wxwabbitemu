@@ -26,10 +26,12 @@ enum
 	ID_Calc_Options,
 	
 	ID_Speed_400,
+	ID_Speed_500,
 	ID_Speed_200,
 	ID_Speed_100,
 	ID_Speed_50,
 	ID_Speed_25,
+	ID_Speed_Custom,
 	
 	ID_Size_100,
 	ID_Size_200,
@@ -358,6 +360,10 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	wxMenu *m_speedMenu = new wxMenu();
 	m_calcMenu->Append( -1, wxT("Speed"), m_speedMenu );
 	
+	wxMenuItem* m_setSpeed500;
+	m_setSpeed500 = new wxMenuItem( m_speedMenu, ID_Speed_500, wxString( wxT("500%") ) , wxEmptyString, wxITEM_CHECK );
+	m_speedMenu->Append( m_setSpeed500 );
+	
 	wxMenuItem* m_setSpeed400;
 	m_setSpeed400 = new wxMenuItem( m_speedMenu, ID_Speed_400, wxString( wxT("400%") ) , wxEmptyString, wxITEM_CHECK );
 	m_speedMenu->Append( m_setSpeed400 );
@@ -377,6 +383,13 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	wxMenuItem* m_setSpeed25;
 	m_setSpeed25 = new wxMenuItem( m_speedMenu, ID_Speed_25, wxString( wxT("25%") ) , wxEmptyString, wxITEM_CHECK );
 	m_speedMenu->Append( m_setSpeed25 );
+	
+	wxMenuItem* m_separatorSpeedCustom;
+	m_separatorSpeedCustom = m_speedMenu->AppendSeparator();
+	
+	wxMenuItem* m_setSpeedCustom;
+	m_setSpeedCustom = new wxMenuItem( m_speedMenu, ID_Speed_Custom, wxString( wxT("Custom...") ) , wxEmptyString, wxITEM_CHECK );
+	m_speedMenu->Append( m_setSpeedCustom );
 	
 	wxMenu *m_sizeMenu = new wxMenu();
 	m_calcMenu->Append(-1,wxT("Size"), m_sizeMenu);
@@ -448,6 +461,8 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	this->Connect(ID_File_Quit, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileQuit);
 	this->Connect(ID_Calc_Pause, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnPauseEmulation);
 	
+	this->Connect(ID_Speed_Custom, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeedCustom);
+	this->Connect(ID_Speed_500, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
 	this->Connect(ID_Speed_400, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
 	this->Connect(ID_Speed_200, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
 	this->Connect(ID_Speed_100, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
@@ -654,11 +669,15 @@ void MyFrame::OnSetSpeed(wxCommandEvent &event) {
 	printf_d("[wxWabbitemu] [OnSetSpeed] Function called! \n");
 	wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
 	int eventID;
+	wxMenu->Check(ID_Speed_500, false);
 	wxMenu->Check(ID_Speed_400, false);
 	wxMenu->Check(ID_Speed_200, false);
 	wxMenu->Check(ID_Speed_100, false);
 	wxMenu->Check(ID_Speed_50, false);
 	wxMenu->Check(ID_Speed_25, false);
+	wxMenu->Check(ID_Speed_Custom, false);
+	wxMenu->SetLabel(ID_Speed_Custom, wxString(wxT("Custom...")));
+	wxMenu->Check(ID_Speed_Custom, false);
 	
 	eventID = event.GetId();
 	printf_d("[wxWabbitemu] [OnSetSpeed] Got widget ID that called this function: %d \n",eventID);
@@ -688,9 +707,47 @@ void MyFrame::OnSetSpeed(wxCommandEvent &event) {
 			wxMenu->Check(ID_Speed_50, true);
 			printf_d("[wxWabbitemu] [OnSetSpeed] Setting emulated calc speed to 50%%. \n");
 			break;
+		case ID_Speed_500:
+			calcs[slot].wxFrame->SetSpeed(500);
+			wxMenu->Check(ID_Speed_500, true);
+			printf_d("[wxWabbitemu] [OnSetSpeed] Setting emulated calc speed to 500%%. \n");
+			break;
 		default:
 			printf_d("[wxWabbitemu] [W] [OnSetSpeed] Some strange, evil thing called this function. Disregarding. \n");
 			break;
+	}
+}
+
+void MyFrame::OnSetSpeedCustom(wxCommandEvent &event) {
+	wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
+	long resp;
+	printf_d("[wxWabbitemu] [OnSetSpeedCustom] Function called! Opening numerical input dialog...\n");
+	resp = wxGetNumberFromUser(wxString(wxT("Enter the speed (in percentage) you wish to set:")), wxString(wxT("")), wxString(wxT("Wabbitemu - Custom Speed")), 100, 0, 10000);
+	if (resp != -1) {
+		printf_d("[wxWabbitemu] [OnSetSpeedCustom] User provided a valid number, so setting speed %%. \n");
+		wxMenu->SetLabel(ID_Speed_Custom, wxString::Format(wxT("%i%%"),resp));
+		wxMenu->Check(ID_Speed_500, false);
+		wxMenu->Check(ID_Speed_400, false);
+		wxMenu->Check(ID_Speed_200, false);
+		wxMenu->Check(ID_Speed_100, false);
+		wxMenu->Check(ID_Speed_50, false);
+		wxMenu->Check(ID_Speed_25, false);
+		wxMenu->Check(ID_Speed_Custom, true);
+		calcs[slot].wxFrame->SetSpeed(resp);
+		printf_d("[wxWabbitemu] [OnSetSpeedCustom] Speed set to %i%%. \n", resp);
+	} else {
+		// note to self: does the "entered something invalid" apply?? supposedly, OnSetSpeedCustom is checked...
+		printf_d("[wxWabbitemu] [OnSetSpeedCustom] User canceled dialog or entered something invalid. \n", resp);
+		/* Dirty, evil hack... but I'm too lazy to create another var to indicate
+		 * custom speed status, soo... :P */
+		if (wxMenu->GetLabel(ID_Speed_Custom) == wxString(wxT("Custom..."))) {
+			// Do nothing
+			printf_d("[wxWabbitemu] [OnSetSpeedCustom] Menu label is 'Custom...', so unchecking the menu. \n", resp);
+			wxMenu->Check(ID_Speed_Custom, false);
+		} else {
+			printf_d("[wxWabbitemu] [OnSetSpeedCustom] Menu label is different, so checking the menu. \n");
+			wxMenu->Check(ID_Speed_Custom, true);
+		}
 	}
 }
 
