@@ -1,6 +1,9 @@
 #include "gui_wx.h"
 #include "guiopenfile.h"
 #include "calc.h"
+#include "wabbiticon.xpm"
+
+#define BIG_WINDOWS_ICON 0
 
 extern wxString CalcModelTxt[11];
 bool gif_anim_advance;
@@ -498,11 +501,14 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	else
 		windowSize.Set(128 * calcs[slot].Scale, 64 * calcs[slot].Scale+60);
 	
-	wxBitmap bmp(wxBITMAP("wabbiticon.xmp"));
+	#if (defined(__WXMSW__) && BIG_WINDOWS_ICON == 1)
+	wxBitmap bitmap(wxT(“wabbiticon.png”), wxBITMAP_TYPE_PNG);
+	icon.CopyFromBitmap(bitmap);
+	#else
+	wxIcon icon(wxICON(wabbiticon));
+	#endif
 	
-	wxIcon _icon;
-	_icon.CopyFromBitmap(wxBitmap(wxT("wabbiticon.bmp"), wxBITMAP_TYPE_ANY));
-	SetIcon(_icon);
+	SetIcon(icon);
 	
 	this->SetSize(windowSize);
 }
