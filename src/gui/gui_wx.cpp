@@ -224,6 +224,10 @@ int gui_frame_update(int slot) {
 			
 			if (wxMenu)
 				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame));
+			
+			calcs[slot].Scale = calcs[slot].wxFrame->GetSize().GetWidth() / 128;
+			calcs[slot].Scale = (calcs[slot].wxFrame->GetSize().GetHeight()-60) / 64;
+			
 			calcs[slot].wxFrame->SetClientSize(skinSize);
 			calcs[slot].wxFrame->SetSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+60);
 		} else {
