@@ -25,7 +25,6 @@
    return wxBitmap(wxImage(is, wxBITMAP_TYPE_PNG, -1), -1);
  }
 
-
 int gui_draw(int);
 int gui_frame(int);
 int gui_debug(int);

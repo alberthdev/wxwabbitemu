@@ -498,6 +498,12 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	else
 		windowSize.Set(128 * calcs[slot].Scale, 64 * calcs[slot].Scale+60);
 	
+	wxBitmap bmp(wxBITMAP("wabbiticon.xmp"));
+	
+	wxIcon _icon;
+	_icon.CopyFromBitmap(wxBitmap(wxT("wabbiticon.bmp"), wxBITMAP_TYPE_ANY));
+	SetIcon(_icon);
+	
 	this->SetSize(windowSize);
 }
 
