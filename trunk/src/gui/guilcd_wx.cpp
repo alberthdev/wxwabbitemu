@@ -19,14 +19,86 @@ MyLCD::MyLCD(int curslot)
 	this->Connect(wxEVT_PAINT, wxPaintEventHandler(MyLCD::OnPaint));
 	this->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyLCD::OnKeyDown);
 	this->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyLCD::OnKeyUp);
+	//this->Connect(wxEVT_SIZE, (wxObjectEventFunction) &MyLCD::OnResize);
+	this->Connect(wxEVT_LEFT_DOWN, (wxObjectEventFunction) &MyLCD::OnLeftButtonDown);
+	this->Connect(wxEVT_LEFT_UP, (wxObjectEventFunction) &MyLCD::OnLeftButtonUp);
 	this->SetDropTarget(new DnDFile(this));
-	int i;
 #define LCD_HIGH	255
-	for (i = 0; i <= MAX_SHADES; i++) {
+	for (int i = 0; i <= MAX_SHADES; i++) {
 		redColors[i] = (0x9E*(256-(LCD_HIGH/MAX_SHADES)*i))/255;
 		greenColors[i] = (0xAB*(256-(LCD_HIGH/MAX_SHADES)*i))/255;
 		blueColors[i] = (0x88*(256-(LCD_HIGH/MAX_SHADES)*i))/255;
 	}
+}
+
+void MyLCD::OnLeftButtonDown(wxMouseEvent& event)
+{
+	event.Skip(true);
+	LPCALC lpCalc = &calcs[this->slot];
+	static wxPoint pt;
+	keypad_t *kp = lpCalc->cpu.pio.keypad;
+
+	//CopySkinToButtons();
+	//CaptureMouse();
+	pt.x	= event.GetX();
+	pt.y	= event.GetY();
+	/*if (lpCalc->bCutout) {
+		pt.y += GetSystemMetrics(SM_CYCAPTION);
+		pt.x += GetSystemMetrics(SM_CXSIZEFRAME);
+	}*/
+	for(int group = 0; group < 7; group++) {
+		for(int bit = 0; bit < 8; bit++) {
+			kp->keys[group][bit] &= (~KEY_MOUSEPRESS);
+		}
+	}
+
+	lpCalc->cpu.pio.keypad->on_pressed &= ~KEY_MOUSEPRESS;
+
+	/*if (!event.LeftDown()) {
+		//FinalizeButtons(lpCalc);
+		return;
+	}*/
+
+	if (lpCalc->keymap.GetRed(pt.x, pt.y) == 0xFF) {
+		//FinalizeButtons(lpCalc);
+		return;
+	}
+
+	int green = lpCalc->keymap.GetGreen(pt.x, pt.y);
+	int blue = lpCalc->keymap.GetBlue(pt.x, pt.y);
+	if ((green >> 4) == 0x05 && (blue >> 4) == 0x00)
+	{
+		lpCalc->cpu.pio.keypad->on_pressed |= KEY_MOUSEPRESS;
+	} else {
+		kp->keys[green >> 4][blue >> 4] |= KEY_MOUSEPRESS;
+		if ((kp->keys[green >> 4][blue >> 4] & KEY_STATEDOWN) == 0) {
+			//DrawButtonState(lpCalc, lpCalc->hdcButtons, lpCalc->hdcKeymap, &pt, DBS_DOWN | DBS_PRESS);
+			kp->keys[green >> 4][blue >> 4] |= KEY_STATEDOWN;
+		}
+	}
+}
+
+void MyLCD::OnLeftButtonUp(wxMouseEvent& event)
+{
+	event.Skip(true);
+	LPCALC lpCalc = &calcs[this->slot];
+	static wxPoint pt;
+	keypad_t *kp = lpCalc->cpu.pio.keypad;
+
+	ReleaseMouse();
+
+	for(int group = 0; group < 7; group++) {
+		for(int bit = 0; bit < 8; bit++) {
+			kp->keys[group][bit] &= ~(KEY_MOUSEPRESS | KEY_STATEDOWN);
+		}
+	}
+
+	lpCalc->cpu.pio.keypad->on_pressed &= ~KEY_MOUSEPRESS;
+}
+
+void MyLCD::OnResize(wxSizeEvent& event)
+{
+	event.Skip(false);
 }
 
 void MyLCD::OnKeyDown(wxKeyEvent& event)
@@ -42,6 +114,12 @@ void MyLCD::OnKeyUp(wxKeyEvent& event)
 void MyLCD::OnPaint(wxPaintEvent& event)
 {
 	wxPaintDC *dc = new wxPaintDC(this);
+	LPCALC lpCalc = &calcs[slot];
+	if (lpCalc->SkinEnabled) {
+		lpCalc->wxLCD->Update();
+		wxBitmap skin = lpCalc->calcSkin;
+		dc->DrawBitmap(skin, 0, 0, true);
+	}
 	PaintLCD(this, dc);
 	LCD_t *lcd = calcs[slot].cpu.pio.lcd;
 	wxStatusBar *wxStatus = calcs[slot].wxFrame->GetStatusBar();
@@ -62,12 +140,17 @@ void MyLCD::OnPaint(wxPaintEvent& event)
 void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 {
 	unsigned char *screen;
-	LCD_t *lcd = calcs[slot].cpu.pio.lcd;
-	wxSize rc = calcs[slot].wxFrame->GetClientSize();			//GetClientRect(calcs[this->slot].hwndLCD, &rc);
+	LPCALC lpCalc = &calcs[slot];
+	LCD_t *lcd = lpCalc->cpu.pio.lcd;
+	wxSize rc = lpCalc->wxFrame->GetClientSize();
 	int draw_width = lcd->width * calcs[slot].Scale;
 	int draw_height = 64 * calcs[slot].Scale;
 	int scale = calcs[slot].Scale;
 	wxPoint drawPoint((rc.GetWidth() - draw_width) / 2, 0);
+	if (lpCalc->SkinEnabled) {
+		drawPoint.x = lpCalc->LCDRect.GetX();
+		drawPoint.y = lpCalc->LCDRect.GetY();
+	}
 	wxMemoryDC wxMemDC;
 	if (lcd->active == false) {
 		unsigned char lcd_data[128*64];

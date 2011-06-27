@@ -57,7 +57,7 @@ typedef struct profiler {
 	long data[0x10000 / MIN_BLOCK_SIZE];
 } profiler_t;
 
-typedef struct calc {
+typedef struct tagCALC {
 	int slot;
 	char rom_path[256];
 	char rom_version[32];
@@ -96,10 +96,12 @@ typedef struct calc {
 	MyFrame *wxFrame;
 	MyLCD *wxLCD;
 	wxBitmap calcSkin;
+	wxImage keymap;
 	int Scale;
 	bool SkinEnabled;
-	wxSize *SkinSize;
-	wxSize *LCDSize;
+	bool bCutout;
+	wxSize SkinSize;
+	wxRect LCDRect;
 	clock_t sb_refresh;
 	bool bCustomSkin;
 	char skin_path[256];
@@ -135,6 +137,7 @@ typedef struct calc {
 #endif
 
 } calc_t;
+typedef struct tagCALC CALC, *LPCALC;
 
 #ifdef WITH_BACKUPS
 typedef struct DEBUG_STATE {

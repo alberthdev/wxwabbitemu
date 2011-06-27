@@ -1,9 +1,12 @@
 #include "gui_wx.h"
-#include "guiopenfile.h"
 #include "calc.h"
+#include "guiopenfile.h"
 #include "wabbiticon.xpm"
 
 #define BIG_WINDOWS_ICON 0
+#define max(a, b)  (((a) > (b)) ? (a) : (b))
+#define min(a, b)  (((a) < (b)) ? (a) : (b))
+
 
 extern wxString CalcModelTxt[11];
 bool gif_anim_advance;
@@ -196,7 +199,7 @@ int gui_frame(int slot) {
 	gslot = slot;
 	calcs[slot].wxFrame = new MyFrame(slot);
 	calcs[slot].wxFrame->Show(true);
-	
+
 	calcs[slot].wxLCD = new MyLCD(slot);
 	calcs[slot].wxLCD->Show(true);
 	if (calcs[slot].wxFrame == NULL /*|| calcs[slot].hwndLCD == NULL*/) return -1;
@@ -210,41 +213,89 @@ int gui_frame(int slot) {
 }
 
 int gui_frame_update(int slot) {
-	wxMenuBar *wxMenu = calcs[slot].wxFrame->GetMenuBar();
+	LPCALC lpCalc = &calcs[slot];
+	wxMenuBar *wxMenu = lpCalc->wxFrame->GetMenuBar();
+	lpCalc->calcSkin = wxGetBitmapFromMemory(TI_83p);
+	lpCalc->keymap = wxGetBitmapFromMemory(TI_83p_Keymap).ConvertToImage();
+	int skinWidth, skinHeight, keymapWidth, keymapHeight;
 	
+	if (lpCalc->calcSkin.IsOk()) {
+		skinWidth = 350;//lpCalc->calcSkin.GetWidth();
+		skinHeight = 725;//lpCalc->calcSkin.GetHeight();
+	}
+	if (lpCalc->keymap.IsOk()) {
+		keymapWidth = 350;//lpCalc->keymap.GetWidth();
+		keymapHeight = 725;//lpCalc->keymap.GetHeight();
+	}
+	int foundX = 0, foundY = 0;
+	bool foundScreen = false;
+	if (((skinWidth != keymapWidth) || (skinHeight != keymapHeight)) && skinHeight > 0 && skinWidth > 0) {
+		lpCalc->SkinEnabled = false;
+		wxMessageBox(wxT("Skin and Keymap are not the same size"), wxT("Error"),  wxOK, NULL);
+	} else {
+		lpCalc->SkinSize.SetWidth(skinWidth);
+		lpCalc->SkinSize.SetHeight(skinHeight);		//find the screen size
+		for(int y = 0; y < skinHeight && foundScreen == false; y++) {
+			for (int x = 0; x < skinWidth && foundScreen == false; x++) {
+				if (lpCalc->keymap.GetBlue(x, y) == 0 &&
+						lpCalc->keymap.GetRed(x, y) == 255 &&
+						lpCalc->keymap.GetGreen(x, y) == 0) {
+					//81 92
+					foundX = x;
+					foundY = y;
+					foundScreen = true;
+				}
+			}
+		}
+		lpCalc->LCDRect.SetLeft(foundX);
+		lpCalc->LCDRect.SetTop(foundY);
+		do {
+			foundX++;
+		} while (lpCalc->keymap.GetBlue(foundX, foundY) == 0 &&
+				lpCalc->keymap.GetRed(foundX, foundY) == 255 &&
+				lpCalc->keymap.GetGreen(foundX, foundY) == 0);
+		lpCalc->LCDRect.SetRight(foundX--);
+		do {
+			foundY++;
+		}while (lpCalc->keymap.GetBlue(foundX, foundY) == 0 &&
+				lpCalc->keymap.GetRed(foundX, foundY) == 255 &&
+				lpCalc->keymap.GetGreen(foundX, foundY) == 0);
+		lpCalc->LCDRect.SetBottom(foundY);
+	}
+	if (!foundScreen) {
+		wxMessageBox(wxT("Unable to find the screen box"), wxT("Error"), wxOK, NULL);
+		lpCalc->SkinEnabled = false;
+	}
+
 	if (wxMenu != NULL) {
-		if (!calcs[slot].SkinEnabled) {
+		if (!lpCalc->SkinEnabled) {
 			wxMenu->Check(ID_Calc_Skin, false);
 			// Create status bar
-			wxStatusBar *wxStatus = calcs[slot].wxFrame->GetStatusBar();
+			wxStatusBar *wxStatus = lpCalc->wxFrame->GetStatusBar();
 			if (wxStatus == NULL)
 				wxStatus = calcs[slot].wxFrame->CreateStatusBar(1, wxST_SIZEGRIP, wxID_ANY );
 			const int iStatusWidths[] = {100, -1};
 			wxStatus->SetFieldsCount(2, iStatusWidths);
-			wxStatus->SetStatusText(CalcModelTxt[calcs[slot].model], 1);
+			wxStatus->SetStatusText(CalcModelTxt[lpCalc->model], 1);
 			
-			wxSize skinSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+4); //The +4 is important to show all LCD
+			wxSize skinSize(128*lpCalc->Scale, 64*lpCalc->Scale+4); //The +4 is important to show all LCD
 			
 			if (wxMenu)
 				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame));
 			
-			calcs[slot].Scale = calcs[slot].wxFrame->GetSize().GetWidth() / 128;
-			calcs[slot].Scale = (calcs[slot].wxFrame->GetSize().GetHeight()-60) / 64;
 			
-			calcs[slot].wxFrame->SetClientSize(skinSize);
-			calcs[slot].wxFrame->SetSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+60);
+			lpCalc->wxFrame->SetClientSize(skinSize);
+			lpCalc->wxFrame->SetSize(128*lpCalc->Scale, 64*lpCalc->Scale+60);
 		} else {
 			wxMenu->Check(ID_Calc_Skin, true);
-			wxStatusBar *wxStatus = calcs[slot].wxFrame->GetStatusBar();
+			wxStatusBar *wxStatus = lpCalc->wxFrame->GetStatusBar();
 			if (wxStatus != NULL) {
 				wxStatus->Destroy();
 			}
 			wxSize skinSize(350, 725);
 			if (wxMenu)
-				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame));
-			calcs[slot].wxFrame->SetClientSize(skinSize);
-
-			calcs[slot].calcSkin = wxGetBitmapFromMemory(TI_83p);
+				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, lpCalc->wxFrame));
+			lpCalc->wxFrame->SetClientSize(skinSize);
 		}
 	}
 	
@@ -287,9 +338,18 @@ void printf_d( const char* format, ... ) {
 	va_end( args );
 }
 
-MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
-
+MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
+{
+	this->SetWindowStyleFlag(wxBORDER_RAISED);
 	slot = curslot;
+	wxSize skinSize(350, 725);
+	calcs[slot].SkinSize = skinSize;
+	LCD_t *lcd = calcs[slot].cpu.pio.lcd;
+	int scale = calcs[slot].Scale;
+	int draw_width = lcd->width * scale;
+	int draw_height = 64 * scale;
+	wxRect lcdRect((128 * scale - draw_width) / 2, 0, draw_width, draw_height);
+	calcs[slot].LCDRect = lcdRect;
 
 	wxSize windowSize;
 	this->SetSizeHints( wxDefaultSize, wxDefaultSize );
@@ -497,7 +557,7 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 	
 	//int menuSize = wxSystemSettings::GetMetric(wxSYS_MENU_Y);
 	if (calcs[slot].SkinEnabled)
-		windowSize = *calcs[slot].SkinSize;
+		windowSize = calcs[slot].SkinSize;
 	else
 		windowSize.Set(128 * calcs[slot].Scale, 64 * calcs[slot].Scale+60);
 	
@@ -515,113 +575,37 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu")) {
 
 // Resize function
 void MyFrame::OnResize(wxSizeEvent& event) {
-	if (!calcs[slot].SkinEnabled) {
-		
-		calcs[slot].Scale = event.GetSize().GetWidth() / 128;
-		calcs[slot].Scale = (event.GetSize().GetHeight()-60) / 64;
-	}
 	event.Skip(true);
+	LPCALC lpCalc = &calcs[slot];
+	if (lpCalc->SkinEnabled)
+		return;
+	if (!calcs[slot].SkinEnabled)
+	{
+		int width_scale = event.GetSize().GetWidth() / 128;
+		int height_scale = (event.GetSize().GetHeight()-60) / 64;
+		int scale = max(2, max(width_scale, height_scale));
+
+		/*int new_width = event.GetSize().GetWidth();
+		int new_height = event.GetSize().GetHeight();
+		if (new_width > this->GetSize().GetWidth() || new_height > this->GetSize().GetHeight())
+			scale++;
+		else
+			scale--;*/
+		calcs[slot].Scale = max(2, scale);
+		this->SetSize(wxDefaultCoord, wxDefaultCoord, scale * 128, scale * 64 + 60, wxSIZE_USE_EXISTING);
+	}
 }
 
 void MyFrame::OnPaint(wxPaintEvent& event)
 {
 	wxPaintDC dc(this);
-	if (calcs[slot].SkinEnabled) {
+	LPCALC lpCalc = &calcs[slot];
+	if (lpCalc->SkinEnabled) {
+		lpCalc->wxLCD->Update();
 		wxBitmap test = wxGetBitmapFromMemory(TI_83p);
 		dc.DrawBitmap(test, 0, 0, true);
 	}
 }
-/*void MyFrame::OnSize(wxSizeEvent& event) {
-	if (calcs[slot].SkinEnabled)
-		return TRUE;
-	wxSize size = calcs[slot]->frameMain->GetClientSize();
-	LONG ClientAdjustWidth, ClientAdjustHeight;
-	LONG AdjustWidth, AdjustHeight;
-
-	// Adjust for border and menu
-	RECT rc = {0, 0, 0, 0};
-	AdjustWindowRect(&rc, WS_CAPTION | WS_TILEDWINDOW, FALSE);
-	rc.bottom += GetSystemMetrics(SM_CYMENU);
-
-	RECT src;
-	if (calcs[slot].hwndStatusBar != NULL) {
-		GetWindowRect(calcs[slot].hwndStatusBar, &src);
-		rc.bottom += src.bottom - src.top;
-	}
-
-	ClientAdjustWidth = rc.right - rc.left;
-	ClientAdjustHeight = rc.bottom - rc.top;
-
-
-	switch (wParam) {
-	case WMSZ_BOTTOMLEFT:
-	case WMSZ_LEFT:
-	case WMSZ_TOPLEFT:
-		prc->left -= 128 / 4;
-		break;
-	default:
-		prc->right += 128 / 4;
-		break;
-	}
-
-	switch (wParam) {
-	case WMSZ_TOPLEFT:
-	case WMSZ_TOP:
-	case WMSZ_TOPRIGHT:
-		prc->top -= 64 / 4;
-		break;
-	default:
-		prc->bottom += 64 / 4;
-		break;
-	}
-
-
-	// Make sure the width is a nice clean proportional sizing
-	AdjustWidth = (prc->right - prc->left - ClientAdjustWidth) % 128;
-	//AdjustHeight = (prc->bottom - prc->top) % calcs[slot].cpu.pio.lcd->height;
-	AdjustHeight = (prc->bottom - prc->top - ClientAdjustHeight) % 64;
-
-	int cx_mult = (prc->right - prc->left - ClientAdjustWidth) / 128;
-	int cy_mult = (prc->bottom - prc->top - ClientAdjustHeight) / 64;
-
-	while (cx_mult < 2 || cy_mult < 2) {
-		if (cx_mult < 2) {cx_mult++; AdjustWidth -= 128;}
-		if (cy_mult < 2) {cy_mult++; AdjustHeight -= 64;}
-	}
-
-	if (cx_mult > cy_mult)
-		AdjustWidth += (cx_mult - cy_mult) * 128;
-	else if (cy_mult > cx_mult)
-		AdjustHeight += (cy_mult - cx_mult) * 64;
-
-	calcs[slot].Scale = max(cx_mult, cy_mult);
-
-	switch (wParam) {
-	case WMSZ_BOTTOMLEFT:
-	case WMSZ_LEFT:
-	case WMSZ_TOPLEFT:
-		prc->left += AdjustWidth;
-		break;
-	default:
-		prc->right -= AdjustWidth;
-		break;
-	}
-
-	switch (wParam) {
-	case WMSZ_TOPLEFT:
-	case WMSZ_TOP:
-	case WMSZ_TOPRIGHT:
-		prc->top += AdjustHeight;
-		break;
-	default:
-		prc->bottom -= AdjustHeight;
-		break;
-	}
-	RECT rect;
-	GetClientRect(hwnd, &rect);
-	InvalidateRect(hwnd, &rect, TRUE);
-	return TRUE;
-}*/
 
 void MyFrame::OnFileNew(wxCommandEvent &event) {
 	char *newFilePath = (char *) malloc(PATH_MAX);
@@ -862,6 +846,7 @@ void MyFrame::OnHelpWebsite(wxCommandEvent& WXUNUSED(event))
 void MyFrame::OnQuit(wxCloseEvent& event)
 {
 	printf_d("[wxWabbitemu] OnQuit called! \n");
+	calcs[this->slot].active = FALSE;
 	/* Created event in preparation to fix crash bug - this should NOT
 	 * affect normal operation. */
 	//printf_d("[wxTextEditor] [OnQuit] Killing all timers in current window... \n");
