@@ -23,6 +23,10 @@ private:
 	void OnKeyUp(wxKeyEvent& event);
 	void PaintLCD(wxWindow *, wxPaintDC *);
 	void OnPaint(wxPaintEvent& event);
+	void OnResize(wxSizeEvent& event);
+	void OnLeftButtonDown(wxMouseEvent& event);
+	void OnLeftButtonUp(wxMouseEvent& event);
+
 	int slot;
 };
 
