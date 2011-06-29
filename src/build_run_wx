@@ -1,6 +1,6 @@
 #!/bin/bash
 # wxWabbitemu v0.1 ALPHA - Build script for wxWabbitemu!
-# (C) Copyright 2010 Chris S. (BuckeyeDude) and Albert H. (alberthro) and David Gomes (david)
+# (C) Copyright 2010 Chris S. (BuckeyeDude), Albert H. (alberthro) and David Gomes (david)
 # 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,9 @@
 # Project website: http://code.google.com/p/wxwabbitemu/
 # 
 
+# Do not change this!
+MINVER="2.8"
+
 # Variables
 # CC - path to C compiler. Can be shortened to just the program name if
 # it's in your PATH.
@@ -36,15 +39,15 @@ CPP="g++"
 LD="ld"
 
 # CCFLAGS - additional arguments to add on to the C compiler.
-CCFLAGS="-c -w -I . `wx-config --version=2.8 --cflags` -ggdb -I core -I hardware -I utilities -I gui -I interface"
+CCFLAGS="-c -g -w -I . `wx-config --version=2.8 --cflags 2>/dev/null` -ggdb -I core -I hardware -I utilities -I gui -I interface"
 CCDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # CPPFLAGS - additional arguments to add on to the C++ compiler.
-CPPFLAGS="-c -w -I . `wx-config --version=2.8 --cppflags` -ggdb -I core -I hardware -I utilities -I gui -I interface"
+CPPFLAGS="-c -g -w -I . `wx-config --version=2.8 --cppflags 2>/dev/null` -ggdb -I core -I hardware -I utilities -I gui -I interface"
 CPPDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # LDFLAGS - additional or required arguments to add on to the linker.
-LDFLAGS="`wx-config --version=2.8 --libs`"
+LDFLAGS="`wx-config --version=2.8 --libs 2>/dev/null`"
 
 ########################################################
 # That's all! DO NOT CHANGE ANY VARIABLES BELOW!
@@ -194,6 +197,84 @@ function printbold() {
 		printf "\033[1m""$@""\033[0m\n"
 	else
 		printf "$@""\n"
+	fi
+}
+
+##################################
+# Version check function
+##################################
+function versionCheck() {
+	printwork "Checking for wxWidgets header/dev files..."
+	testpath=`which wx-config`
+	if [ ! "$?" = "0" ];then
+		printfail "Checking for wxWidgets header/dev files..."
+		echo "ERROR: wx-config was not found. Please install the wxWidgets"
+		echo "2.8+ headers and then try again."
+		exit 1
+	else
+		printdone "Checking for wxWidgets header/dev files..."
+		printwork "Found wx-config, checking version..."
+		wxversion=`wx-config --version`
+		vercheckmajor=`echo "$wxversion" | cut -f1 -d'.'`
+		vercheckminor=`echo "$wxversion" | cut -f2 -d'.'`
+		vercheckrev=`echo "$wxversion" | cut -f3 -d'.'`
+		basevermajor=`echo "$MINVER" | cut -f1 -d'.'`
+		baseverminor=`echo "$MINVER" | cut -f2 -d'.'`
+		baseverrev=`echo "$MINVER" | cut -f3 -d'.'`
+		if [ "$vercheckmajor" = "" ];then
+			printfail "Found wx-config, checking version..."
+			echo "ERROR: Something went horribly wrong in the builder. Please report this"
+			echo "bug immediately. Error code: ERR_VERCHECK_MAJOR_BLANK"
+			exit 1
+		else
+			if [ "$basevermajor" = "" ];then
+				printfail "Found wx-config, checking version..."
+				echo "ERROR: Something went horribly wrong in the builder. Please report this"
+				echo "bug immediately. Error code: ERR_BASEVER_MAJOR_BLANK"
+				exit 1
+			else
+				majorcomp=`expr $vercheckmajor ">=" $basevermajor`
+			fi
+		fi
+		
+		if [ "$vercheckminor" = "" ];then
+			if [ "$baseverminor" = "" ];then
+				minorcomp="1"
+			else
+				minorcomp="0"
+			fi
+		else
+			if [ "$baseverminor" = "" ];then
+				minorcomp="1"
+			else
+				minorcomp=`expr $vercheckmajor ">=" $basevermajor`
+			fi
+		fi
+		
+		if [ "$vercheckrev" = "" ];then
+			if [ "$baseverrev" = "" ];then
+				revcomp="1"
+			else
+				revcomp="0"
+			fi
+		else
+			if [ "$baseverrev" = "" ];then
+				revcomp="1"
+			else
+				revcomp=`expr $vercheckrev ">=" $baseverrev`
+			fi
+		fi
+		
+		if [ "$majorcomp" = "1" ] && [ "$minorcomp" = "1" ] && [ "$revcomp" = "1" ];then
+			printf `genbackstep "Found wx-config, checking version..."`
+			printsdone "Found wx-config, checking version... done! Found $wxversion"', which is >= '"$MINVER"
+		else
+			printfail "Found wx-config, checking version..."
+			echo "ERROR: The required wxWidgets version is $MINVER"", but you have $wxversion""."
+			echo "Please install a newer version, then try again."
+			echo "Details: Major passed: $majorcomp Minor passed: $minorcomp Rev. passed: $revcomp"
+			exit 1
+		fi
 	fi
 }
 
@@ -590,7 +671,7 @@ assertIsSet() {
 }
 
 parsearg $@
-
+versionCheck
 ########################################################
 # You can modify the compile actions here.
 # COMPILEC compiles a .c file, COMPILECPP compiles a
@@ -609,12 +690,14 @@ COMPILEC utilities/var.c
 COMPILEC utilities/savestate.c
 COMPILEC utilities/sendfiles.c
 COMPILEC utilities/label.c
+COMPILEC utilities/gif.c
+COMPILEC utilities/gifhandle.c
 LINKLD "obj/*.o" "wxwabbitemu"
 
 ########################################################
 # END COMPILE ACTIONS
 ########################################################
 if [ ! "$CLEAN_EVERYTHING" = "1" ];then
-	printbold "Building complete! Executing wxwabbitemu now"
+	printbold "Building complete! Executing wxwabbitemu now..."
 	./wxwabbitemu
 fi

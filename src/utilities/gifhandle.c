@@ -1,10 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "calc.h"
-#ifdef WINVER // ...oops
 #include "gif.h"
-#include "rsrc.h"
-#endif
+
 #ifndef WINVER
 #include "types.h"
 #endif
@@ -92,16 +90,15 @@ unsigned char* GIFGREYLCD() {
 	return (u_char*) lcd->gif;
 }
 #endif
-
+ // we're taking you off the crutches - it's showtime!
 void handle_screenshot() {
-	#ifdef WINVER
 	FILE* testfile;
 	int result;
 	LCD_t* lcd = calcs[gslot].cpu.pio.lcd;
 	int i, j, s, marked;
-	static char gif_fn_backup[MAX_PATH];
-	BOOL running_backup = calcs[gslot].running;
-
+	static char gif_fn_backup[PATH_MAX];
+	bool running_backup = calcs[gslot].running;
+	
 	if ((gif_write_state != GIF_IDLE) && (!calcs[gslot].running)) gif_write_state = GIF_END;
 	
 	calcs[gslot].running = FALSE;
@@ -118,7 +115,7 @@ void handle_screenshot() {
 			if (gif_autosave) {
 				/* do file save */
 				if (gif_use_increasing) {
-					char fn[MAX_PATH];
+					char fn[PATH_MAX];
 					FILE *test = (FILE*) 1;
 					
 					for (i = 0; test; i++) {
@@ -130,9 +127,9 @@ void handle_screenshot() {
 					strcpy(gif_file_name, fn);
 				}
 			} else {
-				if (SetGifName(TRUE)) {
+				if (SetGIFName()) {
 					calcs[gslot].gif_disp_state = GDS_ENDING;
-					SendMessage(calcs[gslot].hwndFrame, WM_COMMAND, MAKEWPARAM(IDM_FILE_GIF, 0), 0);
+					//SendMessage(calcs[gslot].hwndFrame, WM_COMMAND, MAKEWPARAM(IDM_FILE_GIF, 0), 0);
 					break;
 				}
 			}
@@ -206,7 +203,6 @@ void handle_screenshot() {
 		gif_writer();
 		//WriteAVIFrame();
 	}
-	#endif
 }
 
 

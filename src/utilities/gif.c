@@ -34,7 +34,7 @@
 #define FALSE 0
 typedef int BOOL;
 #endif
-
+#include "gui_wx.h"
 //#include "gif.h" // uhh...
 
 #define GIF_FRAME_MAX (256 * 128 * 4)
