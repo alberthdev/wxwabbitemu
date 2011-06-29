@@ -3,6 +3,9 @@
 #include "guiopenfile.h"
 #include "wabbiticon.xpm"
 
+#include "gif.h"
+#include "gifhandle.h"
+
 #define BIG_WINDOWS_ICON 0
 #define max(a, b)  (((a) > (b)) ? (a) : (b))
 #define min(a, b)  (((a) < (b)) ? (a) : (b))
@@ -12,6 +15,7 @@ extern wxString CalcModelTxt[11];
 bool gif_anim_advance;
 bool silent_mode = false;
 bool DEBUG = true;
+int prevCalcScale;
 enum
 {
 	ID_File_New,
@@ -526,6 +530,7 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
 	this->Connect(ID_File_Open, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileOpen);
 	this->Connect(ID_File_Save, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileSave);
 	this->Connect(ID_File_Close, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileClose);
+	this->Connect(ID_File_Gif, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnGIF);
 	this->Connect(ID_File_Quit, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileQuit);
 	this->Connect(ID_Calc_Pause, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnPauseEmulation);
 	
@@ -577,7 +582,7 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
 void MyFrame::OnResize(wxSizeEvent& event) {
 	event.Skip(true);
 	LPCALC lpCalc = &calcs[slot];
-	if (lpCalc->SkinEnabled)
+	if (calcs[slot].SkinEnabled)
 		return;
 	if (!calcs[slot].SkinEnabled)
 	{
@@ -635,43 +640,47 @@ void MyFrame::OnFileClose(wxCommandEvent &event) {
 void MyFrame::OnSetSize(wxCommandEvent &event) {
 	/* This function is called when user changes size of LCD in menu */
     wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
-    int eventID;
-    wxMenu->Check(ID_Size_100,false);
-    wxMenu->Check(ID_Size_200,false);
-    wxMenu->Check(ID_Size_300,false);
-    wxMenu->Check(ID_Size_400,false);
-    
-    eventID = event.GetId();
-    
-    switch (eventID) {
-        case ID_Size_100:
-            calcs[slot].Scale = 1;  //This is half of the Wabbit default, but equals real LCD
-            wxMenu->Check(ID_Size_100,true);
-            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 100% \n");
-            break;
-        case ID_Size_200:
-            calcs[slot].Scale = 2; //Wabbit default, twice the LCD
-            wxMenu->Check(ID_Size_200,true);
-            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 200% \n");
-            break;
-        case ID_Size_300:
-            calcs[slot].Scale = 3;
-            wxMenu->Check(ID_Size_300,true);
-            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 300% \n");
-            break;
-        case ID_Size_400:
-            calcs[slot].Scale = 4;
-            wxMenu->Check(ID_Size_400,true);
-            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 400% \n");
-            break;
-        default:
-	    printf_d("[wxWabbitemu] [W] [OnSetSize] Some strange, evil thing called this function. Disregarding. \n");
-	    break;
-    }
-    if (!calcs[slot].SkinEnabled) {
-		/* Update size of frame to match the new LCD Size */
-        calcs[slot].wxFrame->SetSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+60);
-    }
+    if (calcs[slot].SkinEnabled) {
+		wxMessageBox(wxString(wxT("Hey there sneaky one! You got past the menu! Unfortunately, we can't let you past - otherwise things would break! Sorry, but nice try.")), wxString(wxT("Wabbitemu - Gotcha!")), wxOK, this);
+	} else {
+	    int eventID;
+	    wxMenu->Check(ID_Size_100,false);
+	    wxMenu->Check(ID_Size_200,false);
+	    wxMenu->Check(ID_Size_300,false);
+	    wxMenu->Check(ID_Size_400,false);
+	    
+	    eventID = event.GetId();
+	    
+	    switch (eventID) {
+	        case ID_Size_100:
+	            calcs[slot].Scale = 1;  //This is half of the Wabbit default, but equals real LCD
+	            wxMenu->Check(ID_Size_100,true);
+	            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 100% \n");
+	            break;
+	        case ID_Size_200:
+	            calcs[slot].Scale = 2; //Wabbit default, twice the LCD
+	            wxMenu->Check(ID_Size_200,true);
+	            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 200% \n");
+	            break;
+	        case ID_Size_300:
+	            calcs[slot].Scale = 3;
+	            wxMenu->Check(ID_Size_300,true);
+	            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 300% \n");
+	            break;
+	        case ID_Size_400:
+	            calcs[slot].Scale = 4;
+	            wxMenu->Check(ID_Size_400,true);
+	            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 400% \n");
+	            break;
+	        default:
+		    printf_d("[wxWabbitemu] [W] [OnSetSize] Some strange, evil thing called this function. Disregarding. \n");
+		    break;
+	    }
+	    if (!calcs[slot].SkinEnabled) {
+			/* Update size of frame to match the new LCD Size */
+	        calcs[slot].wxFrame->SetSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+60);
+	    }
+	}
 }
 
 void MyFrame::OnSetSpeed(wxCommandEvent &event) {
@@ -826,7 +835,25 @@ void MyFrame::OnFileQuit(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnCalcSkin(wxCommandEvent& event)
 {
+	wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
 	calcs[slot].SkinEnabled = !calcs[slot].SkinEnabled;
+	
+	// Enable/disable sizing menu items.
+	//m_sizeMenu->Enable(!calcs[slot].SkinEnabled);
+	wxMenu->Enable(ID_Size_100, !calcs[slot].SkinEnabled);
+	wxMenu->Enable(ID_Size_200, !calcs[slot].SkinEnabled);
+	wxMenu->Enable(ID_Size_300, !calcs[slot].SkinEnabled);
+	wxMenu->Enable(ID_Size_400, !calcs[slot].SkinEnabled);
+	
+	// Connect or disconnect the OnResize event.
+	if (calcs[slot].SkinEnabled) {
+		prevCalcScale = calcs[slot].Scale;
+		calcs[slot].Scale = 2;
+		this->Disconnect(wxEVT_SIZE, (wxObjectEventFunction) &MyFrame::OnResize);
+	} else {
+		calcs[slot].Scale = prevCalcScale;
+		this->Connect(wxEVT_SIZE, (wxObjectEventFunction) &MyFrame::OnResize);
+	}
 	gui_frame_update(slot);
 	this->Refresh();
 	this->Update();
@@ -841,6 +868,37 @@ void MyFrame::OnHelpWebsite(wxCommandEvent& WXUNUSED(event))
 {
 	//This function is currently linux only
 	system("xdg-open http://code.google.com/p/wxwabbitemu/");
+}
+
+void MyFrame::OnGIF(wxCommandEvent& WXUNUSED(event))
+{
+	wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
+	printf_d("OnGIF called\n");
+	wxFileDialog* saveGIFDialog = new wxFileDialog(calcs[slot].wxLCD, wxT("Save GIF file"), wxT(""), wxT(""), wxT("\
+GIF File (*.gif)|*.GIF;*.gif;*.Gif;*.GIf;*.gIf;*.gIF;*.giF|\
+All Files (*.*)|*.*\0"),wxFD_SAVE|wxFD_OVERWRITE_PROMPT, wxDefaultPosition);
+	if (saveGIFDialog->ShowModal() != wxID_OK)
+		return;
+	wxString path;
+	path.append( saveGIFDialog->GetDirectory() );
+	path.append( wxFileName::GetPathSeparator() );
+	path.append( saveGIFDialog->GetFilename() );
+	printf("Got path: %s \n", (const char*)path.mb_str());
+	strcpy(gif_file_name, (const char*)path.mb_str());
+	// Now to actually do something!
+	if (gif_write_state == GIF_IDLE) {
+		gif_write_state = GIF_START;
+		for (int i = 0; i < MAX_CALCS; i++)
+			if (calcs[slot].active)
+				calcs[slot].gif_disp_state = GDS_STARTING;
+		wxMenu->Check(ID_File_Gif, true);
+	} else {
+		gif_write_state = GIF_END;
+		for (int i = 0; i < MAX_CALCS; i++)
+			if (calcs[slot].active)
+				calcs[slot].gif_disp_state = GDS_ENDING;
+		wxMenu->Check(ID_File_Gif, false);
+	}
 }
 
 void MyFrame::OnQuit(wxCloseEvent& event)
@@ -867,4 +925,19 @@ void MyFrame::FinalizeButtons() {
 			}
 		}
 	}
+}
+
+int SetGIFName() {
+	wxFileDialog* saveGIFDialog = new wxFileDialog(NULL, wxT("Save GIF file"), wxT(""), wxT(""), wxT("\
+GIF File (*.gif)|*.GIF;*.gif;*.Gif;*.GIf;*.gIf;*.gIF;*.giF|\
+All Files (*.*)|*.*\0"),wxFD_SAVE|wxFD_OVERWRITE_PROMPT, wxDefaultPosition);
+	if (saveGIFDialog->ShowModal() != wxID_OK)
+		return false;
+	wxString path;
+	path.append( saveGIFDialog->GetDirectory() );
+	path.append( wxFileName::GetPathSeparator() );
+	path.append( saveGIFDialog->GetFilename() );
+	printf("Got path: %s \n", (const char*)path.mb_str());
+	strcpy(gif_file_name, (const char*)path.mb_str());
+	return true;
 }

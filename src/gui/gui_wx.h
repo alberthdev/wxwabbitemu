@@ -7,6 +7,7 @@
 #include <wx/wx.h>
 #include <wx/dnd.h>
 #include <wx/mstream.h>
+#include <wx/filename.h>
 #include <sys/time.h>
 #if (wxUSE_UNICODE)
 #include <wx/encconv.h> 
@@ -30,7 +31,7 @@ int gui_frame(int);
 int gui_debug(int);
 int gui_frame_update(int);
 char* wxStringToChar(wxString);
-
+int SetGIFName();
 class MyFrame: public wxFrame
 {
 public:
@@ -50,6 +51,7 @@ private:
 	void OnFileSave(wxCommandEvent& event);
 	void OnFileNew(wxCommandEvent& event);
 	void OnFileOpen(wxCommandEvent& event);
+	void OnGIF(wxCommandEvent& event);
 	void OnHelpAbout(wxCommandEvent& event);
 	void OnHelpWebsite(wxCommandEvent& event);
     
