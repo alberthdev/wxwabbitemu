@@ -9,14 +9,14 @@
 #define GIF_FRAME 2
 #define GIF_END 3
 
-#ifdef WINVER
-#include "gui.h"
+
+#include "gui_wx.h"
 
 extern int gif_write_state;
 extern int gif_file_size;
 extern char gif_file_name[256];
-extern BOOL gif_autosave;
-extern BOOL gif_use_increasing;
+extern bool gif_autosave;
+extern bool gif_use_increasing;
 extern WORD gif_base_delay;
 extern int gif_xs;
 extern int gif_ys;
@@ -27,7 +27,7 @@ extern int gif_colors;
 extern int gif_base_delay_start;
 extern int gif_file_num;
 extern int gif_size;
-extern BOOL gif_bw;
+extern bool gif_bw;
 
 void gif_writer();
-#endif
+

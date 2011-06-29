@@ -7,6 +7,7 @@
 #include "86hw.h"
 #include "device.h"
 #include "var.h"
+#include "gifhandle.h"
 //#include "disassemble.h"
 
 wxString CalcModelTxt[11] = 
@@ -433,6 +434,7 @@ int calc_run_all(void) {
 #endif
 				calc_run_tstates(j, time);
 				frame_counter += time;
+				handle_screenshot();
 #ifdef WITH_BACKUPS
 				if (frame_counter >= calcs[j].timer_c.freq / 2) {
 					frame_counter = 0;
