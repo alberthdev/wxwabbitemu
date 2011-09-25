@@ -247,7 +247,7 @@ function versionCheck() {
 			if [ "$baseverminor" = "" ];then
 				minorcomp="1"
 			else
-				minorcomp=`expr $vercheckmajor ">=" $basevermajor`
+				minorcomp=`expr $vercheckminor ">=" $baseverminor`
 			fi
 		fi
 		
