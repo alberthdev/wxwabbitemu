@@ -1,0 +1,713 @@
+#!/bin/bash
+# wxWabbitemu v0.1 ALPHA - Build script for wxWabbitemu!
+# (C) Copyright 2010 Chris S. (BuckeyeDude) and Albert H. (alberthro)
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Thanks to everybody at #cemetech and #omnimaga who helped me develop 
+# and test this! :D
+# 
+# Patches are always welcome for fixes and new features! ;)
+# Project website: http://code.google.com/p/wxwabbitemu/
+# 
+
+# Do not change this!
+MINVER="2.8"
+
+# Variables
+# CC - path to C compiler. Can be shortened to just the program name if
+# it's in your PATH.
+CC="gcc"
+
+# CPP - path to C++ compiler. Can be shortened to just the program name
+# if it's in your PATH.
+CPP="g++"
+
+# LD - path to linker. Can be shortened to just the program name if it's
+# in your PATH.
+LD="ld"
+
+# CCFLAGS - additional arguments to add on to the C compiler.
+CCFLAGS="-c -g -w -I . `wx-config --version=2.8 --cflags 2>/dev/null` -ggdb -I core -I hardware -I utilities -I gui -I interface"
+CCDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
+
+# CPPFLAGS - additional arguments to add on to the C++ compiler.
+CPPFLAGS="-c -g -w -I . `wx-config --version=2.8 --cppflags 2>/dev/null` -ggdb -I core -I hardware -I utilities -I gui -I interface"
+CPPDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
+
+# LDFLAGS - additional or required arguments to add on to the linker.
+LDFLAGS="`wx-config --version=2.8 --libs 2>/dev/null`"
+
+########################################################
+# That's all! DO NOT CHANGE ANY VARIABLES BELOW!
+########################################################
+
+IGNORE_ERRORS=0
+NO_COLORS=0
+CLEAN_EVERYTHING=0
+OVERWRITE=0
+USE_BUILD_HASH=0
+
+# Functions
+
+##################################
+# Argument parsing, help functions
+##################################
+function parsearg() {
+	args="$@"
+	
+	for arg in "$@"
+	do
+		case "$arg" in
+			'-i' | '--ignore-errors' )
+				printbold "Will ignore any compiler errors."
+				IGNORE_ERRORS=1
+				;;
+			'-n' | '--no-colors' )
+				NO_COLORS=1
+				printbold "Disabled all color output."
+				;;
+			'-c' | '--clean' )
+				printbold "Will clean up the build and remove all compiled files."
+				CLEAN_EVERYTHING=1
+				;;
+			'-b' | '--build-hash' )
+				printbold "Will use build hashes to speed up building."
+				USE_BUILD_HASH=1
+				;;
+			'-w' | '--overwrite' )
+				printbold "Will overwrite any old compiled files, including object files."
+				OVERWRITE=1
+				;;
+			'-h' | '--help' )
+				showhelp
+				;;
+			*)
+				echo "ERROR: Invalid option/argument."
+				showhelp 1
+				;;
+		esac
+	done
+}
+
+# Print help, and exit with error code from input, or just 0 for normal
+# help.
+function showhelp() {
+	echo "wxWabbitemu v0.1 ALPHA"
+	echo "Usage: $0 [OPTION]"
+	echo "This script builds wxWabbitemu."
+	echo ""
+	echo "Options/arguments:"
+	echo "	-i, --ignore-errors	Ignore compiling errors. This should only be used for"
+	echo "						debugging."
+	echo "	-n, --no-colors		Disable color output."
+	echo "	-c, --clean			Remove all built files, including object files."
+	echo "	-b, --build-hash	Use build hashing to only recompile changed files."
+	echo "	-w, --overwrite		Overwrite any existing object/built files."
+	echo "	-h, --help			Show this help."
+	set="`assertIsSet 1`"
+	if [ "$set" = "NOTSET" ];then
+		exit 0
+	else
+		exit $1
+	fi
+}
+
+##################################
+# Printing functions
+##################################
+
+# Generate backstep characters based on number of characters
+# inputted into this function.
+function genbackstep() {
+	totalchars=`printf "$1" | wc -m`
+	curchars=0
+	bstep=""
+	
+	while :
+	do
+		bstep="$bstep""\b"
+		
+		curchars=`expr $curchars + 1`
+		if [ "$curchars" = "$totalchars" ];then
+			break
+		fi
+	done
+	
+	echo "$bstep"
+	return
+}
+
+function printsfail() {
+	if [ "$NO_COLORS" = "0" ];then
+		printf "\033[1m\033[31m""$@""\033[0m\n"
+	else
+		printf "$@""\n"
+	fi
+}
+
+function printfail() {
+	backstep=`genbackstep "$1"`
+	if [ "$NO_COLORS" = "0" ];then
+		printf "$backstep""\033[1m\033[31m""$@"" FAILED!""\033[0m\n"
+	else
+		printf "$backstep""""$@"" FAILED!\n"
+	fi
+}
+
+function printsdone() {
+	if [ "$NO_COLORS" = "0" ];then
+		printf "\033[32m""$@""\033[0m\n"
+	else
+		printf "$@""\n"
+	fi
+}
+
+function printdone() {
+	backstep=`genbackstep "$1"`
+	if [ "$NO_COLORS" = "0" ];then
+		printf "$backstep""\033[32m""$@"" done!""\033[0m\n"
+	else
+		printf "$backstep""""$@"" done!\n"
+	fi
+}
+
+function printwork() {
+	backstep=`genbackstep "$1"`
+	if [ "$NO_COLORS" = "0" ];then
+		printf "\033[34m""$@""\033[0m"
+	else
+		printf "$@"
+	fi
+}
+
+function printbold() {
+	if [ "$NO_COLORS" = "0" ];then
+		printf "\033[1m""$@""\033[0m\n"
+	else
+		printf "$@""\n"
+	fi
+}
+
+##################################
+# Version check function
+##################################
+function versionCheck() {
+	printwork "Checking for wxWidgets header/dev files..."
+	testpath=`which wx-config`
+	if [ ! "$?" = "0" ];then
+		printfail "Checking for wxWidgets header/dev files..."
+		echo "ERROR: wx-config was not found. Please install the wxWidgets"
+		echo "2.8+ headers and then try again."
+		exit 1
+	else
+		printdone "Checking for wxWidgets header/dev files..."
+		printwork "Found wx-config, checking version..."
+		wxversion=`wx-config --version`
+		vercheckmajor=`echo "$wxversion" | cut -f1 -d'.'`
+		vercheckminor=`echo "$wxversion" | cut -f2 -d'.'`
+		vercheckrev=`echo "$wxversion" | cut -f3 -d'.'`
+		basevermajor=`echo "$MINVER" | cut -f1 -d'.'`
+		baseverminor=`echo "$MINVER" | cut -f2 -d'.'`
+		baseverrev=`echo "$MINVER" | cut -f3 -d'.'`
+		if [ "$vercheckmajor" = "" ];then
+			printfail "Found wx-config, checking version..."
+			echo "ERROR: Something went horribly wrong in the builder. Please report this"
+			echo "bug immediately. Error code: ERR_VERCHECK_MAJOR_BLANK"
+			exit 1
+		else
+			if [ "$basevermajor" = "" ];then
+				printfail "Found wx-config, checking version..."
+				echo "ERROR: Something went horribly wrong in the builder. Please report this"
+				echo "bug immediately. Error code: ERR_BASEVER_MAJOR_BLANK"
+				exit 1
+			else
+				majorcomp=`expr $vercheckmajor ">=" $basevermajor`
+			fi
+		fi
+		
+		if [ "$vercheckminor" = "" ];then
+			if [ "$baseverminor" = "" ];then
+				minorcomp="1"
+			else
+				minorcomp="0"
+			fi
+		else
+			if [ "$baseverminor" = "" ];then
+				minorcomp="1"
+			else
+				minorcomp=`expr $vercheckminor ">=" $baseverminor`
+			fi
+		fi
+		
+		if [ "$vercheckrev" = "" ];then
+			if [ "$baseverrev" = "" ];then
+				revcomp="1"
+			else
+				revcomp="0"
+			fi
+		else
+			if [ "$baseverrev" = "" ];then
+				revcomp="1"
+			else
+				revcomp=`expr $vercheckrev ">=" $baseverrev`
+			fi
+		fi
+		
+		if [ "$majorcomp" = "1" ] && [ "$minorcomp" = "1" ] && [ "$revcomp" = "1" ];then
+			printf `genbackstep "Found wx-config, checking version..."`
+			printsdone "Found wx-config, checking version... done! Found $wxversion"', which is >= '"$MINVER"
+		else
+			printfail "Found wx-config, checking version..."
+			echo "ERROR: The required wxWidgets version is $MINVER"", but you have $wxversion""."
+			echo "Please install a newer version, then try again."
+			echo "Details: Major passed: $majorcomp Minor passed: $minorcomp Rev. passed: $revcomp"
+			exit 1
+		fi
+	fi
+}
+
+##################################
+# Building functions
+##################################
+
+# C compile function
+function COMPILEC() {
+	# Check to see if we've been given a list of files, or just one file.
+	lcheck=`printf "$1" | grep ' '`
+	if [ "$lcheck" = "" ];then
+		for csource in $@
+		do
+			basefilename=${csource##*/}
+			objfile=`printf "$basefilename" | sed 's/[.]c/.o/'`
+			if [ ! -f "$1" ];then
+				printsfail "ERROR: Source file $1 doesn't exist"'!'"This is a severe bug."
+				printsfail "Please report this error to the developers immediately."
+				exit 1
+			fi
+			if [ "$CLEAN_EVERYTHING" = "1" ];then
+				printwork "Removing $objfile""..."
+				rm "obj/""$objfile" 2>/dev/null >/dev/null
+				if [ ! "$?" = "0" ];then
+					printfail "Removing $objfile""..."
+					if [ ! $IGNORE_ERRORS = 1 ];then
+						exit 1
+					fi
+				fi
+				printdone "Removing $objfile""..."
+				continue
+			fi
+			
+			if [ "$USE_BUILD_HASH" = "1" ];then
+				if [ ! -f .buildhash ];then
+					printwork "Creating build hash..."
+					if [ -d .buildhash ];then
+						printfail "Creating build hash..."
+						echo ".buildhash is a file. A file is required. Please remove it, and then try again."
+						exit 1
+					fi
+					touch .buildhash
+					if [ ! "$?" = "0" ];then
+						printfail "Creating build hash..."
+						echo "Failed to create build hash."
+						exit 1
+					fi
+					printdone "Creating build hash..."
+				fi
+				
+				bhcheck=`cat .buildhash | grep "^$basefilename "`
+				if [ ! "$bhcheck" = "" ];then
+					md5check=`cat .buildhash | grep "^$basefilename " | cut -f2 -d' '`
+					curmd5=`md5sum $csource | cut -f1 -d' '`
+					if [ ! "$md5check" = "$curmd5" ];then
+						printbold "Detected file change, so building."
+						mod1=`cat .buildhash | sed '/'$basefilename' /d'`
+						echo "$mod1" > .buildhash
+						echo "$basefilename $curmd5" >> .buildhash
+					else
+						if [ -f "obj/""$objfile" ]; then
+							continue
+						fi
+					fi
+				else
+					curmd5=`md5sum $csource | cut -f1 -d' '`
+					echo "$basefilename $curmd5" >> .buildhash
+				fi
+			else
+				if [ -f "obj/""$objfile" ] && [ "$OVERWRITE" = "0" ];then
+					printsdone "Skipping $csource"", since it's already built."
+					continue
+				fi
+			fi
+			
+			if [ ! -d obj/ ];then
+				printwork "Creating object directory..."
+				if [ -f obj ];then
+					printfail "Creating object directory..."
+					echo "obj is a file. A directory is required. Please remove it, and then try again."
+					exit 1
+				fi
+				mkdir obj
+				if [ ! "$?" = "0" ];then
+					printfail "Creating object directory..."
+					echo "Failed to create directory obj."
+					exit 1
+				fi
+				printdone "Creating object directory..."
+			fi
+			
+			printwork "Building $csource""..."
+			$CPP $CCFLAGS $csource -o obj/"$objfile" $CCDEFINES
+			checkfail $? "Building $csource""..."
+		done
+	else
+		basefilename=${1##*/}
+		objfile=`printf "$basefilename" | sed 's/[.]c/.o/'`
+		if [ ! -f "$1" ];then
+			printsfail "ERROR: Source file $1 doesn't exist"'!'"This is a severe bug."
+			printsfail "Please report this error to the developers immediately."
+			exit 1
+		fi
+		if [ "$CLEAN_EVERYTHING" = "1" ];then
+			printwork "Removing $objfile""..."
+			rm "obj/""$objfile" 2>/dev/null >/dev/null
+			if [ ! "$?" = "0" ];then
+				printfail "Removing $objfile""..."
+				if [ ! $IGNORE_ERRORS = 1 ];then
+					exit 1
+				fi
+			fi
+			printdone "Removing $objfile""..."
+			continue
+		fi
+		
+		if [ "$USE_BUILD_HASH" = "1" ];then
+			if [ ! -f .buildhash ];then
+				printwork "Creating build hash..."
+				if [ -d .buildhash ];then
+					printfail "Creating build hash..."
+					echo ".buildhash is a file. A file is required. Please remove it, and then try again."
+					exit 1
+				fi
+				touch .buildhash
+				if [ ! "$?" = "0" ];then
+					printfail "Creating build hash..."
+					echo "Failed to create build hash."
+					exit 1
+				fi
+				printdone "Creating build hash..."
+			fi
+			
+			bhcheck=`cat .buildhash | grep "^$basefilename "`
+			if [ ! "$bhcheck" = "" ];then
+				md5check=`cat .buildhash | grep "^$basefilename " | cut -f2 -d' '`
+				curmd5=`md5sum $1 | cut -f1 -d' '`
+				if [ ! "$md5check" = "$curmd5" ];then
+					printbold "Detected file change, so building."
+					mod1=`cat .buildhash | sed '/'$basefilename' /d'`
+					echo "$mod1" > .buildhash
+					echo "$basefilename $curmd5" >> .buildhash
+				else
+					if [ -f "obj/""$objfile" ]; then
+						continue
+					fi
+				fi
+			else
+				curmd5=`md5sum $1 | cut -f1 -d' '`
+				echo "$basefilename $curmd5" >> .buildhash
+			fi
+		else
+			if [ -f "obj/""$objfile" ] && [ "$OVERWRITE" = "0" ];then
+				printsdone "Skipping $1"", since it's already built."
+				continue
+			fi
+		fi
+		
+		if [ ! -d obj/ ];then
+			printwork "Creating object directory..."
+			if [ -f obj ];then
+				printfail "Creating object directory..."
+				echo "obj is a file. A directory is required. Please remove it, and then try again."
+				exit 1
+			fi
+			mkdir obj
+			if [ ! "$?" = "0" ];then
+				printfail "Creating object directory..."
+				echo "Failed to create directory obj."
+				exit 1
+			fi
+			printdone "Creating object directory..."
+		fi
+		
+		printwork "Building $1""..."
+		$CC $CCFLAGS $1 -o obj/"$objfile" $CCDEFINES
+		checkfail $? "Building $1""..."
+	fi
+}
+
+# C++ compile function
+function COMPILECPP() {
+	# Check to see if we've been given a list of files, or just one file.
+	lcheck=`printf "$1" | grep ' '`
+	if [ "$lcheck" = "" ];then
+		for cppsource in $@
+		do
+			basefilename=${cppsource##*/}
+			objfile=`printf "$basefilename" | sed 's/[.]cpp/.o/'`
+			if [ ! -f "$1" ];then
+				printsfail "ERROR: Source file $1 doesn't exist"'!'"This is a severe bug."
+				printsfail "Please report this error to the developers immediately."
+				exit 1
+			fi
+			if [ "$CLEAN_EVERYTHING" = "1" ];then
+				printwork "Removing $objfile""..."
+				rm "obj/""$objfile" 2>/dev/null >/dev/null
+				if [ ! "$?" = "0" ];then
+					printfail "Removing $objfile""..."
+					if [ ! $IGNORE_ERRORS = 1 ];then
+						exit 1
+					fi
+				fi
+				printdone "Removing $objfile""..."
+				continue
+			fi
+			
+			if [ "$USE_BUILD_HASH" = "1" ];then
+				if [ ! -f .buildhash ];then
+					printwork "Creating build hash..."
+					if [ -d .buildhash ];then
+						printfail "Creating build hash..."
+						echo ".buildhash is a file. A file is required. Please remove it, and then try again."
+						exit 1
+					fi
+					touch .buildhash
+					if [ ! "$?" = "0" ];then
+						printfail "Creating build hash..."
+						echo "Failed to create build hash."
+						exit 1
+					fi
+					printdone "Creating build hash..."
+				fi
+				
+				bhcheck=`cat .buildhash | grep "^$basefilename "`
+				if [ ! "$bhcheck" = "" ];then
+					md5check=`cat .buildhash | grep "^$basefilename " | cut -f2 -d' '`
+					curmd5=`md5sum $cppsource | cut -f1 -d' '`
+					if [ ! "$md5check" = "$curmd5" ];then
+						printbold "Detected file change, so building."
+						mod1=`cat .buildhash | sed '/'$basefilename' /d'`
+						echo "$mod1" > .buildhash
+						echo "$basefilename $curmd5" >> .buildhash
+					else
+						if [ -f "obj/""$objfile" ]; then
+							continue
+						fi
+					fi
+				else
+					curmd5=`md5sum $cppsource | cut -f1 -d' '`
+					echo "$basefilename $curmd5" >> .buildhash
+				fi
+			else
+				if [ -f "obj/""$objfile" ] && [ "$OVERWRITE" = "0" ];then
+					printsdone "Skipping $cppsource"", since it's already built."
+					continue
+				fi
+			fi
+			
+			if [ ! -d obj/ ];then
+				printwork "Creating object directory..."
+				if [ -f obj ];then
+					printfail "Creating object directory..."
+					echo "obj is a file. A directory is required. Please remove it, and then try again."
+					exit 1
+				fi
+				mkdir obj
+				if [ ! "$?" = "0" ];then
+					printfail "Creating object directory..."
+					echo "Failed to create directory obj."
+					exit 1
+				fi
+				printdone "Creating object directory..."
+			fi
+			
+			printwork "Building $cppsource""..."
+			$CPP $CPPFLAGS $cppsource -o obj/"$objfile" $CPPDEFINES
+			checkfail $? "Building $cppsource""..."
+		done
+	else
+		basefilename=${1##*/}
+		objfile=`printf "$basefilename" | sed 's/[.]cpp/.o/'`
+		if [ ! -f "$1" ];then
+			printsfail "ERROR: Source file $1 doesn't exist"'!'"This is a severe bug."
+			printsfail "Please report this error to the developers immediately."
+			exit 1
+		fi
+		if [ "$CLEAN_EVERYTHING" = "1" ];then
+			printwork "Removing $objfile""..."
+			rm "obj/""$objfile" 2>/dev/null >/dev/null
+			if [ ! "$?" = "0" ];then
+				printfail "Removing $objfile""..."
+				if [ ! $IGNORE_ERRORS = 1 ];then
+					exit 1
+				fi
+			fi
+			printdone "Removing $objfile""..."
+			continue
+		fi
+		
+		if [ "$USE_BUILD_HASH" = "1" ];then
+			if [ ! -f .buildhash ];then
+				printwork "Creating build hash..."
+				if [ -d .buildhash ];then
+					printfail "Creating build hash..."
+					echo ".buildhash is a file. A file is required. Please remove it, and then try again."
+					exit 1
+				fi
+				touch .buildhash
+				if [ ! "$?" = "0" ];then
+					printfail "Creating build hash..."
+					echo "Failed to create build hash."
+					exit 1
+				fi
+				printdone "Creating build hash..."
+			fi
+			
+			bhcheck=`cat .buildhash | grep "^$basefilename "`
+			if [ ! "$bhcheck" = "" ];then
+				md5check=`cat .buildhash | grep "^$basefilename " | cut -f2 -d' '`
+				curmd5=`md5sum $1 | cut -f1 -d' '`
+				if [ ! "$md5check" = "$curmd5" ];then
+					printbold "Detected file change, so building."
+					mod1=`cat .buildhash | sed '/'$basefilename' /d'`
+					echo "$mod1" > .buildhash
+					echo "$basefilename $curmd5" >> .buildhash
+				else
+					if [ -f "obj/""$objfile" ]; then
+						continue
+					fi
+				fi
+			else
+				curmd5=`md5sum $1 | cut -f1 -d' '`
+				echo "$basefilename $curmd5" >> .buildhash
+			fi
+		else
+			if [ -f "obj/""$objfile" ] && [ "$OVERWRITE" = "0" ];then
+				printsdone "Skipping $1"", since it's already built."
+				continue
+			fi
+		fi
+		
+		if [ ! -d obj/ ];then
+			printwork "Creating object directory..."
+			if [ -f obj ];then
+				printfail "Creating object directory..."
+				echo "obj is a file. A directory is required. Please remove it, and then try again."
+				exit 1
+			fi
+			mkdir obj
+			if [ ! "$?" = "0" ];then
+				printfail "Creating object directory..."
+				echo "Failed to create directory obj."
+				exit 1
+			fi
+			printdone "Creating object directory..."
+		fi
+		
+		printwork "Building $1""..."
+		$CPP $CPPFLAGS $1 -o obj/"$objfile" $CPPDEFINES
+		checkfail $? "Building $1""..."
+	fi
+}
+
+# Object file linking function
+function LINKLD() {
+	outfile="$2"
+	if [ "$CLEAN_EVERYTHING" = "1" ];then
+		printwork "Removing $outfile""..."
+		rm "$outfile" 2>/dev/null >/dev/null
+		if [ ! "$?" = "0" ];then
+			printfail "Removing $outfile""..."
+			exit 1
+		fi
+		printdone "Removing $outfile""..."
+		return
+	fi
+	
+	#if [ -f "$outfile" ] && [ "$OVERWRITE" = "0" ];then
+	#	printsdone "Skipping target $outfile"", since it's already built."
+	#else	
+		printwork "Linking $1""..."
+		$CPP $1 $LDFLAGS -o "$outfile"
+		checkfail $? "Linking $1""..."
+	#fi
+}
+
+
+# Check if the process failed. If it did, check to see if the user
+# wanted to ignore all errors. If the user did, continue on. If not,
+# exit.
+function checkfail() {
+	if [ ! "$1" = "0" ];then
+		printfail "$2"
+		if [ ! $IGNORE_ERRORS = 1 ];then
+			echo "Compile failed."
+			exit 1
+		else
+			echo "Error ignored, continuing."
+		fi
+	else
+		printdone "$2"
+	fi
+}
+
+# Misc functions
+assertIsSet() {
+    [[ ! ${!1} && ${!1-_} ]] && {
+        echo "NOTSET"
+    }
+}
+
+parsearg $@
+versionCheck
+########################################################
+# You can modify the compile actions here.
+# COMPILEC compiles a .c file, COMPILECPP compiles a
+# .cpp file, and LINKLD combines all *.o files together
+# into one binary.
+########################################################
+COMPILEC core/*.c
+#COMPILEC debugger/*.c
+COMPILEC debugger/guidebug_wx.c
+#COMPILECPP debugger/*.cpp
+COMPILEC gui/*.c
+COMPILECPP gui/*.cpp
+COMPILEC hardware/*.c
+COMPILEC interface/state.c
+COMPILEC interface/calc.c
+COMPILEC utilities/var.c
+COMPILEC utilities/savestate.c
+COMPILEC utilities/sendfiles.c
+COMPILEC utilities/label.c
+COMPILEC utilities/gif.c
+COMPILEC utilities/gifhandle.c
+LINKLD "obj/*.o" "wxwabbitemu"
+
+########################################################
+# END COMPILE ACTIONS
+########################################################
+if [ ! "$CLEAN_EVERYTHING" = "1" ];then
+	printbold "Building complete! If everything went well, a nice little program"
+	printbold "called wxwabbitemu is ready to run"'!'
+	printbold '(Run with ./wxwabbitemu)'
+fi
