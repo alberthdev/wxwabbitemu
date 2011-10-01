@@ -697,7 +697,7 @@ COMPILEC interface/state.c
 COMPILEC interface/calc.c
 COMPILEC utilities/var.c
 COMPILEC utilities/savestate.c
-COMPILEC utilities/SendFile.c
+COMPILECPP utilities/SendFile.cpp
 COMPILEC utilities/label.c
 COMPILEC utilities/gif.c
 COMPILEC utilities/gifhandle.c
