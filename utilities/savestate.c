@@ -987,7 +987,7 @@ void WriteSave(const char *fn, SAVESTATE_t* save,int compress) {
 		// GNU C++ compiler says tmpnam is dangerous...
 		// ...so mkstemp is used instead.
 		char template_name[] = "";
-		strcat(template_name, getenv("appdata"));
+		strcat(template_name, getenv("appdata");
 		strcat(template_name, "wabbitemuXXXXXXX");
 		int tempfd;
 		tempfd=mkstemp(template_name); 
@@ -1092,10 +1092,14 @@ SAVESTATE_t* ReadSave(FILE *ifile) {
 		StringCbCat(temp_save, sizeof(temp_save), tmpfn);
 		_tfopen_s(&tmpfile, temp_save, _T("wb"));
 #else
-		tmpnam(tmpfn);
-		strcpy(temp_save, getenv("appdata"));
-		strcat(temp_save, tmpfn);
-		tmpfile = fopen(temp_save,"wb");
+		// GNU C++ compiler says tmpnam is dangerous...
+		// ...so mkstemp is used instead.
+		char template_name[] = "";
+		strcat(template_name, getenv("appdata");
+		strcat(template_name, "wabbitemuXXXXXXX");
+		int tempfd;
+		tempfd=mkstemp(template_name); 
+		tmpfile = fdopen(tempfd,"wb");
 #endif
 		if (!tmpfile) {
 			return NULL;
