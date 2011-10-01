@@ -1,5 +1,3 @@
-#include "stdafx.h"
-
 #include "81hw.h"
 #include "lcd.h"
 #include "keys.h"

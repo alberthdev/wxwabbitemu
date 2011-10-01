@@ -163,7 +163,7 @@ BOOL DelChunk(SAVESTATE_t *save, char *tag) {
 
 void CheckPNT(CHUNK_t* chunk) {
 	if (chunk->size < chunk->pnt) {
-		_tprintf_s(_T("Chunk size is %d while pnt is %d \n"), chunk->size, chunk->pnt);
+		printf("Chunk size is %d while pnt is %d \n", chunk->size, chunk->pnt);
 	}
 }
 
@@ -171,7 +171,7 @@ BOOL WriteChar(CHUNK_t* chunk, char value) {
 	unsigned char * tmppnt;
 	tmppnt = (unsigned char *) realloc(chunk->data, chunk->size + sizeof(char));
 	if (tmppnt == NULL) {
-		_putts(_T("Error could not realloc data"));
+		printf("Error could not realloc data");
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -187,7 +187,7 @@ BOOL WriteShort(CHUNK_t* chunk, uint16_t value) {
 	unsigned char  *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
-		_putts(_T("Error could not realloc data"));
+		printf("Error could not realloc data");
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -207,7 +207,7 @@ BOOL WriteInt(CHUNK_t* chunk, uint32_t value) {
 	unsigned char *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
-		_putts(_T("Error could not realloc data"));
+		printf("Error could not realloc data");
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -228,7 +228,7 @@ BOOL WriteLong(CHUNK_t* chunk, uint64_t value) {
 	unsigned char *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char  *) realloc(chunk->data, chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
-		_putts(_T("Error could not realloc data"));
+		printf("Error could not realloc data");
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -249,7 +249,7 @@ BOOL WriteFloat(CHUNK_t* chunk, float value) {
 	unsigned char *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
-		_putts(_T("Error could not realloc data"));
+		printf("Error could not realloc data");
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -269,7 +269,7 @@ BOOL WriteDouble(CHUNK_t* chunk, double value) {
 	unsigned char *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
-		_putts(_T("Error could not realloc data"));
+		printf("Error could not realloc data");
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -644,7 +644,7 @@ SAVESTATE_t* SaveSlot(void *lpInput) {
 	runsave = lpCalc->running;
 	lpCalc->running = FALSE;
 	
-	save = CreateSave(_T("Revsoft"), _T("Test save"), lpCalc->model);
+	save = CreateSave("Revsoft", "Test save", lpCalc->model);
 
 	SaveCPU(save, &lpCalc->cpu);
 	SaveMEM(save, &lpCalc->mem_c);
@@ -984,10 +984,14 @@ void WriteSave(const char *fn, SAVESTATE_t* save,int compress) {
 		StringCbCat(temp_save, sizeof(temp_save), tmpfn);
 		_tfopen_s(&ofile, temp_save, _T("wb"));
 #else
-		tmpnam(tmpfn);
-		strcpy(temp_save, getenv("appdata"));
-		strcat(temp_save, tmpfn);
-		ofile = fopen(temp_save,"wb");
+		// GNU C++ compiler says tmpnam is dangerous...
+		// ...so mkstemp is used instead.
+		char template_name[] = "";
+		strcat(template_name, getenv("appdata"));
+		strcat(template_name, "wabbitemuXXXXXXX");
+		int tempfd;
+		tempfd=mkstemp(template_name); 
+		ofile = fdopen(tempfd,"wb");
 #endif
 	}
 		
@@ -1050,7 +1054,7 @@ void WriteSave(const char *fn, SAVESTATE_t* save,int compress) {
 				}
 #endif
 			default:
-				_putts(_T("Error bad compression format selected."));
+				printf("Error bad compression format selected.");
 				break;
 		}
 		fclose(ofile);

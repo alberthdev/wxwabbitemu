@@ -34,7 +34,7 @@
 #else
 #define TRUE 1
 #define FALSE 0
-typedef int BOOL;
+//typedef int BOOL;
 #endif
 #include "gui_wx.h"
 //#include "gif.h" // uhh...

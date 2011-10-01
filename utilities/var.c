@@ -1,12 +1,13 @@
 #include "var.h"
 #include "calc.h"
 #include "miniunz.h"
+#include <string.h>
 
 char self_test[] = "Self Test?";
 char catalog[] = "CATALOG";
 char txt73[] = "GRAPH  EXPLORER  SOFTWARE";
 char txt86[] = "Already Installed";
-
+#define ZeroMemory(p, sz) memset((p), 0, (sz))
 
 #define tmpread( fp ) \
 	tmp = fgetc(fp); \
@@ -16,9 +17,15 @@ char txt86[] = "Already Installed";
 		return NULL; \
 	}
 
+int strnicmp(char *s,char *t,int n) {
+	int cc;
+	if (n==0) return 0;
+	do cc = tolower(*s++) - tolower(*t++); while (!cc && s[-1] && --n>0);
+	return cc;
+}
 
 int CmpStringCase(char *str1, unsigned char *str2) {
-	return _strnicmp(str1, (char *) str2, strlen(str1));
+	return strnicmp(str1, (char *) str2, strlen(str1));
 }
 
 
@@ -410,16 +417,16 @@ void ReadTiFileHeader(FILE *infile, TIFILE_t *tifile) {
 	fread(headerString, 1, 8, infile);
 	rewind(infile);
 	
-	if (!_strnicmp(headerString, DETECT_STR, 8) ||
-		!_strnicmp(headerString, DETECT_CMP_STR, 8)) {
+	if (!strnicmp(headerString, DETECT_STR, 8) ||
+		!strnicmp(headerString, DETECT_CMP_STR, 8)) {
 		tifile->type = SAV_TYPE;
 		return;
 	}
 
-	if (!_strnicmp(headerString, FLASH_HEADER, 8)) {
+	if (!strnicmp(headerString, FLASH_HEADER, 8)) {
 		tifile->type = FLASH_TYPE;
 		tifile->flash = (TIFLASH_t*) malloc(sizeof(TIFLASH_t));
-		ZeroMemory(tifile->flash, sizeof(TIFLASH_t));
+		memset(tifile->flash, 0, sizeof(TIFLASH_t)); // ZeroMemory is EVIL
 		if (tifile->flash == NULL) {
 			FreeTiFile(tifile);
 			return;
@@ -440,12 +447,12 @@ void ReadTiFileHeader(FILE *infile, TIFILE_t *tifile) {
 	}
 
 	/* It maybe a rom if it doesn't have the Standard header */
-	if (_strnicmp(headerString, "**TI73**", 8) &&
-		_strnicmp(headerString, "**TI82**", 8) &&
-		_strnicmp(headerString, "**TI83**", 8) &&
-		_strnicmp(headerString, "**TI83F*", 8) &&
-		_strnicmp(headerString, "**TI85**", 8) &&
-		_strnicmp(headerString, "**TI86**", 8)) {
+	if (strnicmp(headerString, "**TI73**", 8) &&
+		strnicmp(headerString, "**TI82**", 8) &&
+		strnicmp(headerString, "**TI83**", 8) &&
+		strnicmp(headerString, "**TI83F*", 8) &&
+		strnicmp(headerString, "**TI85**", 8) &&
+		strnicmp(headerString, "**TI86**", 8)) {
 		tifile->type = ROM_TYPE;
 		return;
 	}
@@ -461,12 +468,12 @@ void ReadTiFileHeader(FILE *infile, TIFILE_t *tifile) {
 		ptr[i] = tmp;
 	}
 
-	if (!_strnicmp((char *) tifile->sig, "**TI73**", 8)) tifile->model = TI_73;
-	else if (!_strnicmp((char *) tifile->sig, "**TI82**", 8)) tifile->model = TI_82;
-	else if (!_strnicmp((char *) tifile->sig, "**TI83**", 8)) tifile->model = TI_83;
-	else if (!_strnicmp((char *) tifile->sig, "**TI83F*", 8)) tifile->model = TI_83P;
-	else if (!_strnicmp((char *) tifile->sig, "**TI85**", 8)) tifile->model = TI_85;
-	else if (!_strnicmp((char *) tifile->sig, "**TI86**", 8)) tifile->model = TI_86;
+	if (!strnicmp((char *) tifile->sig, "**TI73**", 8)) tifile->model = TI_73;
+	else if (!strnicmp((char *) tifile->sig, "**TI82**", 8)) tifile->model = TI_82;
+	else if (!strnicmp((char *) tifile->sig, "**TI83**", 8)) tifile->model = TI_83;
+	else if (!strnicmp((char *) tifile->sig, "**TI83F*", 8)) tifile->model = TI_83P;
+	else if (!strnicmp((char *) tifile->sig, "**TI85**", 8)) tifile->model = TI_85;
+	else if (!strnicmp((char *) tifile->sig, "**TI86**", 8)) tifile->model = TI_86;
 	else {
 		FreeTiFile(tifile);
 		return;
@@ -606,14 +613,14 @@ TIFILE_t* newimportvar(LPCTSTR filePath, BOOL only_check_header) {
 	FILE *infile = NULL;
 	TIFILE_t *tifile;
 	
-	TCHAR extension[5] = _T("");
-	const TCHAR *pext = _tcsrchr(filePath, _T('.'));
+	char extension[5] = "";
+	const char *pext = strrchr(filePath, _T('.'));
 	if (pext != NULL)
 	{
 #ifdef _WINDOWS
 		StringCbCopy(extension, sizeof(extension), pext);
 #else
-		_tcscpy_s(extension, pext);
+		strcpy(extension, pext);
 #endif
 	}
 
@@ -621,18 +628,18 @@ TIFILE_t* newimportvar(LPCTSTR filePath, BOOL only_check_header) {
 	if (tifile == NULL)
 		return NULL;
 
-	if (!_tcsicmp(extension, _T(".lab"))) {
+	if (!strcmp(extension, ".lab")) {
 		tifile->type = LABEL_TYPE;
 		return tifile;
 	}
 
-	if (!_tcsicmp(extension, _T(".brk"))) {
+	if (!strcmp(extension, ".brk")) {
 		tifile->type = BREAKPOINT_TYPE;
 		return tifile;
 	}
 
 #ifdef _WINDOWS
-	if (!_tcsicmp(extension, _T(".tig")) || !_tcsicmp(extension, _T(".zip")) ) {
+	if (!strcmp(extension, ".tig") || !strcmp(extension, ".zip") ) {
 		tifile->type = ZIP_TYPE;
 		if (!only_check_header)
 			ImportZipFile(filePath, tifile);

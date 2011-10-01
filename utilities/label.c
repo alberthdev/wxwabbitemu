@@ -6,6 +6,13 @@
 #include "bcalls.h"
 #include "flags.h"
 
+int strnicmp(char *s,char *t,int n) {
+	int cc;
+	if (n==0) return 0;
+	do cc = tolower(*s++) - tolower(*t++); while (!cc && s[-1] && --n>0);
+	return cc;
+}
+
 label_struct *lookup_label(LPCALC lpCalc, char *label_name) {
 	int i;
 	for (i = 0; lpCalc->labels[i].name != NULL; i++) {
@@ -76,12 +83,12 @@ int labels_app_load(LPCALC lpCalc, LPCTSTR lpszFileName) {
 #ifdef _UNICODE
 	char readBuf[256];
 #endif
-	TCHAR buffer[256];
-	TCHAR name[256];
+	char buffer[256];
+	char name[256];
 #ifdef _WINDOWS
 	TCHAR *fileName = ((TCHAR *) lpszFileName) + _tcslen(lpszFileName);
 #else
-	TCHAR *fileName = ((TCHAR *) lpszFileName) + strlen(lpszFileName);
+	char *fileName = ((char *) lpszFileName) + strlen(lpszFileName);
 #endif
 	while (*--fileName != '\\');
 	fileName++;
@@ -95,7 +102,7 @@ int labels_app_load(LPCALC lpCalc, LPCTSTR lpszFileName) {
 	labelFile = fopen(lpszFileName, "r");
 #endif
 	if (labelFile == NULL) {
-		_putts(_T("Error opening label files."));
+		puts("Error opening label files.");
 		return 1;
 	}
 	
@@ -121,7 +128,7 @@ int labels_app_load(LPCALC lpCalc, LPCTSTR lpszFileName) {
 			i = sscanf(buffer, "%s = $%X", name, &equate);
 #endif
 		if (i == 2) {
-			length = (int) _tcslen(name);
+			length = (int) strlen(name);
 			if (!label_search_tios(name, equate)) {
 				
 				label->name = (TCHAR *) malloc((length + 1) * sizeof(TCHAR));
@@ -149,7 +156,7 @@ int labels_app_load(LPCALC lpCalc, LPCTSTR lpszFileName) {
 							TCHAR *ptr = applist.apps[i].name + len - 1;
 							while (isspace(*ptr--))
 								len--;
-							if (!_strnicmp(fileName, applist.apps[i].name, len)) {
+							if (!strnicmp(fileName, applist.apps[i].name, len)) {
 								label->page = applist.apps[i].page;
 								break;
 							}

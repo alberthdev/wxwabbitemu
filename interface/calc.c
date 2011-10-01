@@ -21,7 +21,7 @@
 #else
 static void gui_debug(calc_t *calc) {}
 #endif
-wxString CalcModelTxt[11] = 
+/*wxString CalcModelTxt[11] = 
 {	wxT("TI_81"),
 	wxT("TI-82"),
 	wxT("TI-83"),
@@ -32,7 +32,7 @@ wxString CalcModelTxt[11] =
 	wxT("TI-83+SE"),
 	wxT("TI-84+"),
 	wxT("TI-84+SE"),
-	wxT("???")};
+	wxT("???")};*/
 
 /*
  * Determine the slot for a new calculator.  Return a pointer to the calc
@@ -198,7 +198,7 @@ void calc_erase_certificate(unsigned char *mem, int size) {
 	return;
 }
 
-bool rom_load(LPCALC lpCalc, LPCTSTR FileName) {
+BOOL rom_load(LPCALC lpCalc, LPCTSTR FileName) {
 	if (lpCalc == NULL)
 		return FALSE;
 	TIFILE_t* tifile = newimportvar(FileName);
@@ -494,8 +494,10 @@ int calc_run_tstates(LPCALC lpCalc, time_t tstates) {
 	uint64_t time_end = tc_tstates(&lpCalc->timer_c) + tstates - lpCalc->time_error;
 
 	while (lpCalc->running) {
+		if (check_break(&lpCalc->mem_c, addr_to_waddr(&lpCalc->mem_c, lpCalc->cpu.pc)) & 1) {
 #ifdef WINVER
 			lpCalc->running = FALSE;
+			bank_t *bank = &lpCalc->mem_c.banks[mc_bank(lpCalc->cpu.pc)];
 
 			Z80_info_t z[2];
 			disassemble(&lpCalc->mem_c, REGULAR, addr_to_waddr(lpCalc->cpu.mem_c, lpCalc->cpu.pc), 1, z);
@@ -547,12 +549,12 @@ int calc_run_tstates(LPCALC lpCalc, time_t tstates) {
 	return 0;
 }
 
-bool calc_start_screenshot(calc_t *calc, const TCHAR *filename)
+BOOL calc_start_screenshot(calc_t *calc, const TCHAR *filename)
 {
 	if (gif_write_state == GIF_IDLE)
 	{
 		gif_write_state = GIF_START;
-		_tcscpy(gif_file_name, filename);
+		strcpy(gif_file_name, filename);
 		return TRUE;
 	}
 	else

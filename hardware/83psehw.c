@@ -1,5 +1,3 @@
-#include "stdafx.h"
-
 #include "lcd.h"
 #include "keys.h"
 #include "83psehw.h"

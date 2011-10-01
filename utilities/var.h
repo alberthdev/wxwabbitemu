@@ -1,6 +1,6 @@
 #ifndef VAR_H
 #define VAR_H
-
+#define ARRAYSIZE(z) (sizeof(z)/sizeof((z)[0]))
 #include "savestate.h"
 
 typedef struct INTELHEX {

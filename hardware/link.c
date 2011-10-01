@@ -4,6 +4,9 @@
 #include "lcd.h"	//lcd->active
 #include "keys.h"	//key_press
 
+#include <setjmp.h> // Needed for all setjmp() and longjmp() calls in Linux
+#define ARRAYSIZE(z) (sizeof(z)/sizeof((z)[0]))
+
 //#define DEBUG
 #define vlink(zlink) ((((zlink)->vout & 0x03)|(*((zlink)->vin) & 0x03))^3)	// Virtual Link status
 static jmp_buf exc_pkt, exc_byte; // Exceptions

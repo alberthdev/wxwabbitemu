@@ -162,7 +162,7 @@ void DispSymbol(SYMBOLS83P_t* sym) {
 
 char *App_Name_to_String(apphdr_t *app, char *buffer) {
 #ifdef WINVER
-	StringCbCopy(buffer, _tcslen(app->name) + 1, app->name);
+	StringCbCopy(buffer, strlen(app->name) + 1, app->name);
 	return buffer;
 #else
 	return strcpy(buffer, app->name);
@@ -373,7 +373,7 @@ char *symbol_to_string(CPU_t *cpu, symbol83P_t *sym, char *buffer) {
 #else
 			sprintf(p, "*10^%d", exp);
 #endif
-			p += _tcslen(p);
+			p += strlen(p);
 		} else {
 			for (i = min(exp, 0); i < sigdigs || i < exp; i++) {
 				*p++ = (i >= 0 ? FP[i] : 0) + '0';
