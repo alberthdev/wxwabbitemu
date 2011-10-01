@@ -247,7 +247,7 @@ function versionCheck() {
 			if [ "$baseverminor" = "" ];then
 				minorcomp="1"
 			else
-				minorcomp=`expr $vercheckmajor ">=" $basevermajor`
+				minorcomp=`expr $vercheckminor ">=" $baseverminor`
 			fi
 		fi
 		
@@ -301,7 +301,9 @@ function COMPILEC() {
 				rm "obj/""$objfile" 2>/dev/null >/dev/null
 				if [ ! "$?" = "0" ];then
 					printfail "Removing $objfile""..."
-					exit 1
+					if [ ! $IGNORE_ERRORS = 1 ];then
+						exit 1
+					fi
 				fi
 				printdone "Removing $objfile""..."
 				continue
@@ -382,7 +384,9 @@ function COMPILEC() {
 			rm "obj/""$objfile" 2>/dev/null >/dev/null
 			if [ ! "$?" = "0" ];then
 				printfail "Removing $objfile""..."
-				exit 1
+				if [ ! $IGNORE_ERRORS = 1 ];then
+					exit 1
+				fi
 			fi
 			printdone "Removing $objfile""..."
 			continue
@@ -471,7 +475,9 @@ function COMPILECPP() {
 				rm "obj/""$objfile" 2>/dev/null >/dev/null
 				if [ ! "$?" = "0" ];then
 					printfail "Removing $objfile""..."
-					exit 1
+					if [ ! $IGNORE_ERRORS = 1 ];then
+						exit 1
+					fi
 				fi
 				printdone "Removing $objfile""..."
 				continue
@@ -552,7 +558,9 @@ function COMPILECPP() {
 			rm "obj/""$objfile" 2>/dev/null >/dev/null
 			if [ ! "$?" = "0" ];then
 				printfail "Removing $objfile""..."
-				exit 1
+				if [ ! $IGNORE_ERRORS = 1 ];then
+					exit 1
+				fi
 			fi
 			printdone "Removing $objfile""..."
 			continue
@@ -679,7 +687,8 @@ versionCheck
 # into one binary.
 ########################################################
 COMPILEC core/*.c
-COMPILEC debugger/*.c
+#COMPILEC debugger/*.c
+COMPILEC debugger/guidebug_wx.c
 #COMPILECPP debugger/*.cpp
 COMPILEC gui/*.c
 COMPILECPP gui/*.cpp
@@ -688,7 +697,7 @@ COMPILEC interface/state.c
 COMPILEC interface/calc.c
 COMPILEC utilities/var.c
 COMPILEC utilities/savestate.c
-COMPILEC utilities/sendfiles.c
+COMPILEC utilities/SendFile.c
 COMPILEC utilities/label.c
 COMPILEC utilities/gif.c
 COMPILEC utilities/gifhandle.c
