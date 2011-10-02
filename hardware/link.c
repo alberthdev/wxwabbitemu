@@ -354,7 +354,7 @@ static void link_RTS(CPU_t *cpu, TIVAR_t *var, int dest) {
 		link_send_pkt(cpu, CID_RTS, &var_hdr);
 }
 
-#ifdef _WINDOWS
+//#ifdef _WINDOWS
 LINK_ERR link_send_backup(CPU_t *cpu, TIFILE_t *tifile, SEND_FLAG dest) {
 	if (link_init(cpu))
 		return LERR_NOTINIT;
@@ -394,7 +394,7 @@ LINK_ERR link_send_backup(CPU_t *cpu, TIFILE_t *tifile, SEND_FLAG dest) {
 		// Send the VAR with Backup style header
 		link_send_pkt(cpu, CID_VAR, &bkhdr);
 
-		int virtKey = cpu->pio.model == TI_85 ? VK_F1 : VK_RETURN;
+		int virtKey = cpu->pio.model == TI_85 ? WXK_F1 : WXK_RETURN; // wxWabbitemu specific keys
 		keypad_key_press(cpu, virtKey);
 
 		// Receive the ACK
@@ -464,7 +464,7 @@ LINK_ERR link_send_backup(CPU_t *cpu, TIFILE_t *tifile, SEND_FLAG dest) {
 	}
 	return LERR_SUCCESS;
 }
-#endif
+//#endif
 
 // Order that VTI uses:
 // Packet 1

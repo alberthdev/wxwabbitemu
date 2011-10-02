@@ -34,6 +34,14 @@ static void gui_debug(calc_t *calc) {}
 	wxT("TI-84+SE"),
 	wxT("???")};*/
 
+// strnicmp implementation for other OSes
+int strnicmp(char *s,char *t,int n) {
+	int cc;
+	if (n==0) return 0;
+	do cc = tolower(*s++) - tolower(*t++); while (!cc && s[-1] && --n>0);
+	return cc;
+}
+
 /*
  * Determine the slot for a new calculator.  Return a pointer to the calc
  */

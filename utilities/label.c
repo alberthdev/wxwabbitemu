@@ -6,13 +6,6 @@
 #include "bcalls.h"
 #include "flags.h"
 
-int strnicmp(char *s,char *t,int n) {
-	int cc;
-	if (n==0) return 0;
-	do cc = tolower(*s++) - tolower(*t++); while (!cc && s[-1] && --n>0);
-	return cc;
-}
-
 label_struct *lookup_label(LPCALC lpCalc, char *label_name) {
 	int i;
 	for (i = 0; lpCalc->labels[i].name != NULL; i++) {
@@ -112,7 +105,13 @@ int labels_app_load(LPCALC lpCalc, LPCTSTR lpszFileName) {
 	while (!feof(labelFile)) {
 #ifdef _UNICODE
 		fgets(readBuf, 256, labelFile);
+/* Temp fix to Unicode frenzy */
+#ifdef _WINDOWS
 		MultiByteToWideChar(CP_ACP, 0, readBuf, -1, buffer, ARRAYSIZE(buffer));
+#else
+		fgets(buffer, 256, labelFile);
+#endif
+
 #else
 #ifdef _WINDOWS
 		_fgetts(buffer, 256, labelFile);

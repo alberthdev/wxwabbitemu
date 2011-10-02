@@ -249,5 +249,8 @@ GLOBAL const char *CalcModelTxt[]
 #endif
 ;
 
+// strnicmp implementation for other OSes
+int strnicmp(char *s,char *t,int n);
+
 #define _HAS_CALC_H
 #endif

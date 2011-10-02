@@ -17,13 +17,6 @@ char txt86[] = "Already Installed";
 		return NULL; \
 	}
 
-int strnicmp(char *s,char *t,int n) {
-	int cc;
-	if (n==0) return 0;
-	do cc = tolower(*s++) - tolower(*t++); while (!cc && s[-1] && --n>0);
-	return cc;
-}
-
 int CmpStringCase(char *str1, unsigned char *str2) {
 	return strnicmp(str1, (char *) str2, strlen(str1));
 }

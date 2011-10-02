@@ -1,6 +1,6 @@
 #include "guiopenfile.h"
 #include "calc.h"
-#include "sendfiles.h"
+#include "SendFile.h"
 
 void GetOpenSendFileName(int slot, int defFilter) {
 	int result;
@@ -29,8 +29,8 @@ All Files (*.*)|*.*\0");
 	wxArrayString filePaths;
 	dialog.GetPaths(filePaths);
 	for (int i = 0; i < filePaths.GetCount(); i++) {
-		FileNames = AppendName(FileNames, wxStringToChar(filePaths[i]));
+		SendFile(lpCalc, filePaths[i], SEND_RAM);
 	}
 		
-	NoThreadSend(FileNames, SEND_RAM, slot);
+	//NoThreadSend(FileNames, SEND_RAM, slot);
 }
