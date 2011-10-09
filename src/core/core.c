@@ -173,17 +173,7 @@ unsigned char CPU_mem_read(CPU_t *cpu, unsigned short addr) {
 	if (check_mem_read_break(cpu->mem_c, addr))
 	{
 		calcs[gslot].running = FALSE;
-#ifdef WINVER
-		bank_t *bank = &calcs[gslot].mem_c.banks[mc_bank(calcs[gslot].cpu.pc)];
-		if (calcs[gslot].ole_callback != NULL) {
-			PostMessage(calcs[gslot].ole_callback, WM_USER, bank->ram<<16 | bank->page, calcs[gslot].cpu.pc);
-			printf("postmessage called!\n");
-		} else {
-#endif
 			gui_debug(gslot);
-#ifdef WINVER
-		}
-#endif
 	}
 	cpu->bus = mem_read(cpu->mem_c, addr);
 
@@ -203,17 +193,7 @@ unsigned char CPU_mem_write(CPU_t *cpu, unsigned short addr, unsigned char data)
 	if (check_mem_write_break(cpu->mem_c, addr))
 	{
 		calcs[gslot].running = FALSE;
-#ifdef WINVER
-		bank_t *bank = &calcs[gslot].mem_c.banks[mc_bank(calcs[gslot].cpu.pc)];
-		if (calcs[gslot].ole_callback != NULL) {
-			PostMessage(calcs[gslot].ole_callback, WM_USER, bank->ram<<16 | bank->page, calcs[gslot].cpu.pc);
-			printf("postmessage called!\n");
-		} else {
-#endif
 			gui_debug(gslot);
-#ifdef WINVER
-		}
-#endif
 	}
 	int bank = mc_bank(addr);
 

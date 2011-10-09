@@ -1,8 +1,14 @@
 #ifndef CORE_H
 #define CORE_H
 
+
+
 #include "coretypes.h"
 #include <stdint.h>
+typedef unsigned char	u_char;
+typedef unsigned short	u_short;
+typedef unsigned int	u_int;
+typedef unsigned long	u_long;
 
 //#define TI_81		0
 #define TI_82		1

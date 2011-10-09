@@ -3,6 +3,7 @@
 
 #include "coretypes.h"
 #include <types.h>
+#include <stdint.h>
 
 typedef struct {
     char *name;

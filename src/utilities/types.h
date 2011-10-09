@@ -1,7 +1,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#ifdef WINVER
+/*#ifdef WINVER
 #include <windows.h>
 typedef BYTE uint8_t;
 typedef WORD uint16_t;
@@ -14,5 +14,5 @@ typedef uint16_t WORD;
 typedef uint32_t DWORD;
 typedef uint8_t BYTE;
 #endif
-
+*/
 #endif

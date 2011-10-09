@@ -26,24 +26,13 @@ void port0_83pse(CPU_t *cpu, device_t *dev) {
 		cpu->input = FALSE;
 	} else if (cpu->output) {
 		if ((link->host&0x01) != (cpu->bus&0x01)) {
-			#ifdef WINVER
-			if (link->audio.init && link->audio.enabled) 
-				FlippedLeft(cpu,(cpu->bus&0x01));
-			#endif
 		}
 		if ((link->host&0x02) != (cpu->bus&0x02)) {
-			#ifdef WINVER
-			if (link->audio.init && link->audio.enabled) 
-				FlippedRight(cpu,((cpu->bus&0x02)>>1));
-			#endif
 		}		
 
 		link->host = cpu->bus&0x03;
 		cpu->output = FALSE;
 	}
-	#ifdef WINVER
-	if (link->audio.init && link->audio.enabled) nextsample(cpu);
-	#endif
 }
 
 //------------------------

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_layout_file>
+	<ActiveTarget name="Debug" />
+	<File name="..\src\core\alu.c" open="0" top="0" tabpos="0">
+		<Cursor position="21986" topLine="948" />
+	</File>
+	<File name="..\src\core\core.h" open="1" top="0" tabpos="2">
+		<Cursor position="2393" topLine="94" />
+	</File>
+	<File name="..\src\hardware\lcd.h" open="1" top="1" tabpos="1">
+		<Cursor position="1729" topLine="57" />
+	</File>
+	<File name="..\src\interface\calc.h" open="1" top="0" tabpos="3">
+		<Cursor position="178" topLine="0" />
+	</File>
+</CodeBlocks_layout_file>

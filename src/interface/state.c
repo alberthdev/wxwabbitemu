@@ -3,9 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#ifndef WINVER
 #define min(a, b) ((a) > (b) ? (b) : (a))
-#endif
 
 void state_userpages(CPU_t *, upages_t*);
 char *symbol_to_string(CPU_t *, symbol83P_t *, char *);
@@ -237,11 +235,7 @@ char* GetRealAns(CPU_t *cpu) {
 	symbol83P_t *sym = search_symlist(&symlist, ans_name, 3);
 	if (sym == NULL) return NULL;
 
-#ifdef WINVER
-	char *buffer = (char *) LocalAlloc(LMEM_FIXED, 2048);
-#else
 	char *buffer = (char *) malloc(2048);
-#endif
 	
 	symbol_to_string(cpu, sym, buffer);
 	
@@ -255,7 +249,7 @@ char *symbol_to_string(CPU_t *cpu, symbol83P_t *sym, char *buffer) {
 	case RealObj: {
 		uint16_t ptr = sym->address;
 		char *p = buffer;
-		BOOL is_imaginary = FALSE;
+		bool is_imaginary = FALSE;
 	TI_num_extract:
 		;
 		uint8_t type = mem_read(cpu->mem_c, ptr++);

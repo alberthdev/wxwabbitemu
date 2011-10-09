@@ -159,22 +159,11 @@ void port00_82(CPU_t *cpu, device_t *dev) {
 		cpu->input = FALSE;
 //		calcs[gslot].brkpnt = TRUE;
 	} else if (cpu->output) {
-		#ifdef WINVER
-		if ((link->host&0x01) != ((cpu->bus&0x04)>>2)) {
-			FlippedLeft(cpu,((cpu->bus&0x04)>>2));
-		}
-		if ((link->host&0x02) != ((cpu->bus&0x08)>>2)) {
-			FlippedRight(cpu,((cpu->bus&0x08)>>3));
-		}
-		#endif
 		link->host = (cpu->bus&0x0C)>>2;
 //		setpage83(cpu);
 		cpu->output = FALSE;
 //		calcs[gslot].brkpnt = TRUE;
 	}
-	#ifdef WINVER
-	if (link->audio.init && link->audio.enabled) nextsample(cpu);
-	#endif
 }
 
 void port00_83(CPU_t *cpu, device_t *dev) {
@@ -188,23 +177,12 @@ void port00_83(CPU_t *cpu, device_t *dev) {
 		cpu->input = FALSE;
 //		calcs[gslot].brkpnt = TRUE;
 	} else if (cpu->output) {
-		#ifdef WINVER
-		if ((link->host&0x01) != (cpu->bus&0x01)) {
-			FlippedLeft(cpu,(cpu->bus&0x01));
-		}
-		if ((link->host&0x02) != (cpu->bus&0x02)) {
-			FlippedRight(cpu,((cpu->bus&0x02)>>1));
-		}
-		#endif
 		link->host = cpu->bus&0x03;
 		stdint->xy = cpu->bus&0x10;
 		setpage83(cpu);
 		cpu->output = FALSE;
 //		calcs[gslot].brkpnt = TRUE;
 	}
-	#ifdef WINVER
-	nextsample(cpu);
-	#endif
 }
 
 void port02_83(CPU_t *cpu, device_t *dev) {

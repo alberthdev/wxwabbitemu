@@ -72,11 +72,6 @@ static bool calc_init_83(int slot, char* os) {
 	/* END INTIALIZE 83 */
 
 	calcs[slot].send			= FALSE;
-#ifdef WINVER // FIXME: dirty cheater!
-	calcs[slot].audio			= &calcs[slot].cpu.pio.link->audio;
-	calcs[slot].audio->enabled	= FALSE;
-	calcs[slot].audio->init		= FALSE;
-#endif
 	return TRUE;
 }
 
@@ -93,11 +88,6 @@ static int calc_init_86(int slot) {
 	/* END INTIALIZE 86 */
 
 	calcs[slot].send			= FALSE;
-#ifdef WINVER // FIXME: dirty cheater!
-	calcs[slot].audio			= &calcs[slot].cpu.pio.link->audio;
-	calcs[slot].audio->enabled	= FALSE;
-	calcs[slot].audio->init		= FALSE;
-#endif
 	return 0;
 }
 
@@ -112,11 +102,6 @@ int calc_init_83p(int slot) {
 	/* END INTIALIZE 83+ */
 
 	calcs[slot].send			= FALSE;
-#ifdef WINVER // FIXME: dirty cheater!
-	calcs[slot].audio			= &calcs[slot].cpu.pio.link->audio;
-	calcs[slot].audio->enabled	= FALSE;
-	calcs[slot].audio->init		= FALSE;
-#endif
 	return 0;
 }
 
@@ -130,11 +115,6 @@ int calc_init_83pse(int slot) {
 	device_init_83pse(&calcs[slot].cpu);
 	/* END INTIALIZE 83+se */
 	calcs[slot].send			= FALSE;
-#ifdef WINVER // FIXME: dirty cheater!
-	calcs[slot].audio			= &calcs[slot].cpu.pio.link->audio;
-	calcs[slot].audio->enabled	= FALSE;
-	calcs[slot].audio->init		= FALSE;
-#endif
 	return 0;
 }
 
@@ -154,11 +134,6 @@ int calc_init_84p(int slot) {
 	/* END INTIALIZE 84+ */
 
 	calcs[slot].send			= FALSE;
-#ifdef WINVER // FIXME: dirty cheater!
-	calcs[slot].audio			= &calcs[slot].cpu.pio.link->audio;
-	calcs[slot].audio->enabled	= FALSE;
-	calcs[slot].audio->init		= FALSE;
-#endif
 	return 0;
 }
 
@@ -303,11 +278,6 @@ void calc_slot_free(int slot) {
 
 	if (calcs[slot].active) {
 		calcs[slot].active = FALSE;
-#ifdef WINVER
-		/* don't forget to change this when audio for non-Windows
-		 * builds is implemented, or bad things happen! */
-		KillSound(calcs[slot].audio);
-#endif
 		printf("Freeing memory\n");
 		free(calcs[slot].mem_c.flash);
 		free(calcs[slot].mem_c.ram);
@@ -373,22 +343,7 @@ int calc_run_tstates(int slot, time_t tstates) {
 
 	while(calcs[slot].running) {
 		if (check_break(&calcs[slot].mem_c, calcs[slot].cpu.pc) & 1) {
-#ifdef WINVER
-			calcs[slot].running = FALSE;
-			bank_t *bank = &calcs[slot].mem_c.banks[mc_bank(calcs[slot].cpu.pc)];
-
-			Z80_info_t z[2];
-			disassemble(&calcs[slot].mem_c, calcs[slot].cpu.pc, 1, z);
-
-			if (calcs[slot].ole_callback != NULL) {
-				PostMessage(calcs[slot].ole_callback, WM_USER, bank->ram<<16 | bank->page, z[0].size<<16 | calcs[slot].cpu.pc);
-				printf("postmessage called!\n");
-			} else {
-#endif
 				gui_debug(slot);
-#ifdef WINVER
-			}
-#endif
 			return 0;
 		}
 
@@ -546,26 +501,7 @@ int calc_run_timed(int slot, time_t time) {
 	return 0;
 }
 
-#ifdef WINVER
-int calc_from_hwnd(HWND hwnd) {
-	if (hwnd == NULL)
-		return -1;
-
-	int slot;
-	for (slot = 0; slot < MAX_CALCS; slot++) {
-		if (calcs[slot].active) {
-			if (hwnd == calcs[slot].hwndFrame ||
-				hwnd == calcs[slot].hwndLCD ||
-				hwnd == calcs[slot].hwndStatusBar ||
-				hwnd == calcs[slot].hwndSmallClose ||
-				hwnd == calcs[slot].hwndSmallMinimize) {
-				return slot;
-			}
-		}
-	}
-	return -1;
-}
-#elif WXVER
+#ifdef WXVER
 int calc_from_handle(void *frame) {
 	if (frame == NULL)
 		return -1;

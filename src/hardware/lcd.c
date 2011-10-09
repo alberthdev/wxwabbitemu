@@ -1,8 +1,5 @@
 #include "lcd.h"
 #include "gifhandle.h"
-#ifdef WINVER
-#include "registry.h"
-#endif
 
 #include "calc.h"
 
@@ -114,15 +111,10 @@ LCD_t* LCD_init(CPU_t* cpu, int model) {
 	}
 	
 	// Set all values to the defaults
-#ifdef WINVER
-	lcd->shades = QueryWabbitKey("shades");
-	lcd->mode = (LCD_MODE) QueryWabbitKey("lcd_mode");
-	lcd->steady_frame = 1.0 / QueryWabbitKey("lcd_freq");
-#else
 	lcd->shades = 3;
 	lcd->mode = MODE_PERFECT_GRAY;
 	lcd->steady_frame = 1.0 / FPS;
-#endif
+
 	if (lcd->shades > LCD_MAX_SHADES)
 		lcd->shades = LCD_MAX_SHADES;
 	

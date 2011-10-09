@@ -1,10 +1,6 @@
 #ifndef CALC_H
 #define CALC_H
 
-#ifdef WINVER
-#define MAX_OLE_BREAKPOINTS	128
-#endif
-
 #include <wx/frame.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,26 +8,20 @@
 #include <time.h>
 #include "coretypes.h"
 
-#ifdef WINVER
-#include "gui.h" // it would be nice to get this separated somehow
-#include "droptarget.h"
-#elif WXVER
+#ifdef WXVER
 #include "gui_wx.h"
 #include "guilcd_wx.h"
 #endif
 #include "core.h"
 #include "lcd.h"
 #include "keys.h"
-#ifdef WINVER
-#include "sound.h" // FIXME: sound is nice
-#endif
+
 #include "savestate.h"
 #include "label.h"
 #include "link.h"
-#ifndef WINVER
 #include <stdint.h>
 #include "types.h"
-#endif
+
 #ifdef WXVER
 #include "wx/wx.h"
 #endif
@@ -69,30 +59,8 @@ typedef struct tagCALC {
 	CPU_t cpu;
 	memory_context_t mem_c;
 	timer_context_t timer_c;
-#ifdef WINVER
-	AUDIO_t* audio; // FIXME: Bad!
-#endif
-#ifdef WINVER
-	CDropTarget *pDropTarget;
-	HWND hwndFrame;
-	HWND hwndLCD;
-	HWND hwndStatusBar;
-	HWND hwndDebug;
-	HWND hwndSmallClose;
-	HWND hwndSmallMinimize;
 
-	bool SkinEnabled;
-	DWORD Scale;
-	bool bCutout;
-	HANDLE hdlThread;
-	
-	clock_t sb_refresh;
-
-	HWND ole_callback;
-	bool do_drag;
-	HDC hdcSkin;
-	HDC hdcKeymap;
-#elif WXVER
+#ifdef WXVER
 	MyFrame *wxFrame;
 	MyLCD *wxLCD;
 	wxBitmap calcSkin;
@@ -127,15 +95,6 @@ typedef struct tagCALC {
 	volatile int SendSize;
 
 	gif_disp_states gif_disp_state;
-#ifdef WINVER
-	RECT rectSkin;
-	RECT rectLCD;
-	COLORREF FaceplateColor;
-	bool bCustomSkin;
-	char skin_path[256];
-	char keymap_path[256];
-#endif
-
 } calc_t;
 typedef struct tagCALC CALC, *LPCALC;
 
@@ -172,9 +131,7 @@ __declspec(dllexport)
 #endif
 int rom_load(int, char *);
 void calc_slot_free(int);
-#ifdef WINVER
-int calc_from_hwnd(HWND);
-#elif WXVER
+#ifdef WXVER
 int calc_from_handle(void *frame);
 #endif
 #endif

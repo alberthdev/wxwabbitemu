@@ -39,15 +39,15 @@ CPP="g++"
 LD="ld"
 
 # CCFLAGS - additional arguments to add on to the C compiler.
-CCFLAGS="-c -g -w -I . `wx-config --version=2.8 --cflags 2>/dev/null` -ggdb -I core -I hardware -I utilities -I gui -I interface"
+CCFLAGS="-c -g -w -I . -I../../Libraries/wxWidgets2.8/include -I../../Libraries/wxWidgets2.8/contrib/include -I../../Libraries/wxWidgets2.8/lib/gcc_dll/mswud -ggdb -I core -I hardware -I utilities -I gui -I interface"
 CCDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # CPPFLAGS - additional arguments to add on to the C++ compiler.
-CPPFLAGS="-c -g -w -I . `wx-config --version=2.8 --cppflags 2>/dev/null` -ggdb -I core -I hardware -I utilities -I gui -I interface"
+CPPFLAGS="-c -g -w -I . -I../../Libraries/wxWidgets2.8/include -I../../Libraries/wxWidgets2.8/contrib/include -I../../Libraries/wxWidgets2.8/lib/gcc_dll/mswud -ggdb -I core -I hardware -I utilities -I gui -I interface"
 CPPDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
 
 # LDFLAGS - additional or required arguments to add on to the linker.
-LDFLAGS="`wx-config --version=2.8 --libs 2>/dev/null`"
+LDFLAGS="-L../../Libraries/wxWidgets2.8/lib/gcc_dll/ -mthreads -lwxmsw28ud -mwindows"
 
 ########################################################
 # That's all! DO NOT CHANGE ANY VARIABLES BELOW!
@@ -365,8 +365,9 @@ function COMPILEC() {
 				printdone "Creating object directory..."
 			fi
 			
+			echo -e "\033[1mMExec: \033[0m""$CC $CCFLAGS $CCDEFINES $csource -o obj/$objfile"
 			printwork "Building $csource""..."
-			$CPP $CCFLAGS $csource -o obj/"$objfile" $CCDEFINES
+			$CC $CCFLAGS $csource $CCDEFINES -o obj/"$objfile"
 			checkfail $? "Building $csource""..."
 		done
 	else
@@ -446,8 +447,9 @@ function COMPILEC() {
 			printdone "Creating object directory..."
 		fi
 		
+		echo -e "\033[1mExec: \033[0m""$CC $CCFLAGS $CCDEFINES $csource -o obj/$objfile"
 		printwork "Building $1""..."
-		$CC $CCFLAGS $1 -o obj/"$objfile" $CCDEFINES
+		$CC $CCFLAGS $1 $CCDEFINES -o obj/"$objfile"
 		checkfail $? "Building $1""..."
 	fi
 }
@@ -460,7 +462,7 @@ function COMPILECPP() {
 		for cppsource in $@
 		do
 			basefilename=${cppsource##*/}
-			objfile=`printf "$basefilename" | sed 's/[.]cpp/.o/'`
+			objfile=`printf "$basefilename" | sed 's/[.]cpp/.o/' | sed 's/[.]c/.o/'`
 			if [ ! -f "$1" ];then
 				printsfail "ERROR: Source file $1 doesn't exist"'!'"This is a severe bug."
 				printsfail "Please report this error to the developers immediately."
@@ -534,14 +536,14 @@ function COMPILECPP() {
 				fi
 				printdone "Creating object directory..."
 			fi
-			
+			echo -e "\033[1mMExec: \033[0m""$CPP $CPPFLAGS $CPPDEFINES $cppsource -o obj/$objfile"
 			printwork "Building $cppsource""..."
-			$CPP $CPPFLAGS $cppsource -o obj/"$objfile" $CPPDEFINES
+			$CPP $CPPFLAGS $CPPDEFINES $cppsource -o obj/"$objfile"
 			checkfail $? "Building $cppsource""..."
 		done
 	else
 		basefilename=${1##*/}
-		objfile=`printf "$basefilename" | sed 's/[.]cpp/.o/'`
+		objfile=`printf "$basefilename" | sed 's/[.]cpp/.o/' | sed 's/[.]c/.o/'`
 		if [ ! -f "$1" ];then
 			printsfail "ERROR: Source file $1 doesn't exist"'!'"This is a severe bug."
 			printsfail "Please report this error to the developers immediately."
@@ -615,9 +617,9 @@ function COMPILECPP() {
 			fi
 			printdone "Creating object directory..."
 		fi
-		
+		echo -e "\033[1mExec: \033[0m""$CPP $CPPFLAGS $CPPDEFINES $cppsource -o obj/$objfile"
 		printwork "Building $1""..."
-		$CPP $CPPFLAGS $1 -o obj/"$objfile" $CPPDEFINES
+		$CPP $CPPFLAGS $CPPDEFINES $1 -o obj/"$objfile"
 		checkfail $? "Building $1""..."
 	fi
 }
@@ -671,27 +673,27 @@ assertIsSet() {
 }
 
 parsearg $@
-versionCheck
+#versionCheck
 ########################################################
 # You can modify the compile actions here.
 # COMPILEC compiles a .c file, COMPILECPP compiles a
 # .cpp file, and LINKLD combines all *.o files together
 # into one binary.
 ########################################################
-COMPILEC core/*.c
-COMPILEC debugger/*.c
+COMPILECPP core/*.c
+COMPILECPP debugger/*.c
 #COMPILECPP debugger/*.cpp
-COMPILEC gui/*.c
+COMPILECPP gui/*.c
 COMPILECPP gui/*.cpp
-COMPILEC hardware/*.c
-COMPILEC interface/state.c
-COMPILEC interface/calc.c
-COMPILEC utilities/var.c
-COMPILEC utilities/savestate.c
-COMPILEC utilities/sendfiles.c
-COMPILEC utilities/label.c
-COMPILEC utilities/gif.c
-COMPILEC utilities/gifhandle.c
+COMPILECPP hardware/*.c
+COMPILECPP interface/state.c
+COMPILECPP interface/calc.c
+COMPILECPP utilities/var.c
+COMPILECPP utilities/savestate.c
+COMPILECPP utilities/sendfiles.c
+COMPILECPP utilities/label.c
+COMPILECPP utilities/gif.c
+COMPILECPP utilities/gifhandle.c
 LINKLD "obj/*.o" "wxwabbitemu"
 
 ########################################################

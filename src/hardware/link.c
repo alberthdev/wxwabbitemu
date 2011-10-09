@@ -81,12 +81,6 @@ static void link_send(CPU_t *cpu, u_char byte) {
 	link_t *link1, *link2;
 	link1 = cpu->pio.link;
 	link2 = cpu2->pio.link;
-#ifdef WINVER
-	if (calcs[1].hwndFrame != NULL) {
-		link1->client = &link2->host;
-		link2->client = &link1->host;
-	}
-#endif
 
 	for (bit = 0; bit < 8; bit++, byte >>= 1) {
 		vout = (byte & 1) + 1;
@@ -340,11 +334,8 @@ static void link_RTS(CPU_t *cpu, TIFILE_t *tifile, int dest) {
 	var_hdr.length = link_endian(tifile->var->length);
 	var_hdr.type_ID = tifile->var->vartype;
 	memset(var_hdr.name, 0, sizeof(var_hdr.name));
-#ifdef WINVER
 	strncpy(var_hdr.name, (char *) tifile->var->name, 8);
-#else
-	strncpy(var_hdr.name, (char *) tifile->var->name, 8);
-#endif
+
 	var_hdr.version = tifile->var->version;
 	if (dest == SEND_RAM) {
 		var_hdr.type_ID2 = 0x00;
@@ -676,52 +667,6 @@ static LINK_ERR forceload_app(CPU_t *cpu, TIFILE_t *tifile) {
 #ifdef _DEBUG
 static void print_command_ID(uint8_t command_ID) {
 	char buffer[256];
-#ifdef WINVER
-	switch (command_ID) {
-		case CID_ACK:
-		strcpy_s(buffer, "ACK");
-		break;
-		case CID_CTS:
-		strcpy_s(buffer, "CTS");
-		break;
-		case CID_DATA:
-		strcpy_s(buffer, "DATA");
-		break;
-		case CID_DEL:
-		strcpy_s(buffer, "DEL");
-		break;
-		case CID_EOT:
-		strcpy_s(buffer, "EOT");
-		break;
-		case CID_ERR:
-		strcpy_s(buffer, "ERR");
-		break;
-		case CID_EXIT:
-		strcpy_s(buffer, "SKIP/EXIT");
-		break;
-		case CID_RDY:
-		strcpy_s(buffer, "RDY");
-		break;
-		case CID_REQ:
-		strcpy_s(buffer, "REQ");
-		break;
-		case CID_RTS:
-		strcpy_s(buffer, "RTS");
-		break;
-		case CID_SCR:
-		strcpy_s(buffer, "SCR");
-		break;
-		case CID_VAR:
-		strcpy_s(buffer, "VAR");
-		break;
-		case CID_VER:
-		strcpy_s(buffer, "VER");
-		break;
-		default:
-		strcpy_s(buffer, "error");
-		break;
-	}
-#else
 	switch (command_ID) {
 		case CID_ACK:
 		strcpy(buffer, "ACK");
@@ -766,7 +711,6 @@ static void print_command_ID(uint8_t command_ID) {
 		strcpy(buffer, "error");
 		break;
 	}
-#endif
 	printf(buffer);
 }
 #endif
@@ -827,30 +771,18 @@ int ReadIntelHex(FILE* ifile, intelhex_t *ihex) {
 	if (!fgets((char*)str, 580, ifile))
 		return 0;
 	if (str[0] == 0) memcpy(str, str+1, 579);
-#ifdef WINVER
-	if (sscanf_s((const char*)str, ":%02X%04X%02X%*s", &size, &addr, &type) != 3)
-#else
 	if (sscanf((const char*)str, ":%02X%04X%02X%*s", &size, &addr, &type) != 3)
-#endif
 		return 0;
 	ihex->size = size;
 	ihex->address = addr;
 	ihex->type = type;
 	memset(ihex->data, 0x00, 256);
 	for (i = 0; i < size; i++) {
-#ifdef WINVER
-		if (sscanf_s((const char*)str + 9 + (i * 2), "%02X", &byte) != 1)
-#else
 		if (sscanf((const char*)str + 9 + (i * 2), "%02X", &byte) != 1)
-#endif
 			return 0;
 		ihex->data[i] = byte;
 	}
-#ifdef WINVER
-	if (sscanf_s((const char*)str + 9 + (i * 2), "%02X", &byte) != 1)
-#else
 	if (sscanf((const char*)str + 9 + (i * 2), "%02X", &byte) != 1)
-#endif
 		return 0;
 	ihex->chksum = byte;
 	return 1;

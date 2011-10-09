@@ -919,10 +919,10 @@ void WriteSave(const char * fn, SAVESTATE_t* save,int compress) {
 	if (compress == 0) {
 		ofile = fopen(fn,"wb");
 	} else {
-		mkstemp(tmpfn);
+		/*mkstemp(tmpfn);
 		strcpy(temp_save, "/tmp/");
 		strcat(temp_save, tmpfn);
-		ofile = fopen(temp_save,"wb");
+		ofile = fopen(temp_save,"wb");*/
 	}
 	if (!ofile) {
 		puts("Could not open save file for write");
@@ -996,14 +996,14 @@ SAVESTATE_t* ReadSave(FILE* ifile) {
 	string[8]=0;
 	if (strncmp(DETECT_CMP_STR,string,8)==0) {
 		i = fgetc(ifile);
-		mkstemp(tmpfn);
+		/*mkstemp(tmpfn);
 		strcpy(temp_save, "~/applications");
 		strcat(temp_save, tmpfn);
 		tmpfile = fopen(temp_save,"wb");
 		if (!tmpfile) {
 			puts("Could not open tmp file for write");
 			return NULL;
-		}
+		}*/
 		
 		switch(i) {
 #ifndef _WINDLL

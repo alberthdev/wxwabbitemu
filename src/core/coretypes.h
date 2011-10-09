@@ -14,9 +14,9 @@
 #define FALSE (0)
 #define TRUE (!FALSE)
 #ifdef WINVER
-typedef int BOOL;
+//typedef int BOOL;
 #else
-typedef signed char BOOL;
+//typedef signed char BOOL;
 #endif
 #endif
 

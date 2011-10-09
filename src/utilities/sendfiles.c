@@ -1,7 +1,3 @@
-#ifdef WINVER
-#include "sound.h"
-#endif
-
 #include "calc.h"
 #include "state.h"
 #include "var.h"
@@ -44,11 +40,7 @@ char* AppendName(char* FileNames, char* fn) {
 		pnt = FileNames+i;
 		memset(pnt,0,length+2);
 	}
-#ifdef WINVER
-	strcpy_s(pnt, length+1, fn);
-#else
 	strcpy(pnt,fn);
-#endif
 	return FileNames;
 }
 
@@ -64,45 +56,7 @@ void SendFile( char* FileName , int ram ) {
 				calcs[SlotSave].SendSize = var->length;
 				calcs[SlotSave].cpu.pio.link->vlink_send = 0;
 				result = link_send_var(&calcs[SlotSave].cpu, var, (SEND_FLAG) ram);
-#ifdef WINVER
-				switch (result) {
-				case LERR_MEM:
-					switch (ram) {
-					case SEND_RAM:
-						MessageBox(NULL, "Not enough free RAM on calculator","Error",MB_OK);
-						break;
-					case SEND_ARC:
-						MessageBox(NULL, "Not enough free Archive on calculator","Error",MB_OK);
-						break;
-					default:
-						MessageBox(NULL, "Not enough free memory on calculator","Error",MB_OK);
-						break;
-					}
-					break;
-				case LERR_TIMEOUT:
-					MessageBox(NULL, "Link timed out","Error",MB_OK);
-					break;
-				case LERR_FORCELOAD:
-					MessageBox(NULL, "Error force loading an application", "Error", MB_OK);
-					break;
-				case LERR_CHKSUM:
-					MessageBox(NULL, "Link checksum was not correct", "Error", MB_OK);
-					break;
-				case LERR_MODEL:
-					MessageBox(NULL, "Calculator model not correct for this type of file", "Error", MB_OK);
-					break;
-				case LERR_NOTINIT:
-					MessageBox(NULL, "Virtual link was not initialized", "Error", MB_OK);
-					break;
-				case LERR_LINK:
-					MessageBox(NULL, "Virtual link error", "Error", MB_OK);
-					break;
-				case LERR_FILE:
-					MessageBox(NULL, "The file was unable to be sent because it is corrupt", "Error", MB_OK);
-					break;
-				}
 
-#endif
 				if (var->type == FLASH_TYPE) {
 					// Rebuild the applist
 					state_build_applist(&calcs[SlotSave].cpu, &calcs[SlotSave].applist);
@@ -124,11 +78,7 @@ void SendFile( char* FileName , int ram ) {
 				//SendMessage(calcs[SlotSave].hwndFrame, WM_USER, 0, 0);
 				break;
 			case LABEL_TYPE: {
-#ifdef WINVER
-				strcpy_s(calcs[SlotSave].labelfn,FileName);
-#else
 				strcpy(calcs[SlotSave].labelfn,FileName);
-#endif
 				printf("loading label file for slot %d: %s\n", SlotSave, FileName);
 				VoidLabels(SlotSave);
 				labels_app_load(SlotSave, calcs[SlotSave].labelfn);
@@ -139,9 +89,6 @@ void SendFile( char* FileName , int ram ) {
 			case BREAKPOINT_TYPE:
 				break;
 			default:
-#ifdef WINVER
-				MessageBox(NULL, "The file was an invalid or unspecified type","Error",MB_OK);
-#endif
 				break;
 		}
 		if (var)
@@ -149,16 +96,9 @@ void SendFile( char* FileName , int ram ) {
 		if (is_link_connected)
 			link_connect(&calcs[0].cpu, &calcs[1].cpu);
 	} else {
-#ifdef WINVER
-		MessageBox(NULL, "Invalid file format","Error",MB_OK);
-#endif
 	}
 }
 
-#ifdef WINVER
-extern HINSTANCE g_hInst;
-HWND hwndSend;
-#endif
 static char *current_file_sending;
 
 void SendFiles( char* FileNames , int ram ) {
@@ -181,9 +121,6 @@ void SendFiles( char* FileNames , int ram ) {
 		calcs[SlotSave].CurrentFile++;
 		current_file_sending = (char *) fn;
 		SendFile((char *) fn,ram);
-#ifdef WINVER
-		SendMessage(hwndSend, WM_USER, 0, 0);
-#endif
 		for(;fn[0]!=0;fn++);
 		fn++;
 	}
@@ -192,238 +129,6 @@ void SendFiles( char* FileNames , int ram ) {
 	free(FileNames);
 	calcs[SlotSave].send = FALSE;
 }
-
-#ifdef WINVER
-
-
-
-static int CALLBACK EnumFontFamExProc(
-  ENUMLOGFONTEX *lpelfe,    // logical-font data
-  NEWTEXTMETRICEX *lpntme,  // physical-font data
-  DWORD FontType,           // type of font
-  LPARAM lParam             // application-defined data
-) {
-	LOGFONT *lplf = &lpelfe->elfLogFont;
-	lplf->lfHeight = -MulDiv(9, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72);
-	lplf->lfWidth = 0;
-	*((HFONT *) lParam) = CreateFontIndirect(lplf);
-	return 0;
-}
-
-
-static LRESULT CALLBACK SendProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
-	static HFONT hfontSegoe;
-	static HWND hwndProgress;
-	static TEXTMETRIC tm;
-	switch (Message)
-	{
-	case WM_CREATE:
-	{
-		LOGFONT lfSegoe;
-		memset(&lfSegoe, 0, sizeof(LOGFONT));
-#ifdef WINVER
-		strcpy_s(lfSegoe.lfFaceName, "Segoe UI");
-#else
-		strcpy(lfSegoe.lfFaceName, "Segoe UI");
-#endif
-
-		if (EnumFontFamiliesEx(GetDC(NULL), &lfSegoe, (FONTENUMPROC) EnumFontFamExProc, (LPARAM) &hfontSegoe, 0) != 0) {
-#ifdef WINVER
-			strcpy_s(lfSegoe.lfFaceName, "Tahoma");
-#else
-			strcpy(lfSegoe.lfFaceName, "Segoe UI");
-#endif
-			EnumFontFamiliesEx(GetDC(NULL), &lfSegoe, (FONTENUMPROC) EnumFontFamExProc, (LPARAM) &hfontSegoe, 0);
-		}
-
-		SelectObject(GetDC(hwnd), hfontSegoe);
-		GetTextMetrics(GetDC(hwnd), &tm);
-
-		hwndProgress = CreateWindowEx(
-				0,
-				PROGRESS_CLASS,
-				NULL,
-				WS_CHILD | WS_VISIBLE,
-				tm.tmAveCharWidth*2, tm.tmHeight * 4, 1, 1,
-				hwnd, (HMENU) 0, g_hInst, NULL
-		);
-
-		return 0;
-	}
-	case WM_GETMINMAXINFO: {
-		MINMAXINFO *info = (MINMAXINFO *) lParam;
-		RECT rc;
-		GetWindowRect(calcs[SlotSave].hwndLCD, &rc);
-
-		DWORD SendWidth = (rc.right - rc.left) * 9 / 10;
-		DWORD SendHeight = 110;
-		AdjustWindowRect(&rc, WS_SIZEBOX | WS_POPUP, FALSE);
-		info->ptMinTrackSize.x = SendWidth;
-		info->ptMinTrackSize.y = SendHeight;
-		info->ptMaxTrackSize.x = SendWidth;
-		info->ptMaxTrackSize.y = SendHeight;
-		return 0;
-	}
-	case WM_SIZE:
-	{
-		RECT rc;
-		GetClientRect(hwnd, &rc);
-		SetWindowPos(hwndProgress, NULL, 0, 0, rc.right - rc.left - tm.tmAveCharWidth*4, tm.tmHeight*3/2, SWP_NOMOVE | SWP_NOZORDER);
-
-		rc.top = 0;
-		rc.bottom = tm.tmHeight * 6;
-		AdjustWindowRect(&rc, WS_SIZEBOX | WS_POPUP, FALSE);
-		SetWindowPos(hwnd, NULL, 0, 0, rc.right - rc.left, rc.bottom - rc.top, SWP_NOMOVE | SWP_NOZORDER);
-
-		return 0;
-	}
-	case WM_PAINT:
-	{
-		PAINTSTRUCT ps;
-		HDC hdc = BeginPaint(hwnd, &ps);
-
-		SetBkMode(hdc, TRANSPARENT);
-		SelectObject(hdc, hfontSegoe);
-
-		char szFile[256];
-#ifdef WINVER
-		sprintf_s(szFile, "Sending file %d of %d", calcs[SlotSave].CurrentFile, calcs[SlotSave].FileCnt);
-#else
-		sprintf(szFile, "Sending file %d of %d", calcs[SlotSave].CurrentFile, calcs[SlotSave].FileCnt);
-#endif
-		RECT r;
-		GetClientRect(hwnd, &r);
-		r.bottom = tm.tmHeight*5/2 + tm.tmHeight;
-		FillRect(hdc, &r, GetStockBrush(WHITE_BRUSH));
-
-		SelectObject(hdc, GetStockObject(DC_PEN));
-		SetDCPenColor(hdc, RGB(223,223,233));
-		MoveToEx(hdc, 0, r.bottom-1, NULL);
-		LineTo(hdc, r.right, r.bottom-1);
-
-		r.left = tm.tmAveCharWidth*2;
-		r.top = tm.tmHeight*3/4;
-		r.right -= tm.tmAveCharWidth*2;
-		SetTextColor(hdc, RGB(0, 0, 0));
-		DrawText(hdc, szFile, -1, &r, DT_SINGLELINE);
-
-
-		OffsetRect(&r, 0, tm.tmHeight);
-		r.left += tm.tmAveCharWidth;
-		SetTextColor(hdc, RGB(90, 90, 90));
-
-		DrawText(hdc, current_file_sending, -1, &r, DT_SINGLELINE | DT_PATH_ELLIPSIS);
-
-
-
-		EndPaint(hwnd, &ps);
-		return 0;
-	}
-	case WM_USER:
-	{
-		// Update the progress bar
-		SendMessage(hwndProgress, PBM_SETSTEP, 1, 0);
-		SendMessage(hwndProgress, PBM_SETRANGE, 0, MAKELPARAM(0, calcs[SlotSave].cpu.pio.link->vlink_size/4));
-		SendMessage(hwndProgress, PBM_SETPOS, calcs[SlotSave].cpu.pio.link->vlink_send/4, 0);
-
-		InvalidateRect(hwnd, NULL, FALSE);
-		UpdateWindow(hwnd);
-		return 0;
-	}
-	case WM_CLOSE:
-		DestroyWindow(hwnd);
-		return 0;
-	default:
-		return DefWindowProc(hwnd, Message, wParam, lParam);
-	}
-}
-
-DWORD WINAPI ThreadSendStart( LPVOID lpParam ) {
-	SENDFILES_t* sf = (SENDFILES_t *) lpParam;
-	int save = 0;
-
-	if (calcs[SlotSave].audio->enabled) {
-		save = 1;
-		pausesound();
-	}
-
-
-	SendFiles(sf->FileNames, sf->ram);
-	if (save==1) playsound();
-	free(sf);
-	SlotSave = -1;
-
-	PostMessage(hwndSend, WM_CLOSE, 0, 0);
-
-    return 0;
-}
-
-
-void ThreadSend(char *FileNames, int ram, int slot) {
-	static HANDLE hdlSend = NULL;
-	SENDFILES_t* sf;
-
-	if (FileNames == NULL) return;
-
-	if (SlotSave != -1 || calcs[SlotSave].send == TRUE) {
-		MessageBox(NULL, "Currently sending files please wait...","Error",MB_OK);
-		return;
-	} else {
-		SlotSave = slot;
-	}
-
-	if (hdlSend != NULL) {
-		CloseHandle(hdlSend);
-		hdlSend = NULL;
-	}
-
-	sf = (SENDFILES_t *) malloc(sizeof(SENDFILES_t));
-	if (sf != NULL) {
-		sf->FileNames	= FileNames;
-		sf->ram			= ram;
-	}
-//	sf->hdlSend		= NULL;
-
-	WNDCLASSEX wcx;
-	ZeroMemory(&wcx, sizeof(wcx));
-
-	wcx.cbSize = sizeof(wcx);
-	wcx.style = CS_DBLCLKS;
-	wcx.lpszClassName = "WabbitSendClass";
-	wcx.lpfnWndProc = SendProc;
-	wcx.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wcx.hbrBackground = (HBRUSH) (COLOR_BTNFACE+1);
-	RegisterClassEx(&wcx);
-
-
-	RECT r;
-	GetWindowRect(calcs[SlotSave].hwndLCD, &r);
-
-	DWORD SendWidth = (r.right - r.left) * 9 / 10;
-	DWORD SendHeight = 90; //10 * HIWORD(GetDialogBaseUnits());
-
-	hwndSend = CreateWindowEx(
-			0,
-			"WabbitSendClass",
-			NULL,
-			WS_SIZEBOX | WS_POPUP | WS_VISIBLE,
-			r.left+(r.right - r.left - SendWidth)/2, r.top+(r.bottom - r.top - SendHeight)/2, SendWidth, SendHeight,
-			calcs[SlotSave].hwndLCD, NULL, g_hInst, 0
-	);
-	
-    hdlSend = CreateThread(NULL,0,ThreadSendStart, sf, 0, NULL);
-
-    if ( hdlSend  == NULL) {
-		SlotSave = -1;
-		free(sf);
-		free(FileNames);
-		MessageBox(NULL, "Could not create thread to send","Error",MB_OK);
-		return;
-	}
-
-	return;
-}
-#endif
 
 void NoThreadSend(const char* FileNames, int ram, int slot) {
 	if (SlotSave == -1) {

@@ -27,14 +27,14 @@ enum
 
 	ID_Edit_Copy,
 	ID_Edit_Paste,
-	
+
 	ID_Calc_Skin,
 	ID_Calc_Sound,
 	ID_Calc_Pause,
 	ID_Calc_Connect,
 	ID_Calc_Vars,
 	ID_Calc_Options,
-	
+
 	ID_Speed_400,
 	ID_Speed_500,
 	ID_Speed_200,
@@ -42,15 +42,15 @@ enum
 	ID_Speed_50,
 	ID_Speed_25,
 	ID_Speed_Custom,
-	
+
 	ID_Size_100,
 	ID_Size_200,
 	ID_Size_300,
 	ID_Size_400,
-	
+
 	ID_Debug_Reset,
 	ID_Debug_Open,
-	
+
 	ID_Help_About,
 	ID_Help_Website
 };
@@ -132,24 +132,24 @@ bool MyApp::OnInit()
 }
 
 /*int MyApp::MainLoop() {
-	
+
 }*/
 
-unsigned GetTickCount()
+/*unsigned GetTickCount()
 {
 		struct timeval tv;
 		if(gettimeofday(&tv, NULL) != 0)
 				return 0;
 
 		return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
-}
+}*/
 
 
 void MyApp::OnTimer(wxTimerEvent& event) {
 	static int difference;
 	static unsigned prevTimer;
 	unsigned dwTimer = GetTickCount();
-	
+
 	// How different the timer is from where it should be
 	// guard from erroneous timer calls with an upper bound
 	// that's the limit of time it will take before the
@@ -198,7 +198,7 @@ int gui_draw(int slot) {
 int gui_frame(int slot) {
 	if (!calcs[slot].Scale)
     	calcs[slot].Scale = 2; //Set original scale
-    	
+
 	// Set gslot so the CreateWindow functions operate on the correct calc
 	gslot = slot;
 	calcs[slot].wxFrame = new MyFrame(slot);
@@ -209,9 +209,9 @@ int gui_frame(int slot) {
 	if (calcs[slot].wxFrame == NULL /*|| calcs[slot].hwndLCD == NULL*/) return -1;
 	calcs[slot].running = TRUE;
 	calcs[slot].wxFrame->SetSpeed(100);
-	
+
 	calcs[slot].wxFrame->Centre(0);   //Centres the frame
-	
+
 	gui_frame_update(slot);
 	return 0;
 }
@@ -222,7 +222,7 @@ int gui_frame_update(int slot) {
 	lpCalc->calcSkin = wxGetBitmapFromMemory(TI_83p);
 	lpCalc->keymap = wxGetBitmapFromMemory(TI_83p_Keymap).ConvertToImage();
 	int skinWidth, skinHeight, keymapWidth, keymapHeight;
-	
+
 	if (lpCalc->calcSkin.IsOk()) {
 		skinWidth = 350;//lpCalc->calcSkin.GetWidth();
 		skinHeight = 725;//lpCalc->calcSkin.GetHeight();
@@ -281,13 +281,13 @@ int gui_frame_update(int slot) {
 			const int iStatusWidths[] = {100, -1};
 			wxStatus->SetFieldsCount(2, iStatusWidths);
 			wxStatus->SetStatusText(CalcModelTxt[lpCalc->model], 1);
-			
+
 			wxSize skinSize(128*lpCalc->Scale, 64*lpCalc->Scale+4); //The +4 is important to show all LCD
-			
+
 			if (wxMenu)
 				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame));
-			
-			
+
+
 			lpCalc->wxFrame->SetClientSize(skinSize);
 			lpCalc->wxFrame->SetSize(128*lpCalc->Scale, 64*lpCalc->Scale+60);
 		} else {
@@ -302,7 +302,7 @@ int gui_frame_update(int slot) {
 			lpCalc->wxFrame->SetClientSize(skinSize);
 		}
 	}
-	
+
 	calcs[slot].wxFrame->SendSizeEvent();
 }
 
@@ -344,7 +344,7 @@ void printf_d( const char* format, ... ) {
 
 MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
 {
-	this->SetWindowStyleFlag(wxBORDER_RAISED);
+	this->SetWindowStyleFlag(wxMINIMIZE_BOX | wxMAXIMIZE_BOX | wxRESIZE_BORDER | wxSYSTEM_MENU | wxCAPTION | wxCLOSE_BOX | wxCLIP_CHILDREN);
 	slot = curslot;
 	wxSize skinSize(350, 725);
 	calcs[slot].SkinSize = skinSize;
@@ -359,173 +359,173 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
 	this->SetSizeHints( wxDefaultSize, wxDefaultSize );
 
 	wxMenuBar *m_menubar = new wxMenuBar( 0 );
-	wxMenu *m_fileMenu = new wxMenu();	
+	wxMenu *m_fileMenu = new wxMenu();
 	wxMenuItem* m_newMenuItem;
 	m_newMenuItem = new wxMenuItem( m_fileMenu, ID_File_New, wxString( wxT("New") ) + wxT('\t') + wxT("CTRL+N"), wxEmptyString, wxITEM_NORMAL );
 	m_fileMenu->Append( m_newMenuItem );
-	
+
 	wxMenuItem* m_openMenuItem;
 	m_openMenuItem = new wxMenuItem( m_fileMenu, ID_File_Open, wxString( wxT("Open...") ) + wxT('\t') + wxT("CTRL+O"), wxEmptyString, wxITEM_NORMAL );
 	m_fileMenu->Append( m_openMenuItem );
-	
+
 	wxMenuItem* m_saveMenuItem;
 	m_saveMenuItem = new wxMenuItem( m_fileMenu, ID_File_Save, wxString( wxT("Save State...") ) , wxEmptyString, wxITEM_NORMAL );
 	m_fileMenu->Append( m_saveMenuItem );
-	
+
 	wxMenuItem* m_separator1;
 	m_separator1 = m_fileMenu->AppendSeparator();
-	
+
 	wxMenuItem* m_gifMenuItem;
 	m_gifMenuItem = new wxMenuItem( m_fileMenu, ID_File_Gif, wxString( wxT("Record GIF") ) + wxT('\t') + wxT("Backspace"), wxEmptyString, wxITEM_NORMAL );
 	m_fileMenu->Append( m_gifMenuItem );
-	
+
 	wxMenuItem* m_separator2;
 	m_separator2 = m_fileMenu->AppendSeparator();
-	
+
 	wxMenuItem* m_closeMenuItem;
 	m_closeMenuItem = new wxMenuItem( m_fileMenu, ID_File_Close, wxString( wxT("Close") ) + wxT('\t') + wxT("CTRL+W"), wxEmptyString, wxITEM_NORMAL );
 	m_fileMenu->Append( m_closeMenuItem );
-	
+
 	wxMenuItem* m_exitMenuItem;
 	m_exitMenuItem = new wxMenuItem( m_fileMenu, ID_File_Quit, wxString( wxT("Exit") ) + wxT('\t') + wxT("ALT+F4"), wxEmptyString, wxITEM_NORMAL );
 	m_fileMenu->Append( m_exitMenuItem );
-	
+
 	m_menubar->Append( m_fileMenu, wxT("File") );
-	
+
 	wxMenu *m_editMenu = new wxMenu();
 	wxMenuItem* m_copyMenuItem;
 	m_copyMenuItem = new wxMenuItem( m_editMenu, ID_Edit_Copy, wxString( wxT("Copy") ) + wxT('\t') + wxT("CTRL+C"), wxEmptyString, wxITEM_NORMAL );
 	m_editMenu->Append( m_copyMenuItem );
-	
+
 	wxMenuItem* m_pasteMenuItem;
 	m_pasteMenuItem = new wxMenuItem( m_editMenu, ID_Edit_Paste, wxString( wxT("Paste") ) + wxT('\t') + wxT("CTRL+V"), wxEmptyString, wxITEM_NORMAL );
 	m_editMenu->Append( m_pasteMenuItem );this->SetSizeHints( wxDefaultSize, wxDefaultSize );
-	
+
 	wxMenuItem* m_separator5;
 	m_separator5 = m_editMenu->AppendSeparator();
-	
+
 	wxMenuItem* m_optionsMenuItem;
 	m_optionsMenuItem = new wxMenuItem( m_editMenu, ID_Calc_Options, wxString( wxT("Preferences\tCtrl+Q") ) , wxEmptyString, wxITEM_NORMAL );
 	m_editMenu->Append( m_optionsMenuItem );
-	
+
 	m_menubar->Append( m_editMenu, wxT("Edit") );
-	
+
 	wxMenu *m_calcMenu = new wxMenu();
 	wxMenuItem* m_skinMenuItem;
 	m_skinMenuItem = new wxMenuItem( m_calcMenu, ID_Calc_Skin, wxString( wxT("Enable Skin") ) , wxEmptyString, wxITEM_CHECK );
 	m_calcMenu->Append( m_skinMenuItem );
-	
+
 	wxMenuItem* m_soundMenuItem;
 	m_soundMenuItem = new wxMenuItem( m_calcMenu, ID_Calc_Sound, wxString( wxT("Enable Sound") ) , wxEmptyString, wxITEM_CHECK );
 	m_calcMenu->Append( m_soundMenuItem );
-	
+
 	wxMenuItem* m_separator3;
 	m_separator3 = m_calcMenu->AppendSeparator();
-	
+
 	wxMenuItem* m_pauseMenuItem;
 	m_pauseMenuItem = new wxMenuItem( m_calcMenu, ID_Calc_Pause, wxString( wxT("Pause Emulation") ) , wxEmptyString, wxITEM_CHECK );
 	m_calcMenu->Append( m_pauseMenuItem );
-	
+
 	wxMenu *m_speedMenu = new wxMenu();
 	m_calcMenu->Append( -1, wxT("Speed"), m_speedMenu );
-	
+
 	wxMenuItem* m_setSpeed500;
 	m_setSpeed500 = new wxMenuItem( m_speedMenu, ID_Speed_500, wxString( wxT("500%") ) , wxEmptyString, wxITEM_CHECK );
 	m_speedMenu->Append( m_setSpeed500 );
-	
+
 	wxMenuItem* m_setSpeed400;
 	m_setSpeed400 = new wxMenuItem( m_speedMenu, ID_Speed_400, wxString( wxT("400%") ) , wxEmptyString, wxITEM_CHECK );
 	m_speedMenu->Append( m_setSpeed400 );
-	
+
 	wxMenuItem* m_setSpeed200;
 	m_setSpeed200 = new wxMenuItem( m_speedMenu, ID_Speed_200, wxString( wxT("200%") ) , wxEmptyString, wxITEM_CHECK );
 	m_speedMenu->Append( m_setSpeed200 );
-	
+
 	wxMenuItem* m_setSpeed100;
 	m_setSpeed100 = new wxMenuItem( m_speedMenu, ID_Speed_100, wxString( wxT("100%") ) , wxEmptyString, wxITEM_CHECK );
 	m_speedMenu->Append( m_setSpeed100 );
-	
+
 	wxMenuItem* m_setSpeed50;
 	m_setSpeed50 = new wxMenuItem( m_speedMenu, ID_Speed_50, wxString( wxT("50%") ) , wxEmptyString, wxITEM_CHECK );
 	m_speedMenu->Append( m_setSpeed50 );
-	
+
 	wxMenuItem* m_setSpeed25;
 	m_setSpeed25 = new wxMenuItem( m_speedMenu, ID_Speed_25, wxString( wxT("25%") ) , wxEmptyString, wxITEM_CHECK );
 	m_speedMenu->Append( m_setSpeed25 );
-	
+
 	wxMenuItem* m_separatorSpeedCustom;
 	m_separatorSpeedCustom = m_speedMenu->AppendSeparator();
-	
+
 	wxMenuItem* m_setSpeedCustom;
 	m_setSpeedCustom = new wxMenuItem( m_speedMenu, ID_Speed_Custom, wxString( wxT("Custom...") ) , wxEmptyString, wxITEM_CHECK );
 	m_speedMenu->Append( m_setSpeedCustom );
-	
+
 	wxMenu *m_sizeMenu = new wxMenu();
 	m_calcMenu->Append(-1,wxT("Size"), m_sizeMenu);
-	
+
 	wxMenuItem* m_setSize100;
 	m_setSize100 = new wxMenuItem( m_sizeMenu, ID_Size_100, wxString( wxT("100%") ) , wxEmptyString, wxITEM_CHECK );
 	m_sizeMenu->Append( m_setSize100 );
-	
+
 	wxMenuItem* m_setSize200;
 	m_setSize200 = new wxMenuItem( m_sizeMenu, ID_Size_200, wxString( wxT("200%") ) , wxEmptyString, wxITEM_CHECK );
 	m_sizeMenu->Append( m_setSize200 );
-	
+
 	wxMenuItem* m_setSize300;
 	m_setSize300 = new wxMenuItem( m_sizeMenu, ID_Size_300, wxString( wxT("300%") ) , wxEmptyString, wxITEM_CHECK );
 	m_sizeMenu->Append( m_setSize300 );
-	
+
 	wxMenuItem* m_setSize400;
 	m_setSize400 = new wxMenuItem( m_sizeMenu, ID_Size_400, wxString( wxT("400%") ) , wxEmptyString, wxITEM_CHECK );
 	m_sizeMenu->Append( m_setSize400 );
-	
+
 	wxMenuItem* m_separator4;
 	m_separator4 = m_calcMenu->AppendSeparator();
-	
+
 	wxMenuItem* m_connectMenuItem;
 	m_connectMenuItem = new wxMenuItem( m_calcMenu, ID_Calc_Connect, wxString( wxT("Connect To...") ) , wxEmptyString, wxITEM_NORMAL );
 	m_calcMenu->Append( m_connectMenuItem );
-	
+
 	wxMenuItem* m_separator6;
 	m_separator6 = m_calcMenu->AppendSeparator();
-	
+
 	wxMenuItem* m_varsMenuItem;
 	m_varsMenuItem = new wxMenuItem( m_calcMenu, ID_Calc_Vars, wxString( wxT("Variables...") ) , wxEmptyString, wxITEM_NORMAL );
 	m_calcMenu->Append( m_varsMenuItem );
-	
+
 	m_menubar->Append( m_calcMenu, wxT("Calculator") );
-	
+
 	wxMenu *m_debugMenu = new wxMenu();
 	wxMenuItem* m_resetMenuItem;
 	m_resetMenuItem = new wxMenuItem( m_debugMenu, ID_Debug_Reset, wxString( wxT("Reset") ) , wxEmptyString, wxITEM_NORMAL );
 	m_debugMenu->Append( m_resetMenuItem );
-	
+
 	wxMenuItem* m_debugMenuItem;
 	m_debugMenuItem = new wxMenuItem( m_debugMenu, ID_Debug_Open, wxString( wxT("Open Debugger...") ) , wxEmptyString, wxITEM_NORMAL );
 	m_debugMenu->Append( m_debugMenuItem );
-	
+
 	m_menubar->Append( m_debugMenu, wxT("Debug") );
-	
+
 	wxMenu *m_helpMenu = new wxMenu();
 	wxMenuItem* m_websiteMenuItem;
 	m_websiteMenuItem = new wxMenuItem( m_helpMenu, ID_Help_Website, wxString( wxT("Website") ) , wxEmptyString, wxITEM_NORMAL );
 	m_helpMenu->Append( m_websiteMenuItem );
-	
+
 	wxMenuItem* m_aboutMenuItem;
 	m_aboutMenuItem = new wxMenuItem( m_helpMenu, ID_Help_About, wxString( wxT("About") ) , wxEmptyString, wxITEM_NORMAL );
 	m_helpMenu->Append( m_aboutMenuItem );
-	
+
 	m_menubar->Append( m_helpMenu, wxT("Help") );
-	
+
 	this->SetMenuBar( m_menubar );
-	
+
 	wxStatusBar *m_statusBar1 = new wxStatusBar(this);
 	this->SetStatusBar(m_statusBar1);
-	
+
 	this->Connect(wxEVT_PAINT, wxPaintEventHandler(MyFrame::OnPaint));
 	// Resize event connection
 	this->Connect(wxEVT_SIZE, (wxObjectEventFunction) &MyFrame::OnResize);
-	
+
 	this->Connect(ID_File_New, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileNew);
 	this->Connect(ID_File_Open, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileOpen);
 	this->Connect(ID_File_Save, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileSave);
@@ -533,7 +533,7 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
 	this->Connect(ID_File_Gif, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnGIF);
 	this->Connect(ID_File_Quit, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnFileQuit);
 	this->Connect(ID_Calc_Pause, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnPauseEmulation);
-	
+
 	this->Connect(ID_Speed_Custom, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeedCustom);
 	this->Connect(ID_Speed_500, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
 	this->Connect(ID_Speed_400, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
@@ -541,12 +541,12 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
 	this->Connect(ID_Speed_100, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
 	this->Connect(ID_Speed_50, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
 	this->Connect(ID_Speed_25, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSpeed);
-	
+
 	this->Connect(ID_Size_100, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSize);
 	this->Connect(ID_Size_200, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSize);
 	this->Connect(ID_Size_300, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSize);
 	this->Connect(ID_Size_400, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSize);
-	
+
 	this->Connect(ID_Help_About, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpAbout);
 	this->Connect(ID_Help_Website, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpWebsite);
 	this->Connect(ID_Calc_Skin, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnCalcSkin);
@@ -554,27 +554,27 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
 	this->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyFrame::OnKeyUp);
 	/* OnQuit */
 	this->Connect(wxEVT_CLOSE_WINDOW, wxCloseEventHandler(MyFrame::OnQuit));
-	
+
 	//Speed starts at 100%
 	m_menubar->Check(ID_Speed_100, true);
 	//Size starts at 200%
 	m_menubar->Check(ID_Size_200, true);
-	
+
 	//int menuSize = wxSystemSettings::GetMetric(wxSYS_MENU_Y);
 	if (calcs[slot].SkinEnabled)
 		windowSize = calcs[slot].SkinSize;
 	else
 		windowSize.Set(128 * calcs[slot].Scale, 64 * calcs[slot].Scale+60);
-	
+
 	#if (defined(__WXMSW__) && BIG_WINDOWS_ICON == 1)
 	wxBitmap bitmap(wxT(“wabbiticon.png”), wxBITMAP_TYPE_PNG);
 	icon.CopyFromBitmap(bitmap);
 	#else
 	wxIcon icon(wxICON(wabbiticon));
 	#endif
-	
+
 	SetIcon(icon);
-	
+
 	this->SetSize(windowSize);
 }
 
@@ -648,9 +648,9 @@ void MyFrame::OnSetSize(wxCommandEvent &event) {
 	    wxMenu->Check(ID_Size_200,false);
 	    wxMenu->Check(ID_Size_300,false);
 	    wxMenu->Check(ID_Size_400,false);
-	    
+
 	    eventID = event.GetId();
-	    
+
 	    switch (eventID) {
 	        case ID_Size_100:
 	            calcs[slot].Scale = 1;  //This is half of the Wabbit default, but equals real LCD
@@ -696,7 +696,7 @@ void MyFrame::OnSetSpeed(wxCommandEvent &event) {
 	wxMenu->Check(ID_Speed_Custom, false);
 	wxMenu->SetLabel(ID_Speed_Custom, wxString(wxT("Custom...")));
 	wxMenu->Check(ID_Speed_Custom, false);
-	
+
 	eventID = event.GetId();
 	printf_d("[wxWabbitemu] [OnSetSpeed] Got widget ID that called this function: %d \n",eventID);
 	switch (eventID) {
@@ -837,14 +837,14 @@ void MyFrame::OnCalcSkin(wxCommandEvent& event)
 {
 	wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
 	calcs[slot].SkinEnabled = !calcs[slot].SkinEnabled;
-	
+
 	// Enable/disable sizing menu items.
 	//m_sizeMenu->Enable(!calcs[slot].SkinEnabled);
 	wxMenu->Enable(ID_Size_100, !calcs[slot].SkinEnabled);
 	wxMenu->Enable(ID_Size_200, !calcs[slot].SkinEnabled);
 	wxMenu->Enable(ID_Size_300, !calcs[slot].SkinEnabled);
 	wxMenu->Enable(ID_Size_400, !calcs[slot].SkinEnabled);
-	
+
 	// Connect or disconnect the OnResize event.
 	if (calcs[slot].SkinEnabled) {
 		prevCalcScale = calcs[slot].Scale;
@@ -858,7 +858,7 @@ void MyFrame::OnCalcSkin(wxCommandEvent& event)
 	this->Refresh();
 	this->Update();
 }
- 
+
 void MyFrame::OnHelpAbout(wxCommandEvent& WXUNUSED(event))
 {
 	wxMessageBox(wxT("wxWabbitEmu is a port of Wabbitemu that is cross-platform."), wxT("About Wabbitemu"), wxOK | wxICON_INFORMATION, this);

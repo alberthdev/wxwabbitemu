@@ -27,13 +27,11 @@
 #include <math.h>
 #include <stdint.h>
 #include <sys/types.h>
-#ifdef WINVER // FIXME: ...
-#include "gui.h"
-#else
+
 #define TRUE 1
 #define FALSE 0
 typedef int BOOL;
-#endif
+
 #include "gui_wx.h"
 //#include "gif.h" // uhh...
 
