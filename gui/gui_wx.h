@@ -19,7 +19,7 @@
 
 #include "skins/ti83p.h"
 
- #define wxGetBitmapFromMemory(name) _wxGetBitmapFromMemory(name ## _png, sizeof(name ## _png))
+#define wxGetBitmapFromMemory(name) _wxGetBitmapFromMemory(name ## _png, sizeof(name ## _png))
 
  inline wxBitmap _wxGetBitmapFromMemory(const unsigned char *data, int length) {
    wxMemoryInputStream is(data, length);
@@ -72,4 +72,20 @@ private:
 	void FinalizeButtons();
 };
 
+// Struct
+struct calcWXStruct {
+	MyFrame *wxFrame;
+	MyLCD *wxLCD;
+	wxBitmap calcSkin;
+	wxImage keymap;
+	int Scale;
+	bool SkinEnabled;
+	bool bCutout;
+	wxSize SkinSize;
+	wxRect LCDRect;
+	clock_t sb_refresh;
+	bool bCustomSkin;
+	char skin_path[256];
+	char keymap_path[256];
+} calcWX;
 #endif

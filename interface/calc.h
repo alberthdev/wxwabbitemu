@@ -1,17 +1,11 @@
 #ifndef _CALC_H
 #define _CALC_H
 
-#include <wx/frame.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
 #include "coretypes.h"
-
-#ifdef WXVER
-#include "gui_wx.h"
-#include "guilcd_wx.h"
-#endif
 
 #include "core.h"
 #include "lcd.h"
@@ -33,9 +27,7 @@
 #ifndef WINVER
 #include <stdint.h>
 #include "types.h"
-#endif
-#ifdef WXVER
-#include <wx/wx.h>
+#include <limits.h>
 #endif
 
 #ifdef QTVER
@@ -66,8 +58,8 @@ typedef struct tagCALC {
 	void *breakpoint_owner;
 #endif
 	int slot;
-	char rom_path[256];
-	char rom_version[32];
+	char rom_path[PATH_MAX];
+	char rom_version[PATH_MAX];
 	int model;
 
 	time_t time_error;
@@ -101,20 +93,6 @@ typedef struct tagCALC {
 	HDC hdcButtons;
 	HDC hdcKeymap;
 	breakpoint_t *cond_breakpoints;
-#elif WXVER
-	MyFrame *wxFrame;
-	MyLCD *wxLCD;
-	wxBitmap calcSkin;
-	wxImage keymap;
-	int Scale;
-	bool SkinEnabled;
-	bool bCutout;
-	wxSize SkinSize;
-	wxRect LCDRect;
-	clock_t sb_refresh;
-	bool bCustomSkin;
-	char skin_path[256];
-	char keymap_path[256];
 #else
 	pthread_t hdlThread;
 #endif
@@ -125,7 +103,7 @@ typedef struct tagCALC {
 	label_struct labels[6000];
 	profiler_t profiler;
 
-	char labelfn[256];
+	char labelfn[NAME_MAX];
 	applist_t applist;
 	apphdr_t *last_transferred_app;
 
