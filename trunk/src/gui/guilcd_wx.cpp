@@ -11,18 +11,19 @@ enum {
 unsigned char redColors[MAX_SHADES+1];
 unsigned char greenColors[MAX_SHADES+1];
 unsigned char blueColors[MAX_SHADES+1];
-MyLCD::MyLCD(int curslot)
-	: wxWindow(calcs[curslot].wxFrame, ID_LCD, wxPoint(0,0),
-		wxSize(calcs[curslot].cpu.pio.lcd->width * calcs[curslot].Scale, 64 * calcs[curslot].Scale)) {
-	this->slot = curslot;
-	int scale = calcs[curslot].Scale;
+MyLCD::MyLCD(wxFrame *mainFrame, LPCALC lpCalc)
+	: wxWindow(mainFrame, ID_LCD, wxPoint(0,0),
+		wxSize(lpCalc->cpu.pio.lcd->width * lpCalc->scale, 64 * lpCalc->scale)) {
+	this->lpCalc = lpCalc;
+	int scale = lpCalc->scale;
+	this->mainFrame = mainFrame;
 	this->Connect(wxEVT_PAINT, wxPaintEventHandler(MyLCD::OnPaint));
 	this->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyLCD::OnKeyDown);
 	this->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyLCD::OnKeyUp);
 	//this->Connect(wxEVT_SIZE, (wxObjectEventFunction) &MyLCD::OnResize);
 	this->Connect(wxEVT_LEFT_DOWN, (wxObjectEventFunction) &MyLCD::OnLeftButtonDown);
 	this->Connect(wxEVT_LEFT_UP, (wxObjectEventFunction) &MyLCD::OnLeftButtonUp);
-	this->SetDropTarget(new DnDFile(this));
+	this->SetDropTarget(new DnDFile(this, lpCalc));
 #define LCD_HIGH	255
 	for (int i = 0; i <= MAX_SHADES; i++) {
 		redColors[i] = (0x9E*(256-(LCD_HIGH/MAX_SHADES)*i))/255;
@@ -34,7 +35,6 @@ MyLCD::MyLCD(int curslot)
 void MyLCD::OnLeftButtonDown(wxMouseEvent& event)
 {
 	event.Skip(true);
-	LPCALC lpCalc = &calcs[this->slot];
 	static wxPoint pt;
 	keypad_t *kp = lpCalc->cpu.pio.keypad;
 
@@ -81,7 +81,6 @@ void MyLCD::OnLeftButtonDown(wxMouseEvent& event)
 void MyLCD::OnLeftButtonUp(wxMouseEvent& event)
 {
 	event.Skip(true);
-	LPCALC lpCalc = &calcs[this->slot];
 	static wxPoint pt;
 	keypad_t *kp = lpCalc->cpu.pio.keypad;
 
@@ -103,35 +102,34 @@ void MyLCD::OnResize(wxSizeEvent& event)
 
 void MyLCD::OnKeyDown(wxKeyEvent& event)
 {
-	calcs[slot].wxFrame->OnKeyDown(event);
+	mainFrame->ProcessEvent(event);
 }
 
 void MyLCD::OnKeyUp(wxKeyEvent& event)
 {
-	calcs[slot].wxFrame->OnKeyUp(event);
+	mainFrame->ProcessEvent(event);
 }
 
 void MyLCD::OnPaint(wxPaintEvent& event)
 {
 	wxPaintDC *dc = new wxPaintDC(this);
-	LPCALC lpCalc = &calcs[slot];
 	if (lpCalc->SkinEnabled) {
-		lpCalc->wxLCD->Update();
+		this->Update();
 		wxBitmap skin = lpCalc->calcSkin;
 		dc->DrawBitmap(skin, 0, 0, true);
 	}
 	PaintLCD(this, dc);
-	LCD_t *lcd = calcs[slot].cpu.pio.lcd;
-	wxStatusBar *wxStatus = calcs[slot].wxFrame->GetStatusBar();
+	LCD_t *lcd = lpCalc->cpu.pio.lcd;
+	wxStatusBar *wxStatus = mainFrame->GetStatusBar();
 	if (wxStatus) {
-		if (clock() > calcs[slot].sb_refresh + CLOCKS_PER_SEC / 2) {
+		if (clock() > lpCalc->sb_refresh + CLOCKS_PER_SEC / 2) {
 			wxString sz_status;
 			if (lcd->active)
 				sz_status.sprintf(wxT("FPS: %0.2lf"), lcd->ufps);
 			else
 				sz_status.sprintf(wxT("FPS: -"));
 			wxStatus->SetStatusText(sz_status, 0);
-			calcs[slot].sb_refresh = clock();
+			lpCalc->sb_refresh = clock();
 		}
 	}
 	delete dc;
@@ -140,12 +138,11 @@ void MyLCD::OnPaint(wxPaintEvent& event)
 void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 {
 	unsigned char *screen;
-	LPCALC lpCalc = &calcs[slot];
 	LCD_t *lcd = lpCalc->cpu.pio.lcd;
-	wxSize rc = lpCalc->wxFrame->GetClientSize();
-	int draw_width = lcd->width * calcs[slot].Scale;
-	int draw_height = 64 * calcs[slot].Scale;
-	int scale = calcs[slot].Scale;
+	wxSize rc = this->mainFrame->GetClientSize();
+		int scale = lpCalc->scale;
+	int draw_width = lcd->width * scale;
+	int draw_height = 64 * scale;
 	wxPoint drawPoint((rc.GetWidth() - draw_width) / 2, 0);
 	if (lpCalc->SkinEnabled) {
 		drawPoint.x = lpCalc->LCDRect.GetX();
@@ -166,7 +163,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 		wxBitmap bmpBuf(screenImage.Scale(128 * scale, 64 * scale).Size(rc, wxPoint(0,0)));
 		wxMemDC.SelectObject(bmpBuf);
 		//draw drag panes
-		/*if (calcs[this->slot].do_drag == TRUE) {
+		/*if (lpCalc->do_drag == TRUE) {
 
 			hdcOverlay = DrawDragPanes(hwnd, hdcDest, 0);
 			BLENDFUNCTION bf;
@@ -187,7 +184,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 		wxMemDC.SelectObject(wxNullBitmap);
 
 	} else {
-		screen = LCD_image( calcs[gslot].cpu.pio.lcd ) ;
+		screen = LCD_image( lpCalc->cpu.pio.lcd ) ;
 		unsigned char rgb_data[128*64*3];
 		int i, j;
 		for (i = j = 0; i < 128*64; i++, j+=3) {
@@ -197,7 +194,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 		}
 
 		//this is for the 86, so it doesnt look like complete shit
-		/*if (lcd->width * calcs[this->slot].Scale != (rc.right - rc.left))
+		/*if (lcd->width * lpCalc->scale != (rc.right - rc.left))
 			SetStretchBltMode(hdc, HALFTONE);
 		else
 			SetStretchBltMode(hdc, BLACKONWHITE);*/
@@ -211,7 +208,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 		bf.SourceConstantAlpha = 160;
 		bf.AlphaFormat = 0;
 
-		if (calcs[this->slot].do_drag == TRUE) {
+		if (lpCalc->do_drag == TRUE) {
 
 			hdcOverlay = DrawDragPanes(hwnd, hdcDest, 0);
 
@@ -233,7 +230,7 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 
 		if (alphablendfail<100 && lcd->width != 138) {
 			if (AlphaBlend(	hdc, rc.left, rc.top, rc.right,  rc.bottom,
-				calcs[this->slot].hdcSkin, calcs[this->slot].rectLCD.left, calcs[this->slot].rectLCD.top,
+				lpCalc->hdcSkin, lpCalc->rectLCD.left, lpCalc->rectLCD.top,
 				(rc.right - rc.left), 128,
 					bf )  == FALSE){
 				//printf("alpha blend 2 failed\n");
@@ -252,7 +249,8 @@ void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 	//delete &wxMemDC; 				//DeleteDC(hdc);
 }
 
-void SaveStateDialog(int slot) {
+//TODO: BuckeyeDude: remove this and use fileutilities.c
+void SaveStateDialog(LPCALC lpCalc) {
 	char *FileName;
 	wxString lpstrFilter 	= wxT("\
 Known File types ( *.sav; *.rom; *.bin) |*.sav;*.rom;*.bin|\
@@ -260,13 +258,14 @@ Save States  (*.sav)|*.sav|\
 ROMS  (*.rom; .bin)|*.rom;*.bin|\
 All Files (*.*)|*.*\0");
 	
-	wxFileDialog dialog(calcs[slot].wxLCD, wxT("Wabbitemu Save State"),
+	wxFileDialog dialog(NULL, wxT("Wabbitemu Save State"),
 	wxT(""), wxT(""), lpstrFilter, wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 	if (dialog.ShowModal() != wxID_OK)
 		return;
+	extern char * wxStringToChar(wxString);
 	FileName = wxStringToChar(dialog.GetPath());
 	
-	SAVESTATE_t* save = SaveSlot(slot);
+	SAVESTATE_t* save = SaveSlot(lpCalc);
 
 	strcpy(save->author, "Default");
 	save->comment[0] = '\0';

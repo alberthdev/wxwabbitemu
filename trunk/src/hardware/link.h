@@ -30,7 +30,7 @@ typedef enum {
 } LINK_ERR;
 
 // Destination flags
-typedef enum {
+typedef enum SEND_FLAG {
 	SEND_CUR,					/* sends based on current flag settings */
 	SEND_RAM,					/* sends to RAM, regardless of flag settings */
 	SEND_ARC					/* sends to archive, regardless of flag settings */
@@ -59,10 +59,12 @@ typedef struct link {
 	u_char *client;					// what they wrote to the link port
 	volatile size_t vlink_send;		// amount already sent over vlink
 	volatile size_t vlink_recv;		// amount already received over the link
-	size_t vlink_size;			// Size of the var currently on the link (if known)
+	size_t vlink_size;				// Size of the var currently on the link (if known)
 	#ifdef WINVER
 	AUDIO_t audio;
 	#endif
+	BYTE vout;
+	LPBYTE vin;						// Virtual Link data
 } link_t;
 
 #pragma pack(push, 1)
@@ -134,6 +136,7 @@ typedef struct _TI_DATA {
 #define CListObj        0x0D
 #define UndefObj        0x0E
 #define WindowObj       0x0F
+#define BackupObj_82	0x0F
 #define ZStoObj         0x10
 #define TblRngObj       0x11
 #define LCDObj          0x12
@@ -148,12 +151,13 @@ typedef struct _TI_DATA {
 #define IDListObj		0x26
 #define EquObj_3        0x63
 
-LINK_ERR link_send_var(CPU_t*, TIFILE_t*, SEND_FLAG);
-void Load_8xu(FILE*);
-int ReadIntelHex(FILE*, intelhex_t *);
+LINK_ERR link_send_var(CPU_t *, TIFILE_t *, SEND_FLAG);
+LINK_ERR link_send_backup(CPU_t *, TIFILE_t *, SEND_FLAG);
+LINK_ERR forceload_os(CPU_t *, TIFILE_t *);
 int link_connect(CPU_t *, CPU_t *);
+int link_connect_hub(int slot, CPU_t *cpu);
+BOOL link_connected_hub(int slot);
 int link_disconnect(CPU_t *);
-bool link_connected(int);
-void writeboot(FILE* , int page = -1);
+void writeboot(FILE* , memory_context_t *, int page);
 #endif
 

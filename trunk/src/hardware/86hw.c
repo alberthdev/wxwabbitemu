@@ -1,17 +1,16 @@
+#include "stdafx.h"
+
 #include "lcd.h"
 #include "keys.h"
 #include "86hw.h"
 #include "link.h"
 #include "device.h"
 #include <math.h>
-#ifdef WXVER
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 static double timer_freq[4] = {1.0/200.0};
 
-static int screen_addr = 0xFC00;
+//this would make it impossible to open multiple 86s...
+//static int screen_addr = 0xFC00;
 static void port10(CPU_t *, device_t *);
 
 // 86 screen offset
@@ -20,19 +19,25 @@ static void port0(CPU_t *cpu, device_t *dev) {
 		cpu->bus = 0;
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-		screen_addr = 0x100 * ((cpu->bus % 0x40) + 0xC0);
+		dev->aux = (LPVOID) (0x100 * ((cpu->bus % 0x40) + 0xC0));
 		port10(cpu, dev);
 		cpu->output = FALSE;
-		LCD_data(cpu, dev);
+		device_t lcd_dev;
+		lcd_dev.aux = cpu->pio.lcd;
+		LCD_data(cpu, &lcd_dev);
 	}
 	return;
 }
 
 // Contrast
+// ranges from 0 to 31
 static void port2(CPU_t *cpu, device_t *dev) {
-	if (cpu->output) {
-		//HACK: i dont really no how this works...
-		LCD_t *lcd = cpu->pio.lcd;
+	LCD_t *lcd = (LCD_t *) dev->aux;
+	if (cpu->input) {
+		cpu->input = FALSE;
+	} else if (cpu->output) {
+		//lcd->contrast ranges from 24 - 64
+		//HACK: still not sure exactly how this works :P
 		lcd->contrast = lcd->base_level - 15 + cpu->bus;
 		if (lcd->contrast > 64)
 			lcd->contrast = 64;
@@ -87,13 +92,11 @@ static void port3(CPU_t *cpu, device_t *dev) {
 
 
 static void port4(CPU_t *cpu, device_t *dev) {
-
 	if (cpu->input) {
 		dev->aux = (void *) cpu->bus;
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-	//TODO: FIX??@!?
-		//cpu->bus = (uint8_t) dev->aux;
+		cpu->bus = (uint8_t) (int) (long long) dev->aux;
 		cpu->output = FALSE;
 	}
 }
@@ -101,21 +104,21 @@ static void port4(CPU_t *cpu, device_t *dev) {
 // ROM port
 static void port5(CPU_t *cpu, device_t *dev) {
 	if ( cpu->input ) {
-		cpu->bus = ((cpu->mem_c->banks[1].ram)<<6)+cpu->mem_c->banks[1].page;
+		cpu->bus = (cpu->mem_c->banks[1].ram << 6) + cpu->mem_c->banks[1].page;
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-		cpu->mem_c->banks[1].ram = (cpu->bus>>6)&1;
+		cpu->mem_c->banks[1].ram = (cpu->bus >> 6) & 1;
 		if (cpu->mem_c->banks[1].ram) {
-			cpu->mem_c->banks[1].page		= ((cpu->bus&0x1f) % cpu->mem_c->ram_pages );
-			cpu->mem_c->banks[1].addr		= cpu->mem_c->ram+(cpu->mem_c->banks[1].page*16384);
+			cpu->mem_c->banks[1].page		= (cpu->bus & 0x1f) % cpu->mem_c->ram_pages;
+			cpu->mem_c->banks[1].addr		= cpu->mem_c->ram+(cpu->mem_c->banks[1].page * PAGE_SIZE);
 			cpu->mem_c->banks[1].read_only	= FALSE;
 			cpu->mem_c->banks[1].no_exec	= FALSE;
 		} else {
-			cpu->mem_c->banks[1].page		= ((cpu->bus&0x1f) % cpu->mem_c->flash_pages);
-			cpu->mem_c->banks[1].addr		= cpu->mem_c->flash+(cpu->mem_c->banks[1].page*16384);
+			cpu->mem_c->banks[1].page		= (cpu->bus & 0x1f) % cpu->mem_c->flash_pages;
+			cpu->mem_c->banks[1].addr		= cpu->mem_c->flash+(cpu->mem_c->banks[1].page * PAGE_SIZE);
 			cpu->mem_c->banks[1].read_only	= TRUE;
 			cpu->mem_c->banks[1].no_exec	= FALSE;
-			if (cpu->mem_c->banks[1].page==0x1f) cpu->mem_c->banks[1].read_only=TRUE;
+			if (cpu->mem_c->banks[1].page == 0x1f) cpu->mem_c->banks[1].read_only = TRUE;
 		}
 		cpu->output = FALSE;
 	}
@@ -124,21 +127,21 @@ static void port5(CPU_t *cpu, device_t *dev) {
 // RAM port
 static void port6(CPU_t *cpu, device_t *dev) {
 	if (cpu->input) {
-		cpu->bus = ((cpu->mem_c->banks[2].ram)<<6)+cpu->mem_c->banks[2].page;
+		cpu->bus = (cpu->mem_c->banks[2].ram << 6) + cpu->mem_c->banks[2].page;
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-		cpu->mem_c->banks[2].ram = (cpu->bus>>6)&1;
+		cpu->mem_c->banks[2].ram = (cpu->bus >> 6) & 1;
 		if (cpu->mem_c->banks[2].ram) {
-			cpu->mem_c->banks[2].page		= ((cpu->bus&0x1f) % cpu->mem_c->ram_pages);
-			cpu->mem_c->banks[2].addr		= cpu->mem_c->ram+(cpu->mem_c->banks[2].page*16384);
+			cpu->mem_c->banks[2].page		= (cpu->bus & 0x1f) % cpu->mem_c->ram_pages;
+			cpu->mem_c->banks[2].addr		= cpu->mem_c->ram+(cpu->mem_c->banks[2].page * PAGE_SIZE);
 			cpu->mem_c->banks[2].read_only	= FALSE;
 			cpu->mem_c->banks[2].no_exec	= FALSE;
 		} else {
-			cpu->mem_c->banks[2].page		= ((cpu->bus&0x1f) % cpu->mem_c->flash_pages);
-			cpu->mem_c->banks[2].addr		= cpu->mem_c->flash+(cpu->mem_c->banks[2].page*16384);
+			cpu->mem_c->banks[2].page		= (cpu->bus & 0x1f) % cpu->mem_c->flash_pages;
+			cpu->mem_c->banks[2].addr		= cpu->mem_c->flash + (cpu->mem_c->banks[2].page * PAGE_SIZE);
 			cpu->mem_c->banks[2].read_only	= TRUE;
 			cpu->mem_c->banks[2].no_exec	= FALSE;
-			if (cpu->mem_c->banks[2].page==0x1f) cpu->mem_c->banks[2].read_only=TRUE;
+			if (cpu->mem_c->banks[2].page == 0x1f) cpu->mem_c->banks[2].read_only = TRUE;
 		}
 		cpu->output = FALSE;
 	}
@@ -147,7 +150,7 @@ static void port6(CPU_t *cpu, device_t *dev) {
 static void port7(CPU_t *cpu, device_t *dev) {
 	link_t * link = (link_t *) dev->aux;
 	if (cpu->input) {
-		cpu->bus = (((link->host&0x03)|(link->client[0]&0x03))^0x03);
+		cpu->bus = (((link->host & 0x03) | (link->client[0] & 0x03)) ^ 0x03);
 		cpu->input = FALSE;
 	} else if (cpu->output) {
 		link->host = (cpu->bus >> 4) & 0x03;
@@ -157,11 +160,10 @@ static void port7(CPU_t *cpu, device_t *dev) {
 
 
 static void port10(CPU_t *cpu, device_t *dev) {
+	int screen_addr = (int) (long long) dev->aux;
 	// Output the entire LCD
 	LCD_t *lcd = cpu->pio.lcd;
-	memcpy(lcd->display, 
-			cpu->mem_c->banks[mc_bank(screen_addr)].addr + mc_base(screen_addr), 
-			DISPLAY_SIZE);
+	memcpy(lcd->display, cpu->mem_c->banks[mc_bank(screen_addr)].addr + mc_base(screen_addr), DISPLAY_SIZE);
 
 }
 
@@ -219,7 +221,7 @@ int device_init_86(CPU_t *cpu) {
 	cpu->pio.devices[0x01].code = (devp) &keypad;
 
 	cpu->pio.devices[0x02].active = TRUE;
-	cpu->pio.devices[0x02].aux = NULL;
+	cpu->pio.devices[0x02].aux = lcd;
 	cpu->pio.devices[0x02].code = (devp) &port2;
 
 	cpu->pio.devices[0x03].active = TRUE;
@@ -245,7 +247,7 @@ int device_init_86(CPU_t *cpu) {
 	cpu->pio.devices[0x07].code = (devp) &port7;
 
 	cpu->pio.devices[0x10].active = TRUE;
-	cpu->pio.devices[0x10].aux = lcd;
+	cpu->pio.devices[0x10].aux = (void *) 0xFC00;
 	cpu->pio.devices[0x10].code = (devp) &port10;
 
 	cpu->pio.devices[0x11].active = TRUE;
@@ -279,16 +281,16 @@ int memory_init_86(memc *mc) {
 
 	mc->flash_version = 1;
 	mc->flash_size = mc->flash_pages * PAGE_SIZE;
-	mc->flash = (u_char *) calloc(mc->flash_pages, PAGE_SIZE);
-	mc->flash_break = (u_char *) calloc(mc->flash_pages, PAGE_SIZE);
+	mc->flash = (unsigned char *) calloc(mc->flash_pages, PAGE_SIZE);
+	mc->flash_break = (unsigned char *) calloc(mc->flash_pages, PAGE_SIZE);
 	memset(mc->flash, 0xFF, mc->flash_size);
 	
 	mc->ram_size = mc->ram_pages * PAGE_SIZE;
-	mc->ram = (u_char *) calloc(mc->ram_pages, PAGE_SIZE);
-	mc->ram_break = (u_char *) calloc(mc->ram_pages, PAGE_SIZE);
+	mc->ram = (unsigned char *) calloc(mc->ram_pages, PAGE_SIZE);
+	mc->ram_break = (unsigned char *) calloc(mc->ram_pages, PAGE_SIZE);
 
 	if (!mc->flash || !mc->ram) {
-		printf("Couldn't allocate memory in memory_init_86\n");
+		_tprintf_s(_T("Couldn't allocate memory in memory_init_86\n"));
 		return 1;
 	}
 
@@ -306,7 +308,8 @@ int memory_init_86(memc *mc) {
 		{NULL,								0,		FALSE,	FALSE,	FALSE}
 	};
 
-	memcpy(mc->banks, banks, sizeof(banks));
+	memcpy(mc->normal_banks, banks, sizeof(banks));
+	mc->banks = mc->normal_banks;
 	return 0;
 }
 

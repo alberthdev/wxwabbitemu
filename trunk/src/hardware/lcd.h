@@ -62,10 +62,11 @@ typedef enum _LCD_MODE {
  */
 typedef struct LCD {
 	void (*free)(struct LCD*);		// Function to free this aux
-	bool active;					// TRUE = on, FALSE = off
+	BOOL active;					// TRUE = on, FALSE = off
 	u_int word_len;
 	int x, y, z;					/* LCD cursors */
 	int width;
+	u_int lcd_delay;				//delay in tstate required to write
 	
 	LCD_CURSOR_MODE cursor_mode;	/* Y_UP, Y_DOWN, X_UP, X_DOWN */
 	u_int last_read;				/* Buffer previous read */
@@ -83,11 +84,13 @@ typedef struct LCD {
 	double ufps, ufps_last;			/* User frames per second*/
 	double lastgifframe;
 	double write_avg, write_last;	/* Used to determine freq. of writes to the LCD */
+	long long last_tstate;			// timer_c->tstate of the last write
 } LCD_t;
 
 /* Device functions */
-LCD_t *LCD_init(CPU_t*,int);
-void LCD_command(CPU_t*, device_t*);
+LCD_t *LCD_init(CPU_t *, int);
+void LCD_timer_refresh(CPU_t *);
+void LCD_command(CPU_t *, device_t *);
 void LCD_data(CPU_t *, device_t *);
 
 /* Interface functions */

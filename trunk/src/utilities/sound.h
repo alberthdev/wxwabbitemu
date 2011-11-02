@@ -1,10 +1,7 @@
 #ifndef SOUND_H
 #define SOUND_H
-#include <windows.h>
-#include <mmsystem.h>
+
 #include "core.h"
-
-
 
 #define	SampleRate		(48000)
 #define Channels		(2)
@@ -24,10 +21,13 @@
 
 typedef struct SAMPLE SAMPLE_t;
 
+#pragma pack(1)
 struct SAMPLE {
 	unsigned char left;
 	unsigned char right;
-}  __attribute__((__packed__));
+};
+
+#pragma pack()
 
 
 typedef struct {
@@ -58,16 +58,18 @@ typedef struct {
 	double HighLengRight;
 	
 	double volume;
+	timerc *timer_c;
 
 } AUDIO_t;
 
-int soundinit();
-int playsound();
-int pausesound();
-void togglesound();
+
+int soundinit(void *);
+int playsound(AUDIO_t *);
+int pausesound(AUDIO_t *);
+void togglesound(AUDIO_t *);
 int FlippedLeft(CPU_t *, int );
 int FlippedRight(CPU_t *, int );
 int nextsample(CPU_t *);
-void KillSound(AUDIO_t* );
+void KillSound(AUDIO_t *);
 
 #endif

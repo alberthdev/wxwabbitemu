@@ -1,3 +1,5 @@
+#include "stdafx.h"
+
 #include "core.h"
 #include "alu.h"
 
@@ -140,6 +142,7 @@ void rld(CPU_t *cpu) {
 	int result;
 
 	tc_add(cpu->timer_c,18);
+
 	result = (CPU_mem_read(cpu,cpu->hl)<<4)+(cpu->a&0x0f);
 	CPU_mem_write(cpu,cpu->hl,result&0xff);
 	cpu->a = (cpu->a&0xF0)+((result>>8)&0x0F);
@@ -150,6 +153,7 @@ void rld(CPU_t *cpu) {
 void rrd(CPU_t *cpu) {
 	int result,tmp;
 	tc_add(cpu->timer_c,18);
+
 	result = (CPU_mem_read(cpu,cpu->hl)>>4)+((cpu->a&0x0f)<<4);
 	tmp = cpu->bus;
 	CPU_mem_write(cpu,cpu->hl,result&0xff);
@@ -1447,7 +1451,7 @@ void rla(CPU_t *cpu) {
 }
 void rlca(CPU_t *cpu) {
 	int result = ((cpu->a<<1)+(((cpu->a)>>7)&1))&255;
-    tc_add(cpu->timer_c,4);
+	tc_add(cpu->timer_c,4);
 	cpu->f = unaffect(SIGN_MASK +ZERO_MASK+PV_MASK) + 
 		 x5chk(result) + x3chk(result)+ (((cpu->a)>>7)&1);
 	cpu->a =result;

@@ -40,11 +40,11 @@ LD="ld"
 
 # CCFLAGS - additional arguments to add on to the C compiler.
 CCFLAGS="-c -g -w -I . `wx-config --version=2.8 --cflags 2>/dev/null` -ggdb -I core -I hardware -I utilities -I gui -I interface"
-CCDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
+CCDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER -D_LINUX"
 
 # CPPFLAGS - additional arguments to add on to the C++ compiler.
 CPPFLAGS="-c -g -w -I . `wx-config --version=2.8 --cppflags 2>/dev/null` -ggdb -I core -I hardware -I utilities -I gui -I interface"
-CPPDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER"
+CPPDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER -D_LINUX"
 
 # LDFLAGS - additional or required arguments to add on to the linker.
 LDFLAGS="`wx-config --version=2.8 --libs 2>/dev/null`"
@@ -688,7 +688,7 @@ COMPILEC interface/state.c
 COMPILEC interface/calc.c
 COMPILEC utilities/var.c
 COMPILEC utilities/savestate.c
-COMPILEC utilities/sendfiles.c
+COMPILECPP utilities/SendFile.cpp
 COMPILEC utilities/label.c
 COMPILEC utilities/gif.c
 COMPILEC utilities/gifhandle.c
