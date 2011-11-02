@@ -3,20 +3,22 @@
 #include "core.h"
 #include "ti_stdint.h"
 
-#define LinkRead (((cpu->pio.link->host&0x03)|(cpu->pio.link->client[0]&0x03))^3)
+#ifndef LINK_READ
+#define LINK_READ
+#define LinkRead (((cpu->pio.link->host & 0x03) | (cpu->pio.link->client[0] & 0x03))^3)
+#endif
 #define NumElm(array) (sizeof (array) / sizeof ((array)[0]))
-
 
 typedef struct TIMER {
 	/* determines which clock if any is used for time */
 	unsigned long long lastTstates;
 	double lastTicks;
 	double divsor;
-	bool loop;
-	bool interrupt;
-	bool underflow;
-	bool generate;
-	bool active;
+	BOOL loop;
+	BOOL interrupt;
+	BOOL underflow;
+	BOOL generate;
+	BOOL active;
 	unsigned char clock;
 	unsigned char count;
 	unsigned char max;
@@ -28,18 +30,16 @@ typedef struct XTAL {
 	TIMER_t timers[3];
 } XTAL_t;
 
-
-
 typedef struct LINKASSIST {
 	unsigned char link_enable;
 	unsigned char in;
 	unsigned char out;
 	unsigned char working;
-	bool receiving;
-	bool read;
-	bool ready;
-	bool error;
-	bool sending;
+	BOOL receiving;
+	BOOL read;
+	BOOL ready;
+	BOOL error;
+	BOOL sending;
 	double last_access;
 	int bit;
 } LINKASSIST_t;
@@ -48,19 +48,18 @@ typedef struct MD5 {
 	/* 32 bit registers */
 	union {
 		struct {
-			unsigned long a;
-			unsigned long b;
-			unsigned long c;
-			unsigned long d;
-			unsigned long x;
-			unsigned long ac;
+			uint32_t a;
+			uint32_t b;
+			uint32_t c;
+			uint32_t d;
+			uint32_t x;
+			uint32_t ac;
 		};
-		unsigned long reg[6];
+		uint32_t reg[6];
 	};
-	unsigned char s;
-	unsigned char mode ;
+	uint8_t s;
+	uint8_t mode ;
 } MD5_t;
-
 
 typedef struct DELAY {
 	union {
@@ -84,6 +83,32 @@ typedef struct CLOCK {
 	double lasttime;
 } CLOCK_t;
 
+typedef struct USB {
+	unsigned int USBLineState;		//Whether each line is low or high
+	unsigned int USBEvents;			//Whether interrupts have occurred
+	unsigned int USBEventMask;		//Whether interrupts should be generated when USB lines change
+	BOOL LineInterrupt;
+	BOOL ProtocolInterrupt;
+	BOOL ProtocolInterruptEnabled;
+	unsigned int DevAddress;		//Current USB device address
+	int version;
+
+
+	unsigned char Port4A;
+	unsigned char Port4C;
+	unsigned char Port54;
+} USB_t;
+
+enum USB_MASK {
+	DPLUS_LOW_MASK = 0x01,
+	DPLUS_HIGH_MASK = 0x02,
+	DMINUS_LOW_MASK = 0x04,
+	DMINUS_HIGH_MASK = 0x08,
+	ID_LOW_MASK = 0x10,
+	ID_HIGH_MASK = 0x20,
+	VBUS_HIGH_MASK = 0x40,
+	VBUS_LOW_MASK = 0x80,
+};
 
 typedef struct SE_AUX {
 	CLOCK_t clock;
@@ -91,9 +116,9 @@ typedef struct SE_AUX {
 	MD5_t md5;
 	LINKASSIST_t linka;
 	XTAL_t xtal;
+	USB_t usb;
+	int model_bits;
 } SE_AUX_t;
-
-
 
 STDINT_t *INT83PSE_init(CPU_t*);
 int device_init_83pse(CPU_t*);
@@ -107,6 +132,7 @@ void port4_83pse(CPU_t *, device_t *);
 void port6_83pse(CPU_t *, device_t *);
 void port7_83pse(CPU_t *, device_t *);
 void port14_83pse(CPU_t *, device_t *);
+int GetCPUSpeed(CPU_t *);
 void flashwrite83pse(CPU_t *, unsigned short, unsigned char);
 void flashwrite84p(CPU_t *, unsigned short, unsigned char);
 

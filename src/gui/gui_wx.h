@@ -17,6 +17,8 @@
 #include <wx/encconv.h>
 #endif
 
+#include "guilcd_wx.h"
+#include "calc.h"
 #include "skins/ti83p.h"
 
  #define wxGetBitmapFromMemory(name) _wxGetBitmapFromMemory(name ## _png, sizeof(name ## _png))
@@ -26,20 +28,20 @@
    return wxBitmap(wxImage(is, wxBITMAP_TYPE_PNG, -1), -1);
  }
 
-int gui_draw(int);
-int gui_frame(int);
-int gui_debug(int);
-int gui_frame_update(int);
 char* wxStringToChar(wxString);
 int SetGIFName();
 class MyFrame: public wxFrame
 {
 public:
-    MyFrame(int curslot);
+    MyFrame(LPCALC);
+   	wxWindow *wxLCD;
     
 	void OnKeyDown(wxKeyEvent& event);
 	void OnKeyUp(wxKeyEvent& event);
 	void SetSpeed(int speed);
+	int gui_draw();
+	void gui_frame_update();
+	int gui_debug();
 	//void OnShow(wxShowEvent& event);
 	//DECLARE_EVENT_TABLE()
 protected:
@@ -65,7 +67,7 @@ private:
 	void OnPaint(wxPaintEvent& event);
 	// Resize
 	void OnResize(wxSizeEvent& event);
-	int slot;
+	LPCALC lpCalc;
 	
 	void OnSize(wxSizeEvent& event);
 	void OnQuit(wxCloseEvent& event);

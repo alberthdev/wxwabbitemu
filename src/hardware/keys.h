@@ -4,7 +4,6 @@
 
 typedef struct keypad {
 	unsigned char group;
-	long long last_read;
 	unsigned char keys[8][8], on_pressed;
 } keypad_t;
 
@@ -22,14 +21,23 @@ typedef struct KEYPROG {
 #define VKF_LBRACKET 0xDB
 #define VKF_RBRACKET 0xDD
 #define VKF_QUOTE	0xDE
+#ifdef WXVER
 #define WXK_LSHIFT WXK_SPECIAL20+1
-#define WXK_RSHIFT WXK_LSHIFT+1
+#define WXK_RSHIFT WXK_LSHIFT+1  
+#endif
 
 keypad_t *keypad_init(CPU_t*);
 void keypad(CPU_t *, device_t *);
 
 keyprog_t *keypad_key_press(CPU_t*, unsigned int vk);
 keyprog_t *keypad_key_release(CPU_t*, unsigned int vk);
+void keypad_press(CPU_t *cpu, int group, int bit);
+void keypad_release(CPU_t *cpu, int group, int bit);
+
+#ifdef WINVER
+//used by the debugger to fix stuck keys
+void keypad_vk_release(HWND hwnd, int group, int bit);
+#endif
 
 #define KEY_VALUE_MASK		(0x0F)
 
@@ -39,7 +47,8 @@ keyprog_t *keypad_key_release(CPU_t*, unsigned int vk);
 #define KEY_FALSEPRESS		0x08
 #define KEY_STATEDOWN		0x10
 
-
+#define KEYGROUP_ON			0x05
+#define KEYBIT_ON			0x00
 
 #define NumElm(array) (sizeof (array) / sizeof ((array)[0]))
 

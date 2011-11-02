@@ -7,13 +7,14 @@
 #include <wx/palette.h>
 #include "lcd.h"
 #include <stdlib.h>
+#include "calc.h"
 
-void SaveStateDialog(int slot);
+void SaveStateDialog(LPCALC lpCalc);
 #define MAX_SHADES 255
 class MyLCD: public wxWindow
 {
 public:
-    MyLCD(int curslot);
+    MyLCD(wxFrame *mainFrame, LPCALC lpCalc);
 
 	void PaintNow();
 protected:
@@ -27,7 +28,8 @@ private:
 	void OnLeftButtonDown(wxMouseEvent& event);
 	void OnLeftButtonUp(wxMouseEvent& event);
 
-	int slot;
+	LPCALC lpCalc;
+	wxFrame *mainFrame;
 };
 
 #endif

@@ -7,7 +7,7 @@ typedef struct INTELHEX {
 	int DataSize;
 	int Address;
 	int Type;
-	unsigned int Data[256];
+	BYTE Data[256];
 	int CheckSum;
 } INTELHEX_t;
 
@@ -28,10 +28,10 @@ typedef struct TIFLASH {
 	unsigned int hexsize;
 //	int rpage[256];
 	int pagesize[256];
-	unsigned char * data[256];
+	unsigned char *data[256];
 //	unsigned short chksum;
 
-	int pages;		//total number of pages.
+	unsigned int pages;		//total number of pages.
 
 } TIFLASH_t;
 
@@ -40,7 +40,7 @@ typedef struct TIFLASH {
 typedef struct ROM {
 	int size;
 	char version[32];
-	unsigned char * data;
+	unsigned char *data;
 } ROM_t;
 
 typedef struct TIBACKUP {
@@ -52,13 +52,13 @@ typedef struct TIBACKUP {
 	unsigned short address;			// duplicate of data size
 	
 	unsigned short length1a;		// Repeats of the data length.
-	unsigned char * data1;			// pointer to data
+	unsigned char *data1;			// pointer to data
 
 	unsigned short length2a;		// data size
-	unsigned char * data2;			// pointer to data
+	unsigned char *data2;			// pointer to data
 
 	unsigned short length3a;		// data size
-	unsigned char * data3;			// pointer to data
+	unsigned char *data3;			// pointer to data
 
 
 } TIBACKUP_t;
@@ -71,43 +71,49 @@ typedef struct TIVAR {
 	unsigned char version;			// 0 83+only
 	unsigned char flag;				// bit 7 is if flash 83+only
 	unsigned short length2;			// duplicate of data size
-	unsigned char * data;			// pointer to data
+	unsigned char *data;			// pointer to data
 } TIVAR_t;
 
 typedef struct TIFILE {
 	unsigned char sig[8];
 	unsigned char subsig[3];
 	unsigned char comment[42];
-	unsigned short length;
-	TIVAR_t * var;
-	unsigned short chksum;
+	unsigned char length;
+	TIVAR_t *var;
+	TIVAR_t *vars[256];
+	unsigned char chksum;
 	int model;
 	int type;
-	ROM_t * rom;
-	TIFLASH_t * flash;
-	SAVESTATE_t* save;
-	TIBACKUP_t* backup;
+	ROM_t *rom;
+	TIFLASH_t *flash;
+	SAVESTATE_t *save;
+	TIBACKUP_t *backup;
 } TIFILE_t;
 
 
 #pragma pack()
 
-#define TI_FLASH_HEADER_SIZE (8+2+1+1+4+1+8+23+1+1+24+4)	
-#define TI_FILE_HEADER_SIZE (8+3+42/*+2*/)	
-#define TI_VAR_HEADER_SIZE (2+2+1+8)
+#define TI_FLASH_HEADER_SIZE 8+2+1+1+4+1+8+23+1+1+24+4
+#define TI_FILE_HEADER_SIZE 8+3+42/*+2*/
+#define TI_VAR_HEADER_SIZE 2+2+1+8
 
 
-#define ROM_TYPE	1		//os
-#define FLASH_TYPE	2		//Flash application
+#define ROM_TYPE	1		//Rom
+#define FLASH_TYPE	2		//Flash application or OS
 #define VAR_TYPE	3		//most varibles can be supported under an umbrella type
 #define SAV_TYPE	4		//Wabbit specific saves.
 #define BACKUP_TYPE	5		//Wabbit specific saves.
 #define LABEL_TYPE	6		//Lab file
 #define BREAKPOINT_TYPE 7	//breakpoint file
-#define SKIP_TYPE 	8	//breakpoint file
+#define GROUP_TYPE 	8		//groups are stored weirdly so they get a weird type
+#define ZIP_TYPE 	9		//zip/tig file
+
+#define FLASH_TYPE_OS 0x23
+#define FLASH_TYPE_APP 0x24
 
 int FindRomVersion(int, char*, unsigned char*, int);
-TIFILE_t* importvar(char *, int, int);
-void FreeTiFile(TIFILE_t *);
+int ReadIntelHex(FILE *ifile, INTELHEX_t *ihex);
+TIFILE_t* newimportvar(LPCTSTR FilePath, BOOL only_check_header = FALSE);
+TIFILE_t* FreeTiFile(TIFILE_t *);
 
 #endif
