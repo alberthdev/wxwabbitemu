@@ -1,19 +1,34 @@
+#include "stdafx.h"
+
 #include "state.h"
 #include "link.h"
-#include <string.h>
-#include <stdlib.h>
 
 #ifndef WINVER
 #define min(a, b) ((a) > (b) ? (b) : (a))
 #endif
 
 void state_userpages(CPU_t *, upages_t*);
-char *symbol_to_string(CPU_t *, symbol83P_t *, char *);
+TCHAR *symbol_to_string(CPU_t *, symbol83P_t *, TCHAR *);
+
+int find_header(u_char (*dest)[PAGE_SIZE], int page, int ident1, int ident2) {
+	int i;
+	//apparently non user apps have a slightly different header
+	//therefore we have to actually find the identifier
+	for (i = 0; i < PAGE_SIZE; i++)
+		if (dest[page][i] == ident1 && dest[page][i + 1] == ident2)
+			return dest[page][i + 2];
+	return -1;	
+}
 
 /* Generate a list of applications */
 void state_build_applist(CPU_t *cpu, applist_t *applist) {
 	applist->count = 0;
 	
+	if (cpu->mem_c == NULL)
+	{
+		return;
+	}
+
 	if (cpu->mem_c->flash == NULL) return;
 	u_char (*flash)[PAGE_SIZE] = (u_char (*)[PAGE_SIZE]) cpu->mem_c->flash;
 
@@ -24,22 +39,25 @@ void state_build_applist(CPU_t *cpu, applist_t *applist) {
 	
 	// Starting at the first userpage, search for all the apps
 	// As soon as page doesn't have one, you're done
-	u_int page;
+	u_int page, page_size;
 	for (	page = upages.start, applist->count = 0;
-	
 			page >= upages.end &&
-			applist->count < sizeof(applist->apps)/sizeof(applist->apps[0]) &&
+			applist->count < ARRAYSIZE(applist->apps) &&
 			flash[page][0x00] == 0x80 && flash[page][0x01] == 0x0F &&
-			flash[page][0x10] == 0x80 && flash[page][0x11] == 0x48 &&
-			flash[page][0x1A] == 0x80 && flash[page][0x1B] == 0x81;
+			find_header(flash, page, 0x80, 0x48) != -1 &&
+			(page_size = find_header(flash, page, 0x80, 0x81)) != -1;
 			
-			page -= flash[page][0x1C], applist->count++) {
+			page -= page_size, applist->count++) {
 		
 		apphdr_t *ah = &applist->apps[applist->count];
-		memcpy(ah->name, &flash[page][0x12], 8);
+		u_int i;
+		for (i = 0; i < PAGE_SIZE; i++)
+			if (flash[page][i] == 0x80 && flash[page][i + 1] == 0x48)
+				break;
+		memcpy(ah->name, &flash[page][i + 2], 8);
 		ah->name[8] = '\0';
 		ah->page = page;
-		ah->page_count = flash[page][0x1C];
+		ah->page_count = find_header(flash, page, 0x80, 0x81);
 
 	}
 }
@@ -49,9 +67,9 @@ symlist_t* state_build_symlist_83P(CPU_t *cpu, symlist_t *symlist) {
 	// end marks the end of the symbol table
 	uint16_t 	end = mem_read16(mem, pTemp),
 	// prog denotes where programs start
-				prog = mem_read16(mem, progPtr),
+	prog = mem_read16(mem, progPtr),
 	// stp (symbol table pointer) marks the start
-				stp = symTable;
+	stp = symTable;
 	
 	// Verify VAT integrity
 	if (cpu->pio.model < TI_83P) return NULL;
@@ -66,8 +84,10 @@ symlist_t* state_build_symlist_83P(CPU_t *cpu, symlist_t *symlist) {
 		sym->type_ID		= mem_read(mem, stp--) & 0x1F;
 		sym->type_ID2		= mem_read(mem, stp--);
 		sym->version		= mem_read(mem, stp--);
-		sym->address		= mem_read(mem, stp--) + (mem_read(mem, stp--) << 8);
+		sym->address		= mem_read(mem, stp--);
+		sym->address		+= (mem_read(mem, stp--) << 8);
 		sym->page			= mem_read(mem, stp--);
+		sym->length			= mem_read(mem, sym->address - 1) + (mem_read(mem, sym->address) << 8);
 		
 		u_int i;
 		// Variables, pics, etc
@@ -89,7 +109,7 @@ symlist_t* state_build_symlist_83P(CPU_t *cpu, symlist_t *symlist) {
 /* Find a symbol in a symlist.
  * Provide a name and name length and the symbol, if found is returned.
  * Otherwise, return NULL */
-symbol83P_t *search_symlist(symlist_t *symlist, const char *name, size_t name_len) {
+symbol83P_t *search_symlist(symlist_t *symlist, const TCHAR *name, size_t name_len) {
 	symbol83P_t *sym = symlist->symbols;
 	while (sym <= symlist->last && memcmp(sym->name, name, name_len)) sym++;
 	
@@ -153,10 +173,24 @@ void DispSymbol(SYMBOLS83P_t* sym) {
 	printf("\n");
 }*/
 
-char *Symbol_Name_to_String(symbol83P_t *sym, char *buffer) {
-	const u_char ans_name[] = {tAns, 0x00, 0x00};
+TCHAR *App_Name_to_String(apphdr_t *app, TCHAR *buffer) {
+#ifdef WINVER
+	StringCbCopy(buffer, _tcslen(app->name) + 1, app->name);
+	return buffer;
+#else
+	return strcpy(buffer, app->name);
+#endif
+}
+
+TCHAR *Symbol_Name_to_String(symbol83P_t *sym, TCHAR *buffer) {
+	const TCHAR ans_name[] = {tAns, 0x00, 0x00};
 	if (memcmp(sym->name, ans_name, 3) == 0) {
+#ifdef WINVER
+		StringCbCopy(buffer, 10, _T("Ans"));
+		return buffer;
+#else
 		return strcpy(buffer, "Ans");
+#endif
 	}
 	
 	switch(sym->type_ID) {
@@ -164,32 +198,66 @@ char *Symbol_Name_to_String(symbol83P_t *sym, char *buffer) {
 	case ProgObj:
 	case ProtProgObj:
 	case AppVarObj:
-	case GroupObj:
+	case GroupObj: {
+#ifdef WINVER
+		errno_t error = StringCbCopy(buffer, 10, sym->name);
+		return buffer;
+#else
 		return strcpy(buffer, sym->name);
+#endif
+	}
 	case PictObj:
+#ifdef WINVER
+		StringCbPrintf(buffer, 10, _T("Pic%d"), circ10(sym->name[1]));
+#else
 		sprintf(buffer, "Pic%d", circ10(sym->name[1]));
+#endif
 		return buffer;
 	case GDBObj:
+#ifdef WINVER
+		StringCbPrintf(buffer, 10, _T("GDB%d"), circ10(sym->name[1]));
+#else
 		sprintf(buffer, "GDB%d", circ10(sym->name[1]));
+#endif
 		return buffer;
 	case StrngObj:
+#ifdef WINVER
+		StringCbPrintf(buffer, 10, _T("Str%d"), circ10(sym->name[1]));
+#else
 		sprintf(buffer, "Str%d", circ10(sym->name[1]));
+#endif
 		return buffer;		
 	case RealObj:
 	case CplxObj:
+#ifdef WINVER
+		StringCbPrintf(buffer, 10, _T("%c"), sym->name[0]);
+#else
 		sprintf(buffer, "%c", sym->name[0]);
+#endif
 		return buffer;
 	case ListObj:
 	case CListObj:
 		if ((u_char) sym->name[1] < 6) {
+#ifdef WINVER
+			StringCbPrintf(buffer, 10, _T("L%d"), sym->name[1] + 1); //L1...L6
+#else
 			sprintf(buffer, "L%d", sym->name[1] + 1); //L1...L6
+#endif
 		} else {
+#ifdef WINVER
+			StringCbPrintf(buffer, 10, _T("%s"), sym->name + 1); // No Little L
+#else
 			sprintf(buffer, "%s", sym->name + 1); // No Little L
+#endif
 		}
 		return buffer;
 	case MatObj:
 		if (sym->name[0] == 0x5C) {
+#ifdef WINVER
+			StringCbPrintf(buffer, 10, _T("[%c]"), 'A' + sym->name[1]);
+#else
 			sprintf(buffer, "[%c]", 'A' + sym->name[1]);
+#endif
 			return buffer;
 		}
 		return NULL;
@@ -204,20 +272,44 @@ char *Symbol_Name_to_String(symbol83P_t *sym, char *buffer) {
 			switch(sym->name[1] & 0xF0) {
 			
 			case 0x10: //Y1
+#ifdef WINVER
+				StringCbPrintf(buffer, 10, _T("Y%d"),circ10(b));
+#else
 				sprintf(buffer,"Y%d",circ10(b));
+#endif
 				return buffer;
 			case 0x20: //X1t Y1t
+#ifdef WINVER
+				StringCbPrintf(buffer, 10, _T("X%dT"), ((b/2)+1)%6);
+#else
 				sprintf(buffer,"X%dT",((b/2)+1)%6);
+#endif
 				if (b%2) buffer[0] = 'Y';
 				return buffer;
 			case 0x40: //r1
-				sprintf(buffer,"R%d",(b+1)%6);
+#ifdef WINVER
+				StringCbPrintf(buffer, 10, _T("R%d"),(b+1)%6);
+#else
+				sprintf(buffer, "R%d", (b+1)%6);
+#endif
 				return buffer;
 			case 0x80: //Y1
 				switch (b) {
-				case 0: return strcpy(buffer, "Un");
-				case 1: return strcpy(buffer, "Vn");												
-				case 2: return strcpy(buffer, "Wn");
+#ifdef WINVER
+					case 0: 
+						StringCbCopy(buffer, 10, _T("Un"));
+						return buffer;
+					case 1: 
+						StringCbCopy(buffer, 10, _T("Vn"));
+						return buffer;
+					case 2: 
+						StringCbCopy(buffer, 10, _T("Wn"));
+						return buffer;
+#else
+					case 0: return strcpy(buffer, "Un");
+					case 1: return strcpy(buffer, "Vn");												
+					case 2: return strcpy(buffer, "Wn");
+#endif
 				}
 			default: 
 				return NULL;
@@ -228,17 +320,27 @@ char *Symbol_Name_to_String(symbol83P_t *sym, char *buffer) {
 	}
 }
 
+void SetRealAns(CPU_t *cpu, TCHAR *text) {
+	//here is our general strategy:
+	//1. save appbackupscreen
+	//2. 
+	int i;
+	unsigned char appbackupscreen[768];
+	for (i = 0; i < 768; i++)
+		appbackupscreen[i] = mem_read(cpu->mem_c, 0x9872 + i);
 
-char* GetRealAns(CPU_t *cpu) {
+}
+
+TCHAR *GetRealAns(CPU_t *cpu) {
 	symlist_t symlist;
 	state_build_symlist_83P(cpu, &symlist);
 	
-	const char ans_name[] = {tAns, 0x00, 0x00};
+	const TCHAR ans_name[] = {tAns, 0x00, 0x00};
 	symbol83P_t *sym = search_symlist(&symlist, ans_name, 3);
 	if (sym == NULL) return NULL;
 
 #ifdef WINVER
-	char *buffer = (char *) LocalAlloc(LMEM_FIXED, 2048);
+	TCHAR *buffer = (TCHAR *) LocalAlloc(LMEM_FIXED, 2048);
 #else
 	char *buffer = (char *) malloc(2048);
 #endif
@@ -249,17 +351,17 @@ char* GetRealAns(CPU_t *cpu) {
 }
 
 /* Print a symbol's value to a string */
-char *symbol_to_string(CPU_t *cpu, symbol83P_t *sym, char *buffer) {
+TCHAR *symbol_to_string(CPU_t *cpu, symbol83P_t *sym, TCHAR *buffer) {
 	switch (sym->type_ID) {
 	case CplxObj:
 	case RealObj: {
 		uint16_t ptr = sym->address;
-		char *p = buffer;
+		TCHAR *p = buffer;
 		BOOL is_imaginary = FALSE;
 	TI_num_extract:
 		;
 		uint8_t type = mem_read(cpu->mem_c, ptr++);
-		int exp = (char) (mem_read(cpu->mem_c, ptr++) ^ 0x80);
+		int exp = (TCHAR) (mem_read(cpu->mem_c, ptr++) ^ 0x80);
 		if (exp == -128) exp = 128;
 		
 		u_char FP[14];
@@ -279,8 +381,12 @@ char *symbol_to_string(CPU_t *cpu, symbol83P_t *sym, char *buffer) {
 				*p++ = FP[i] + '0';
 				if ((i + 1) < sigdigs && i == 0) *p++ = '.';
 			}
+#ifdef WINVER
+			StringCbPrintf(p, _tcslen(p), _T("*10^%d"), exp);
+#else
 			sprintf(p, "*10^%d", exp);
-			p += strlen(p);
+#endif
+			p += _tcslen(p);
 		} else {
 			for (i = min(exp, 0); i < sigdigs || i < exp; i++) {
 				*p++ = (i >= 0 ? FP[i] : 0) + '0';
@@ -310,7 +416,7 @@ char *symbol_to_string(CPU_t *cpu, symbol83P_t *sym, char *buffer) {
 		elem.page 		= 0;
 		
 		u_int i, size = mem_read16(cpu->mem_c, sym->address);
-		char *p = buffer;
+		TCHAR *p = buffer;
 		*p++ = '{';
 		
 		uint16_t ptr;
@@ -318,7 +424,7 @@ char *symbol_to_string(CPU_t *cpu, symbol83P_t *sym, char *buffer) {
 			if (i != 0) *p++ = ',';
 			elem.address = ptr;
 			symbol_to_string(cpu, &elem, p);
-			p += strlen(p);
+			p += _tcslen(p);
 			ptr += (elem.type_ID == RealObj) ? 9 : 18;
 		}
 		
@@ -335,7 +441,7 @@ char *symbol_to_string(CPU_t *cpu, symbol83P_t *sym, char *buffer) {
 		u_int cols = mem_read(cpu->mem_c, sym->address);
 		u_int rows = mem_read(cpu->mem_c, sym->address + 1);
 		u_int i, j;
-		char *p = buffer;
+		TCHAR *p = buffer;
 		
 		*p++ = '[';
 		uint16_t ptr = sym->address + 2;
@@ -347,7 +453,7 @@ char *symbol_to_string(CPU_t *cpu, symbol83P_t *sym, char *buffer) {
 				if (i != 0) *p++ = ',';
 				elem.address = ptr;
 				symbol_to_string(cpu, &elem, p);
-				p += strlen(p);
+				p += _tcslen(p);
 			}
 			*p++ = ']';
 			if (j + 1 < rows) {
@@ -373,7 +479,11 @@ char *symbol_to_string(CPU_t *cpu, symbol83P_t *sym, char *buffer) {
 	
 		
 	default:
+#ifdef WINVER
+		StringCbCopy(buffer, _tcslen(buffer), _T("unsupported"));
+#else
 		strcpy(buffer, "unsupported");
+#endif
 		return buffer;
 	}
 }

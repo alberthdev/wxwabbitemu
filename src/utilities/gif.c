@@ -1,4 +1,6 @@
-/* Copyright (c) 2005 Patai Gergely
+/* Copyright (c) 2010 Spencer Putt
+ * Support for screen-color palettes and variable sized gifs
+ * Copyright (c) 2005 Patai Gergely
  * This code is partly based on (i. e. blatantly ripped from) Whirlgif
  * Copyright (c) 1997,1998 by Hans Dinsen-Hansen
  * The algorithms are inspired by those of gifcode.c
@@ -18,34 +20,21 @@
  * Compuserve Incorporated.  Gif(sm) is a Service Mark property of
  * Compuserve Incorporated.
  */
+#include "stdafx.h"
 
 #include "calc.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-#include <stdint.h>
-#include <sys/types.h>
-#ifdef WINVER // FIXME: ...
-#include "gui.h"
-#else
-#define TRUE 1
-#define FALSE 0
-typedef int BOOL;
+#ifndef WINVER
+#include "coretypes.h"
 #endif
-#include "gui_wx.h"
+
 //#include "gif.h" // uhh...
 
-#define GIF_FRAME_MAX (256 * 128 * 4)
+#define GIF_FRAME_MAX (256 * 128 * MAX_CALCS)
 
 #define GIF_IDLE 0
 #define GIF_START 1
 #define GIF_FRAME 2
 #define GIF_END 3
-
-typedef uint16_t WORD;
-typedef uint8_t BYTE;
 
 #define SCRXSIZE 96
 #define SCRYSIZE 64
@@ -70,7 +59,7 @@ typedef struct GIF_TREE {
 
 int gif_write_state = GIF_IDLE;
 
-char gif_file_name[512]="wabbitemu.gif";
+TCHAR gif_file_name[512] = _T("wabbitemu.gif");
 BOOL gif_autosave = FALSE;
 BOOL gif_use_increasing = FALSE;
 #ifdef HIGH_SHADE_GIF
@@ -80,12 +69,13 @@ int gif_colors=7;
 #endif
 
 int gif_base_delay_start = 4;
-int gif_size = 2;
+u_int gif_size = 2;
 
 WORD gif_base_delay;
 int gif_file_size = 0;
 WORD gif_delay;
 int gif_xs;
+int gif_indiv_xs;
 int gif_ys;
 int gif_frame_x;
 int gif_frame_y;
@@ -129,7 +119,7 @@ void gif_clear_tree(int cc, GIF_TREE *root) {
 	}
 }
 
-char *gif_code_to_buffer(int code, short n, char *buf) {
+unsigned char *gif_code_to_buffer(int code, short n, unsigned char *buf) {
 	int mask;
 
 	if (n < 0) {
@@ -162,14 +152,14 @@ int gif_encode(FILE *fout, BYTE *pixels, int depth, int siz) {
 	int fsize;
 	short cLength;
 
-	char *pos, *buffer;
+	unsigned char *pos, *buffer;
 
 	empty[0] = NULL;
 	need = 8;
 
 	nodeArray = empty;
 	memmove(++nodeArray, empty, 255 * sizeof(GIF_TREE **));
-	if ((buffer = (char*)malloc((BUFLEN + 1) * sizeof(char))) == NULL) return -1;
+	if ((buffer = (unsigned char*)malloc((BUFLEN + 1) * sizeof(char))) == NULL) return -1;
 	buffer++;
 	pos = buffer;
 	buffer[0] = 0x0;
@@ -295,12 +285,12 @@ int gif_encode(FILE *fout, BYTE *pixels, int depth, int siz) {
 	buffer[-1] = pos - buffer;
 
 	fwrite(buffer - 1, pos - buffer + 1, 1, fout);
-	fsize += pos - buffer + 1;
+	fsize += (int) (pos - buffer + 1);
 	free(buffer - 1); free(first->node); free(baseNode);
 	return fsize;
 }
 
-void gif_writer() {
+void gif_writer(int shades) {
 	static FILE *fp;
 	// flags = 1 111 0 010
 	BYTE gif_header[205] = {'G', 'I', 'F', '8', '9', 'a', 96, 0, 64, 0, 0xf2, 0x0f, 0};
@@ -318,7 +308,7 @@ void gif_writer() {
 			break;
 		case GIF_START: {
 			int i;
-			gif_colors = calcs[gslot].cpu.pio.lcd->shades + 1;
+			gif_colors = shades + 1;
 			for (i = 0; i < gif_colors; i++) {
 #ifdef HIGH_SHADE_GIF
 				double color_ratio = 1.0 - ((double) i / (double) (gif_colors - 1));
@@ -327,13 +317,13 @@ void gif_writer() {
 #define LCD_HIGH_MUL 6
 				
 				if (gif_bw) {
-					gif_header[13 + i * 3] = 0xFF * color_ratio;
-					gif_header[14 + i * 3] = 0xFF * color_ratio;
-					gif_header[15 + i * 3] = 0xFF * color_ratio;	
+					gif_header[13 + i * 3] = (BYTE) (0xFF * color_ratio);
+					gif_header[14 + i * 3] = (BYTE) (0xFF * color_ratio);
+					gif_header[15 + i * 3] = (BYTE) (0xFF * color_ratio);
 				} else {
-					gif_header[13 + i * 3] = (0x9E - (0x9E/LCD_HIGH_MUL)) * color_ratio + (0x9E/LCD_HIGH_MUL);
-					gif_header[14 + i * 3] = (0xAB - (0xAB/LCD_HIGH_MUL)) * color_ratio + (0xAB/LCD_HIGH_MUL);
-					gif_header[15 + i * 3] = (0x88 - (0x88/LCD_HIGH_MUL)) * color_ratio + (0x88/LCD_HIGH_MUL);
+					gif_header[13 + i * 3] = (BYTE) ((0x9E - (0x9E/LCD_HIGH_MUL)) * color_ratio + (0x9E/LCD_HIGH_MUL));
+					gif_header[14 + i * 3] = (BYTE) ((0xAB - (0xAB/LCD_HIGH_MUL)) * color_ratio + (0xAB/LCD_HIGH_MUL));
+					gif_header[15 + i * 3] = (BYTE) ((0x88 - (0x88/LCD_HIGH_MUL)) * color_ratio + (0x88/LCD_HIGH_MUL));
 				}
 #else
 				gif_header[13 + i * 3] = 255 - i * 255 / (gif_colors-1);
@@ -355,7 +345,11 @@ void gif_writer() {
 			gif_header[7] = gif_xs >> 8;
 			gif_header[8] = gif_ys;
 			gif_header[9] = gif_ys >> 8;
+#ifdef WINVER
+			_tfopen_s(&fp, gif_file_name, _T("wb"));
+#else
 			fp = fopen(gif_file_name, "wb");
+#endif
 			fwrite(gif_header, 13 + (3 * (1 << (palette_bits+1))), 1, fp);
 			fwrite(gif_info, 31, 1, fp);
 			gif_file_size = 236;
@@ -369,12 +363,13 @@ void gif_writer() {
 		case GIF_FRAME: {
 			int i, j, k, l;
 			for (i = 0; i < gif_xs * gif_ys; i++)
-				if (gif_frame[i] != gif_frame_old[i]) break;
+				if (gif_frame[i] != gif_frame_old[i])
+					break;
 			if (i == gif_xs * gif_ys) {
 				gif_delay += gif_base_delay;
 			} else {
 				gif_img[3] = 5;
-				gif_img[4] = gif_delay;
+				gif_img[4] = (BYTE) gif_delay;
 				gif_img[5] = gif_delay >> 8;
 				gif_img[9] = gif_frame_x;
 				gif_img[10] = gif_frame_x >> 8;
@@ -428,7 +423,7 @@ void gif_writer() {
 		}
 		case GIF_END: {
 			int i;
-			gif_img[4] = gif_delay;
+			gif_img[4] = (BYTE) gif_delay;
 			gif_img[5] = gif_delay >> 8;
 			gif_img[9] = gif_frame_x;
 			gif_img[10] = gif_frame_x >> 8;

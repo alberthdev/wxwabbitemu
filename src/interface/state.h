@@ -5,7 +5,7 @@
 #include "var.h"		// TIFILE
 
 typedef struct apphdr {
-	char name[12];
+	TCHAR name[12];
 	u_int page, page_count;
 } apphdr_t;
 
@@ -21,7 +21,8 @@ typedef struct {
 	uint16_t address;
 	uint8_t page;
 	uint8_t name_len;
-	char name[9];
+	uint8_t length;
+	TCHAR name[9];
 } symbol83P_t;
 
 typedef struct symlist {
@@ -44,7 +45,8 @@ typedef struct upages {
 void state_build_applist(CPU_t *, applist_t *);
 void state_userpages(CPU_t *, upages_t *);
 symlist_t* state_build_symlist_83P(CPU_t *, symlist_t *);
-char *GetRealAns(CPU_t*);
-char *Symbol_Name_to_String(symbol83P_t *sym, char *buffer);
+TCHAR *GetRealAns(CPU_t*);
+TCHAR *Symbol_Name_to_String(symbol83P_t *, TCHAR *);
+TCHAR *App_Name_to_String(apphdr_t *, TCHAR *);
 
 #endif /*STATE_H_*/

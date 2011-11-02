@@ -2,5 +2,5 @@
 #define GUIOPENFILE_H
 #include "gui_wx.h"
 
-void GetOpenSendFileName(int slot, int defFilter);
+void GetOpenSendFileName(LPCALC, int defFilter);
 #endif

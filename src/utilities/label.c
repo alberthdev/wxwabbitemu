@@ -1,3 +1,5 @@
+#include "stdafx.h"
+
 #define LABEL_C
 #include "label.h"
 #include "core.h"
@@ -6,35 +8,31 @@
 #include "bcalls.h"
 #include "flags.h"
 
-label_struct *lookup_label(char *label_name) {
+label_struct *lookup_label(LPCALC lpCalc, TCHAR *label_name) {
 	int i;
-	for (i = 0; calcs[gslot].labels[i].name != NULL; i++) {
-		if (strcasecmp(calcs[gslot].labels[i].name, label_name) == 0)
-			return &calcs[gslot].labels[i];
+	for (i = 0; lpCalc->labels[i].name != NULL; i++) {
+		if (_tcsicmp(lpCalc->labels[i].name, label_name) == 0)
+			return &lpCalc->labels[i];
 	}
 	return NULL;
 }	
 	
 
-void VoidLabels(int slot) {
+void VoidLabels(LPCALC lpCalc) {
 	int i;
 	
-	for (i = 0; calcs[slot].labels[i].name != NULL; i++) {
-		free(calcs[slot].labels[i].name);
-		calcs[slot].labels[i].name = NULL;
+	for (i = 0; lpCalc->labels[i].name != NULL; i++) {
+		free(lpCalc->labels[i].name);
+		lpCalc->labels[i].name = NULL;
 	}
 }
 
-void ClearLabels(int slot) {
-	VoidLabels(slot);
-}
-
-char* FindAddressLabel(int slot, bool IsRAM, uint8_t page, uint16_t addr) {
+TCHAR* FindAddressLabel(LPCALC lpCalc, waddr_t waddr) {
 	int i;
 	
-	for (i = 0; calcs[slot].labels[i].name != NULL; i++) {
-		label_struct *label = &calcs[slot].labels[i];
-		if (label->IsRAM == IsRAM && label->page == page && label->addr == addr)
+	for (i = 0; lpCalc->labels[i].name != NULL; i++) {
+		label_struct *label = &lpCalc->labels[i];
+		if (label->IsRAM == waddr.is_ram && label->page == waddr.page && label->addr == waddr.addr)
 			return label->name;
 	}
 	return NULL;
@@ -43,28 +41,28 @@ char* FindAddressLabel(int slot, bool IsRAM, uint8_t page, uint16_t addr) {
 //-------------------------------------------
 // True means label is found and is the same
 //
-bool label_search_tios(char *label,int equate) {
-	int i,b;
-	
-	if (!label) return FALSE;
+BOOL label_search_tios(TCHAR *label, int equate) {
+	if (!label) {
+		return FALSE;
+	}
 
-	for(i=0;bcalls[i].address != -1; i++ ) {
-		if (strcasecmp(label,bcalls[i].name) == 0) {
-			if (bcalls[i].address == (equate&0xFFFF) ) {
+	for(int i = 0; bcalls[i].address != -1; i++ ) {
+		if (_tcscmp(label, bcalls[i].name) == 0) {
+			if (bcalls[i].address == (equate & 0xFFFF) ) {
 				return TRUE;
 			}
 		}
 	}
 	
-	for(i=0; flags83p[i].flag != -1; i++ ) {
-		if (strcasecmp(label,flags83p[i].name) == 0) {
-			if (flags83p[i].flag == (equate&0xFFFF)) {
+	for(int i = 0; flags83p[i].flag != -1; i++ ) {
+		if (_tcscmp(label, flags83p[i].name) == 0) {
+			if (flags83p[i].flag == (equate & 0xFFFF)) {
 				return TRUE;
 			}
 		}
-		for(b=0;b<8;b++) {
-			if (strcasecmp(label,flags83p[i].bits[b].name) == 0) {
-				if (flags83p[i].bits[b].bit == (equate&0xFFFF)) {
+		for(int b = 0; b < 8; b++) {
+			if (_tcscmp(label, flags83p[i].bits[b].name) == 0) {
+				if (flags83p[i].bits[b].bit == (equate & 0xFFFF)) {
 					return TRUE;
 				}
 			}
@@ -74,58 +72,91 @@ bool label_search_tios(char *label,int equate) {
 }
 	
 
-int labels_app_load(int slot, char* fn) {
-	FILE *labelFile;
-	int i,length;
-	char buffer[256];
-	char name[256];
-	unsigned int equate;
-	label_struct *label = &calcs[slot].labels[0];	
-
-#ifdef WINVER
-	fopen_s(&labelFile, fn,"r");
-	if (!labelFile) {
-#else
-    if (!(labelFile = fopen(fn,"r"))) {
+int labels_app_load(LPCALC lpCalc, LPCTSTR lpszFileName) {
+	FILE *labelFile = NULL;
+	int i, length;
+#ifdef _UNICODE
+	char readBuf[256];
 #endif
-        puts("Error opening label files.");
-        return 1;
-    }
-    
-    // Clear out the old labels
-    VoidLabels(slot);
+	TCHAR buffer[256];
+	TCHAR name[256];
+#ifdef _WINDOWS
+	TCHAR *fileName = ((TCHAR *) lpszFileName) + _tcslen(lpszFileName);
+#else
+	TCHAR *fileName = ((TCHAR *) lpszFileName) + strlen(lpszFileName);
+#endif
+	while (*--fileName != '\\');
+	fileName++;
 
-    while (!feof(labelFile)) {
-		fgets(buffer,256,labelFile);
+	unsigned int equate;
+	label_struct *label = &lpCalc->labels[0];	
+
+#ifdef _WINDOWS
+	_tfopen_s(&labelFile, lpszFileName, _T("r"));
+#else
+	labelFile = fopen(lpszFileName, "r");
+#endif
+	if (labelFile == NULL) {
+		_putts(_T("Error opening label files."));
+		return 1;
+	}
+	
+	// Clear out the old labels
+	VoidLabels(lpCalc);
+
+	while (!feof(labelFile)) {
+#ifdef _UNICODE
+		fgets(readBuf, 256, labelFile);
+		MultiByteToWideChar(CP_ACP, 0, readBuf, -1, buffer, ARRAYSIZE(buffer));
+#else
+#ifdef _WINDOWS
+		_fgetts(buffer, 256, labelFile);
+#else
+		fgets(buffer, 256, labelFile);
+#endif
+#endif
 		i = 0;
 		if (buffer[0] != ';')
-#ifdef WINVER
-			i = sscanf(buffer,"%s = $%X", name, &equate);
-			//i = sscanf_s(buffer,"%s = $%X", name, &equate);
+#ifdef _WINDOWS
+			i = _stscanf(buffer, _T("%s = $%X"), name, &equate);
 #else
-			i = sscanf(buffer,"%s = $%X", name, &equate);
+			i = sscanf(buffer, "%s = $%X", name, &equate);
 #endif
 		if (i == 2) {
-			length = (int) strlen(name);
+			length = (int) _tcslen(name);
 			if (!label_search_tios(name, equate)) {
 				
-				label->name = (char *) malloc(length + 1);
-#ifdef WINVER
-				strcpy_s(label->name, length + 1, name);
+				label->name = (TCHAR *) malloc((length + 1) * sizeof(TCHAR));
+#ifdef _WINDOWS
+				StringCchCopy(label->name, length + 1, name);
 #else
 				strcpy(label->name, name);
 #endif
+
 				label->addr = equate & 0xFFFF;
 
-				if ( (equate&0x0000FFFF)>=0x4000 && (equate&0x0000FFFF)<0x8000) {
+				if ( (equate & 0x0000FFFF) >= 0x4000 && (equate & 0x0000FFFF) < 0x8000) {
 					int page_offset = (equate >> 16) & 0xFF;
 					
 					label->IsRAM = FALSE;
-					if (calcs[slot].last_transferred_app == NULL)
-						label->page = calcs[slot].mem_c.flash_pages - page_offset;
-					else
-						label->page = calcs[slot].last_transferred_app->page - page_offset;
-
+					if (lpCalc->last_transferred_app == NULL) {
+						upages_t upage;
+						state_userpages(&lpCalc->cpu, &upage);
+						label->page = upage.start;
+					} else {
+						applist_t applist;
+						state_build_applist(&lpCalc->cpu, &applist);
+						for (int i = 0; i < applist.count; i++) {
+							int len = 8;
+							TCHAR *ptr = applist.apps[i].name + len - 1;
+							while (isspace(*ptr--))
+								len--;
+							if (!_strnicmp(fileName, applist.apps[i].name, len)) {
+								label->page = applist.apps[i].page;
+								break;
+							}
+						}
+					}
 				} else {
 					label->IsRAM = TRUE;
 					label->page = 1;
@@ -133,11 +164,11 @@ int labels_app_load(int slot, char* fn) {
 				label++;
 			}
 		}
-    }
-    fclose(labelFile);
-    return 0;
+	}
+	fclose(labelFile);
+	return 0;
 }
-    
+	
 /*
 void ImportBcalls(char* fn) {
 	int i,address;
@@ -163,9 +194,8 @@ void ImportBcalls(char* fn) {
 	fclose(infile);
 }
 */
-char* FindBcall(int address) {
-	int i;
-	for(i=0;bcalls[i].address != -1; i++ ) {
+TCHAR* FindBcall(int address) {
+	for(int i = 0; bcalls[i].address != -1; i++ ) {
 		if (bcalls[i].address == address) {
 			return bcalls[i].name;
 		}
@@ -174,11 +204,11 @@ char* FindBcall(int address) {
 }
 
 
-void FindFlags(int flag,int bit, char **flagstring, char **bitstring) {
+void FindFlags(int flag, int bit, TCHAR **flagstring, TCHAR **bitstring) {
 	int i,b;
-	for(i=0; flags83p[i].flag != -1; i++ ) {
+	for(i = 0; flags83p[i].flag != -1; i++ ) {
 		if (flags83p[i].flag == flag) {
-			for(b=0;b<8;b++) {
+			for(b = 0; b < 8; b++) {
 				if (flags83p[i].bits[b].bit == bit) {
 					*flagstring = flags83p[i].name;
 					*bitstring  = flags83p[i].bits[b].name;

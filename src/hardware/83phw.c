@@ -1,34 +1,49 @@
+#include "stdafx.h"
+
 #include "lcd.h"
 #include "keys.h"
 #include "83phw.h"
 #include "link.h"
 #include "device.h"
-#include <math.h>
-#ifdef WXVER
-#include <string.h>
-#include <stdlib.h>
+#include "calc.h"
+#include "83psehw.h"
+#ifdef WINVER
+#include "dbbreakpoints.h"
 #endif
 
-static double timer_freq83p[4] = {1.0f/560.0f, 1.0f/248.0f, 1.0f/170.0f, 1.0f/118.0f};
+static double timer_freq83p[4] = { 1.0f / 560.0f, 1.0f / 248.0f, 1.0f / 170.0f, 1.0f / 118.0f };
 
-#define TI_83P		6
-
+//------------------------
+// bit 0 - Tip
+// Bit 1 - Ring
+// bit 2 - Link assist active
+// bit 3 - Link assist completed a byte
+// bit 4 - Last written tip (Not implemented...yet)
+// bit 5 - Last written ring (Not implemented)
+// bit 6 - Link assist receiving
+// bit 7 - Not used
+// set bit 2 to enable link assist
 static void port0(CPU_t *cpu, device_t *dev) {
-	link_t * link = (link_t *) dev->aux;
+	LINKASSIST_t *assist = (LINKASSIST_t *) dev->aux;
+	link_t *link = cpu->pio.link;
 	if (cpu->input) {
-		cpu->bus = ((link->host&0x03)|(link->client[0]&0x03))^0x03;
+		cpu->bus = (((link->host & 0x03) | (link->client[0] & 0x03)) ^ 0x03) | (assist->link_enable & 0x04);
+		if (assist->read)
+			cpu->bus += 8;
+		if (assist->receiving)
+			cpu->bus += 64;
 		cpu->input = FALSE;
 	} else if (cpu->output) {
 #ifdef WINVER // lazy me
-		if ((link->host&0x01) != (cpu->bus&0x01)) {
-			FlippedLeft(cpu,(cpu->bus&0x01));		//sound .. #$%# you
+		if ((link->host & 0x01) != (cpu->bus & 0x01)) {
+			FlippedLeft(cpu, cpu->bus & 0x01);				//sound .. #$%# you
 		}
-		if ((link->host&0x02) != (cpu->bus&0x02)) {
-			FlippedRight(cpu,((cpu->bus&0x02)>>1));	//sound, not portable
+		if ((link->host & 0x02) != (cpu->bus & 0x02)) {
+			FlippedRight(cpu, (cpu->bus & 0x02) >> 1);	//sound, not portable
 		}
 #endif		
-
-		link->host = cpu->bus&0x03;
+		assist->link_enable = cpu->bus & 0x04;
+		link->host = cpu->bus & 0x03;
 		cpu->output = FALSE;
 	}
 #ifdef WINVER // :P
@@ -38,7 +53,7 @@ static void port0(CPU_t *cpu, device_t *dev) {
 
 static void port2(CPU_t *cpu, device_t *dev) {
 	if (cpu->input) {
-		cpu->bus = 0x3B | ((cpu->mem_c->flash_locked)?4:0);
+		cpu->bus = (cpu->pio.model == TI_73 ? 0x39 : 0x3B) | (cpu->mem_c->flash_locked ? 0 : 4);
 		cpu->input = FALSE;
 	} else if (cpu->output) {
 		cpu->output = FALSE;
@@ -76,7 +91,7 @@ static void port3(CPU_t *cpu, device_t *dev) {
 
 /*
 	Standard interrupt
-	ocurrs on a base frequency
+	occurs on a base frequency
 	when mask timer continues to tick but 
 	does not generate an interrupt. */
 	if (stdint->intactive & 0x02) {
@@ -97,7 +112,7 @@ static void port3(CPU_t *cpu, device_t *dev) {
 		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk2) > stdint->timermax2)
 			cpu->interrupt = TRUE;
 	} else if ((tc_elapsed(cpu->timer_c) - stdint->lastchk2) > stdint->timermax2) {
-//		stdint->lastchk2 = ceil((tc_elapsed(cpu->timer_c) - stdint->lastchk2)/stdint->timermax2)*stdint->timermax2;
+//		stdint->lastchk2 = ceil((tc_elapsed(cpu->timer_c) - stdint->lastchk2) / stdint->timermax2) * stdint->timermax2;
 		while ((tc_elapsed(cpu->timer_c) - stdint->lastchk2) > stdint->timermax2)
 			stdint->lastchk2 += stdint->timermax2;
 	}
@@ -109,9 +124,6 @@ static void port3(CPU_t *cpu, device_t *dev) {
 	if (stdint->on_latch)
 		cpu->interrupt = TRUE;
 }
-
-
-
 
 static void port4(CPU_t *cpu, device_t *dev) {
 	STDINT_t * stdint = (STDINT_t *) dev->aux;
@@ -128,131 +140,189 @@ static void port4(CPU_t *cpu, device_t *dev) {
 		cpu->input = FALSE;
 	} else if (cpu->output) {
 		/* I'm not sure if this is how the interrupts work. */
-		/* but for practicallity its close enough for now. */
+		/* but for practicality its close enough for now. */
 		int freq = ((cpu->bus & 6) >> 1);
 		stdint->timermax1 = stdint->freq[freq];
-		stdint->timermax2 = ( stdint->freq[freq] / 2.0f );
-		stdint->lastchk2  = stdint->lastchk1 + ( stdint->freq[freq] / 4.0f );
+		stdint->timermax2 = stdint->freq[freq] / 2.0f;
+		stdint->lastchk2  = stdint->lastchk1 + (stdint->freq[freq] / 4.0f);
 
-		if ( ( cpu->bus & 1 ) == 1) {
-			if ( !cpu->mem_c->boot_mapped ) {
-				memmove(&cpu->mem_c->banks[2],&cpu->mem_c->banks[1],sizeof(bank_state_t)*3);
-				memmove(&cpu->mem_c->banks[1],&cpu->mem_c->banks[4],sizeof(bank_state_t)*1);
-			}
+		if (cpu->bus & 1) {
 			cpu->mem_c->boot_mapped = TRUE;
-		}else {
-			if ( cpu->mem_c->boot_mapped ) {
-				memmove(&cpu->mem_c->banks[1],&cpu->mem_c->banks[2],sizeof(bank_state_t)*3);
-			}
+			cpu->mem_c->banks = cpu->mem_c->bootmap_banks;
+			update_bootmap_pages(cpu->mem_c);
+		} else {
 			cpu->mem_c->boot_mapped = FALSE;
+			cpu->mem_c->banks = cpu->mem_c->normal_banks;
 		}
 		cpu->output = FALSE;
 	}	
 }
 
-static void port6(CPU_t *cpu, device_t *dev) {
-	if ( cpu->mem_c->boot_mapped ) {
-		memmove(&cpu->mem_c->banks[1],&cpu->mem_c->banks[2],sizeof(bank_state_t)*3);
+//link assist port, returns whatever is read from link assisting
+static void port5(CPU_t *cpu, device_t *dev) {
+	LINKASSIST_t *assist = (LINKASSIST_t *) dev->aux;
+	link_t *link = cpu->pio.link;
+	if (!cpu->input && !cpu->output) {
+		if (assist->link_enable & 0x04) {
+			if (LinkRead != 3)
+				assist->ready = FALSE;
+			switch (LinkRead & 0x03) {
+				case 01:
+					if (assist->bit < 8) {
+						if (!assist->receiving)
+							assist->bit = 0;
+						assist->receiving = TRUE;
+						if (!link->host) {
+							assist->working  = (assist->working >> 1) + 128;
+							assist->bit++;
+							link->host = 1;
+						} else {
+							link->host = 0;
+						}
+					} else if (assist->bit == 8) {
+						if (link->host)
+							link->host = 0;
+						if (!assist->read) {
+							assist->receiving = FALSE;
+							assist->read = TRUE;
+							assist->in = assist->working;
+							assist->bit = 0;
+						}
+					}
+					break;
+				case 02:
+					if (assist->bit < 8) {
+						if (!assist->receiving)
+							assist->bit = 0;
+						assist->receiving = TRUE;
+						if (!link->host) {
+							assist->working  = (assist->working >> 1);
+							assist->bit++;
+							link->host = 2;
+						} else {
+							link->host = 0;
+						}
+					} else if (assist->bit == 8) {
+						if (link->host)
+							link->host = 0;
+						if (!assist->read) {
+							assist->receiving = FALSE;
+							assist->read = TRUE;
+							assist->in = assist->working;
+							assist->bit = 0;
+						}
+					}
+					break;
+				case 03:
+					if (assist->bit >=8 && !assist->read) {
+						assist->receiving = FALSE;
+						assist->read = TRUE;
+						assist->in = assist->working;
+						assist->bit = 0;
+					} else if (assist->bit ==0) {
+						assist->ready = TRUE;
+					}
+					break;
+			} 
+		}
 	}
-	if ( cpu->input ) {
-		cpu->bus = ((cpu->mem_c->banks[1].ram)<<6)+cpu->mem_c->banks[1].page;
+	if (cpu->input) {
+		assist->read = FALSE;
+		cpu->bus = assist->in;
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-		cpu->mem_c->banks[1].ram = (cpu->bus>>6)&1;
-		if (cpu->mem_c->banks[1].ram) {
-			cpu->mem_c->banks[1].page		= ((cpu->bus&0x1f) % cpu->mem_c->ram_pages );
-			cpu->mem_c->banks[1].addr		= cpu->mem_c->ram+(cpu->mem_c->banks[1].page*16384);
-			cpu->mem_c->banks[1].read_only	= FALSE;
-			cpu->mem_c->banks[1].no_exec	= FALSE;
-		} else {
-			cpu->mem_c->banks[1].page		= ((cpu->bus&0x1f) % cpu->mem_c->flash_pages);
-			cpu->mem_c->banks[1].addr		= cpu->mem_c->flash+(cpu->mem_c->banks[1].page*16384);
-			cpu->mem_c->banks[1].read_only	= FALSE;
-			cpu->mem_c->banks[1].no_exec	= FALSE;
-			if (cpu->mem_c->banks[1].page==0x1f) cpu->mem_c->banks[1].read_only=TRUE;
-		}
+		cpu->mem_c->protected_page_set = cpu->bus  & 0x07;
 		cpu->output = FALSE;
 	}
-	if (cpu->mem_c->boot_mapped) {
-		memmove(&cpu->mem_c->banks[2],&cpu->mem_c->banks[1],sizeof(bank_state_t)*3);
-		memmove(&cpu->mem_c->banks[1],&cpu->mem_c->banks[4],sizeof(bank_state_t)*1);
+}
+
+static void port6(CPU_t *cpu, device_t *dev) {
+	if (cpu->input) {
+		cpu->bus = (cpu->mem_c->banks[1].ram << 6) + cpu->mem_c->banks[1].page;
+		cpu->input = FALSE;
+	} else if (cpu->output) {
+		BOOL ram = (cpu->bus >> 6) & 1;
+		if (ram)
+			change_page(cpu, 1, (cpu->bus & 0x1f) % cpu->mem_c->ram_pages, ram);
+		else
+			change_page(cpu, 1, (cpu->bus & 0x1f) % cpu->mem_c->flash_pages, ram);
+		cpu->output = FALSE;
 	}
 }
 
 static void port7(CPU_t *cpu, device_t *dev) {
-	if (cpu->mem_c->boot_mapped) {
-		memmove(&cpu->mem_c->banks[1],&cpu->mem_c->banks[2],sizeof(bank_state_t)*3);
-	}
 	if (cpu->input) {
-		cpu->bus = ((cpu->mem_c->banks[2].ram)<<6)+cpu->mem_c->banks[2].page;
+		cpu->bus = ((cpu->mem_c->banks[2].ram) << 6) + cpu->mem_c->banks[2].page;
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-		cpu->mem_c->banks[2].ram = (cpu->bus>>6)&1;
-		if (cpu->mem_c->banks[2].ram) {
-			cpu->mem_c->banks[2].page		= ((cpu->bus&0x1f) % cpu->mem_c->ram_pages);
-			cpu->mem_c->banks[2].addr		= cpu->mem_c->ram+(cpu->mem_c->banks[2].page*16384);
-			cpu->mem_c->banks[2].read_only	= FALSE;
-			cpu->mem_c->banks[2].no_exec	= FALSE;
-		} else {
-			cpu->mem_c->banks[2].page		= ((cpu->bus&0x1f) % cpu->mem_c->flash_pages);
-			cpu->mem_c->banks[2].addr		= cpu->mem_c->flash+(cpu->mem_c->banks[2].page*16384);
-			cpu->mem_c->banks[2].read_only	= FALSE;
-			cpu->mem_c->banks[2].no_exec	= FALSE;
-			if (cpu->mem_c->banks[2].page==0x1f) cpu->mem_c->banks[2].read_only=TRUE;
-		}
+		BOOL ram = (cpu->bus >> 6) & 1;
+		if (ram)
+			change_page(cpu, 2, (cpu->bus & 0x1f) % cpu->mem_c->ram_pages, ram);
+		else
+			change_page(cpu, 2, (cpu->bus & 0x1f) % cpu->mem_c->flash_pages, ram);
 		cpu->output = FALSE;
-	}
-	if (cpu->mem_c->boot_mapped) {
-		memmove(&cpu->mem_c->banks[2],&cpu->mem_c->banks[1],sizeof(bank_state_t)*3);
-		memmove(&cpu->mem_c->banks[1],&cpu->mem_c->banks[4],sizeof(bank_state_t)*1);
 	}
 }
 
 
 static void port14(CPU_t *cpu, device_t *dev) {
 	if (cpu->input) {
-		cpu->bus = cpu->mem_c->flash_locked;
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-		int bank = cpu->pc>>14;
-		if (!cpu->mem_c->banks[bank].ram) {
-			if ( cpu->mem_c->banks[bank].page > 0x1B ) {		
-				cpu->mem_c->flash_locked = ( cpu->bus & 0x01 );
-			}
-		}
+		int bank = cpu->pc >> 14;
+		if (is_priveleged_page(cpu)) 
+			cpu->mem_c->flash_locked = !(cpu->bus & 0x01);
+		cpu->output = FALSE;
+	}
+}
+
+static void port16(CPU_t *cpu, device_t *dev) {
+	if (cpu->input) {
+		port14(cpu, dev);
+		cpu->input = FALSE;
+	} else if (cpu->output) {
+		int offset = cpu->mem_c->protected_page_set;
+		if (offset == 7)
+			offset = 3;
+		cpu->mem_c->protected_page[offset] = cpu->bus;
 		cpu->output = FALSE;
 	}
 }
 
 
 void flashwrite83p(CPU_t *cpu, unsigned short addr, unsigned char data) {
-	int bank = addr>>14;
-	switch( cpu->mem_c->step ) {
+	int bank = addr >> 14;
+	switch(cpu->mem_c->step) {
 		case 0:
-			if ( ( addr & 0x0FFF ) == 0x0AAA ) {
-				if ( data == 0xAA ) cpu->mem_c->step++;
+			if ((addr & 0x0FFF) == 0x0AAA) {
+				if (data == 0xAA) cpu->mem_c->step++;
+			} else if (break_on_invalid_flash) {
+				cpu->mem_c->mem_write_break_callback(cpu);
 			}
 			break;
 		case 1:
-			if ( ( addr & 0x0FFF ) == 0x0555 ) {
-				if (data==0x55) cpu->mem_c->step++;
+			if ((addr & 0x0FFF) == 0x0555) {
+				if (data == 0x55) cpu->mem_c->step++;
 				else endflash(cpu);
 			} else endflash(cpu);
 			break;
 		case 2:
-			if ( ( addr & 0x0FFF ) == 0x0AAA ) {
-				if ( data == 0xA0 ) {
-					cpu->mem_c->cmd=0xA0;		//Program
+			if ((addr & 0x0FFF) == 0x0AAA) {
+				if (data == 0xA0) {
+					cpu->mem_c->cmd = 0xA0;		//Program
 					cpu->mem_c->step++;
-				} else if ( data == 0x80 ) {
-					cpu->mem_c->cmd=0x80;		//Erase
+				} else if (data == 0x80) {
+					cpu->mem_c->cmd = 0x80;		//Erase
+					cpu->mem_c->step++;
+				} else if (data == 0x90) {		//Auto select
+					cpu->mem_c->cmd = 0x90;
 					cpu->mem_c->step++;
 				} else endflash(cpu);
 			} else endflash(cpu);
 			break;
 		case 3:
-			if ( cpu->mem_c->cmd == 0xA0 && cpu->mem_c->step == 3) {
-				(*(cpu->mem_c->banks[bank].addr +(addr&0x3fff))) &= data;  //AND LOGIC!!
+			if (cpu->mem_c->cmd == 0xA0 && cpu->mem_c->step == 3) {
+				(*(cpu->mem_c->banks[bank].addr + (addr & 0x3fff))) &= data;  //AND LOGIC!!
 //				if (cpu->mem_c->banks[bank].page == 0x1E) printf("\n");
 //				if (cpu->mem_c->banks[bank].page == 0x1E || cpu->mem_c->banks[bank].page == 0x08 ) {
 //					printf("Address: %02X:%04X  <- %02X  \n",cpu->mem_c->banks[bank].page ,addr&0x3fff,data);
@@ -260,22 +330,22 @@ void flashwrite83p(CPU_t *cpu, unsigned short addr, unsigned char data) {
 //				if (cpu->mem_c->banks[bank].page == 0x1E) printf("\n");
 				endflash(cpu);
 			}
-			if ( ( addr & 0x0FFF ) == 0x0AAA ) {
+			if ((addr & 0x0FFF) == 0x0AAA) {
 				if (data==0xAA) cpu->mem_c->step++;
 			}
 			if (data == 0xF0) endflash(cpu);
 			break;
 		case 4:
-			if ( ( addr & 0x0FFF ) == 0x0555 ) {
-				if ( data == 0x55 ) cpu->mem_c->step++;
+			if ((addr & 0x0FFF) == 0x0555) {
+				if (data == 0x55) cpu->mem_c->step++;
 			}
 			if (data == 0xF0) endflash(cpu);
 			break;
 		case 5:
-			if ( ( addr & 0x0FFF ) == 0x0AAA ) {
-				if (data==0x10) {			//Erase entire chip...Im not sure if 
+			if ((addr & 0x0FFF) == 0x0AAA) {
+				if (data == 0x10) {			//Erase entire chip...Im not sure if 
 					int i;					//boot page is included, so I'll leave it off
-					for( i = 0; i < ( cpu->mem_c->flash_size - 16384 ) ; i++ ) {
+					for(i = 0; i < (cpu->mem_c->flash_size - PAGE_SIZE); i++) {
 						cpu->mem_c->flash[i] = 0xFF;
 					}
 				} 
@@ -283,29 +353,29 @@ void flashwrite83p(CPU_t *cpu, unsigned short addr, unsigned char data) {
 			if (data == 0xF0) endflash(cpu);
 			if (data == 0x30) {		//erase sectors
 				int i;
-				int spage = (cpu->mem_c->banks[bank].page<<1) + ((addr>>13)&0x01);
-				if (spage<56) {
-					int startaddr = ( ( spage & 0x00F8 ) * 0x2000 );
-					int endaddr   = ( startaddr + 0x10000 );
-					for(i=startaddr; i<endaddr ;i++) {
-						cpu->mem_c->flash[i]=0xFF;
-					}
-				} else if (spage<60) {
-					for( i=0x70000; i < 0x78000; i++ ) {
+				int spage = (cpu->mem_c->banks[bank].page << 1) + ((addr >> 13) & 0x01);
+				if (spage < 56) {
+					int startaddr = (spage & 0x00F8 ) * 0x2000;
+					int endaddr   = startaddr + 0x10000;
+					for(i = startaddr; i < endaddr; i++) {
 						cpu->mem_c->flash[i] = 0xFF;
 					}
-				} else if (spage<61) {
+				} else if (spage < 60) {
+					for(i = 0x70000; i < 0x78000; i++) {
+						cpu->mem_c->flash[i] = 0xFF;
+					}
+				} else if (spage < 61) {
 //					printf("\nAddress: 1E:0000 -- ERASED\n");
-					for( i=0x78000; i < 0x7A000; i++ ) {
+					for(i = 0x78000; i < 0x7A000; i++) {
 						cpu->mem_c->flash[i] = 0xFF;
 
 					}
-				} else if (spage<62) {
+				} else if (spage < 62) {
 //											printf("\nAddress: 1E:2000 -- ERASED\n");
-					for( i=0x7A000; i<0x7C000; i++ ) {
-						cpu->mem_c->flash[i]=0xFF;
+					for(i = 0x7A000; i < 0x7C000; i++) {
+						cpu->mem_c->flash[i] = 0xFF;
 					}
-				} else if (spage<64) {
+				} else if (spage < 64) {
 /*
 // I comment this off because this is the boot page
 // it suppose to be write protected...
@@ -315,6 +385,7 @@ void flashwrite83p(CPU_t *cpu, unsigned short addr, unsigned char data) {
 */
 				}
 			}
+			endflash(cpu);
 			break;
 		default:
 			endflash(cpu);
@@ -322,15 +393,11 @@ void flashwrite83p(CPU_t *cpu, unsigned short addr, unsigned char data) {
 	}
 }
 
-
-
 /*----------------------------------------------*/
 /*												*/
 /*				Intialize						*/
 /*												*/
 /*----------------------------------------------*/
-
-
 
 static STDINT_t* INT83P_init(CPU_t* cpu) {
 	STDINT_t * stdint = (STDINT_t *) malloc(sizeof(STDINT_t));
@@ -344,8 +411,8 @@ static STDINT_t* INT83P_init(CPU_t* cpu) {
 	stdint->intactive = 0;
 	stdint->timermax1 = stdint->freq[3];
 	stdint->lastchk1 = tc_elapsed(cpu->timer_c);
-	stdint->timermax2 = stdint->freq[3]/2.0f;
-	stdint->lastchk2 = tc_elapsed(cpu->timer_c)+stdint->freq[3]/4.0f;
+	stdint->timermax2 = stdint->freq[3] / 2.0f;
+	stdint->lastchk2 = tc_elapsed(cpu->timer_c) + stdint->freq[3] / 4.0f;
 	stdint->on_backup = 0;
 	stdint->on_latch = FALSE;
 	return stdint;
@@ -363,14 +430,14 @@ static link_t* link83p_init(CPU_t* cpu) {
 	return link;
 }
 
-
 int device_init_83p(CPU_t *cpu) {
 	ClearDevices(cpu);
-
-
-	link_t * link = link83p_init(cpu);
+	
+	LINKASSIST_t *assist = (LINKASSIST_t *) malloc(sizeof(LINKASSIST_t));
+	assist->link_enable = 0;
+	link_t *link = link83p_init(cpu);
 	cpu->pio.devices[0x00].active = TRUE;
-	cpu->pio.devices[0x00].aux = link;
+	cpu->pio.devices[0x00].aux = assist;
 	cpu->pio.devices[0x00].code = (devp) port0;
 
 	keypad_t *keyp = keypad_init(cpu);
@@ -390,13 +457,17 @@ int device_init_83p(CPU_t *cpu) {
 	cpu->pio.devices[0x04].aux = stdint;
 	cpu->pio.devices[0x04].code = (devp) port4;
 
+	cpu->pio.devices[0x05].active = TRUE;
+	cpu->pio.devices[0x05].aux = assist;
+	cpu->pio.devices[0x05].code = (devp) port5;
+
 	cpu->pio.devices[0x06].active = TRUE;
 	cpu->pio.devices[0x06].code = (devp) port6;
 
 	cpu->pio.devices[0x07].active = TRUE;
 	cpu->pio.devices[0x07].code = (devp) port7;
 
-	LCD_t *lcd = LCD_init(cpu,TI_83P);
+	LCD_t *lcd = LCD_init(cpu, TI_83P);
 	cpu->pio.devices[0x10].active = TRUE;
 	cpu->pio.devices[0x10].aux = lcd;
 	cpu->pio.devices[0x10].code = (devp) LCD_command;
@@ -407,59 +478,87 @@ int device_init_83p(CPU_t *cpu) {
 
 	cpu->pio.devices[0x14].active = TRUE;
 	cpu->pio.devices[0x14].code = (devp) port14;
+	//protected means flash = unlocked, this would be a problem
+	//cpu->pio.devices[0x14].protected_port = TRUE;
+
+	cpu->pio.devices[0x16].active = TRUE;
+	cpu->pio.devices[0x16].code = (devp) port16;
+	cpu->pio.devices[0x16].protected_port = TRUE;
+
+	//shadows
+	cpu->pio.devices[0x21].active = TRUE;
+	cpu->pio.devices[0x21].code = (devp) port2;
+	cpu->pio.devices[0x26].active = TRUE;
+	cpu->pio.devices[0x26].aux = stdint;
+	cpu->pio.devices[0x26].code = (devp) port3;
+	cpu->pio.devices[0x27].active = TRUE;
+	cpu->pio.devices[0x27].code = (devp) port7;
 	
 	cpu->pio.lcd		= lcd;
 	cpu->pio.keypad		= keyp;
 	cpu->pio.link		= link;
 	cpu->pio.stdint		= stdint;
-	cpu->pio.se_aux		= NULL;
+	//a little hacky but it will work
+	//STP: No it won't, it crashes savestates dumbass
+	//BuckeyeDude: fixed savestates
+	cpu->pio.se_aux		= (SE_AUX_t *) assist;
 	
 	cpu->pio.model		= TI_83P;
 	
-	Append_interrupt_device(cpu,0x00,1);
-	Append_interrupt_device(cpu,0x03,8);
-	Append_interrupt_device(cpu,0x11,128);
+	Append_interrupt_device(cpu, 0x00, 1);
+	Append_interrupt_device(cpu, 0x03, 8);
+	Append_interrupt_device(cpu, 0x11, 128);
 	return 0;
 }
 
 
 int memory_init_83p(memc *mc) {
 	memset(mc, 0, sizeof(memory_context_t));
+
+	mc->mem_read_break_callback = mem_debug_callback;
+	mc->mem_write_break_callback = mem_debug_callback;
+#ifdef WINVER
+	mc->breakpoint_manager_callback = check_break_callback;
+#endif
+
+	// page protection for the 83p
+	mc->protected_page_set = 0;
 	
-	/* Set Number of Pages here */
+	// Set Number of Pages here
 	mc->flash_pages = 32;
 	mc->ram_pages = 2;
 
 	mc->flash_version = 1;
 	mc->flash_size = mc->flash_pages * PAGE_SIZE;
-	mc->flash = (u_char *) calloc(mc->flash_pages, PAGE_SIZE);
-	mc->flash_break = (u_char *) calloc(mc->flash_pages, PAGE_SIZE);
+	mc->flash = (unsigned char *) calloc(mc->flash_pages, PAGE_SIZE);
+	mc->flash_break = (unsigned char *) calloc(mc->flash_pages, PAGE_SIZE);
 	memset(mc->flash, 0xFF, mc->flash_size);
 	
 	mc->ram_size = mc->ram_pages * PAGE_SIZE;
-	mc->ram = (u_char *)calloc(mc->ram_pages, PAGE_SIZE);
-	mc->ram_break = (u_char *) calloc(mc->ram_pages, PAGE_SIZE);
+	mc->ram = (unsigned char *) calloc(mc->ram_pages, PAGE_SIZE);
+	mc->ram_break = (unsigned char *) calloc(mc->ram_pages, PAGE_SIZE);
 
 	if (!mc->flash || !mc->ram) {
-		printf("Couldn't allocate memory in memory_init_83p\n");
+		_tprintf_s(_T("Couldn't allocate memory in memory_init_83p\n"));
 		return 1;
 	}
 
 	mc->boot_mapped				= FALSE;
 	mc->flash_locked			= TRUE;
 
-	/* Organize bank states here */
+	// Organize bank states here
 	
-	/*	Address								page	write?	ram?	no exec?	*/
+	//	Address								page	write?	ram?	no exec?
 	bank_state_t banks[5] = {
 		{mc->flash, 						0, 		FALSE,	FALSE, 	FALSE},
-		{mc->flash+0x1f*PAGE_SIZE,			0x1f, 	FALSE, 	FALSE, 	FALSE},
-		{mc->flash+0x1f*PAGE_SIZE,			0x1f, 	FALSE, 	FALSE, 	FALSE},
+		{mc->flash + 0x1f * PAGE_SIZE,		0x1f, 	FALSE, 	FALSE, 	FALSE},
+		{mc->flash + 0x1f * PAGE_SIZE,		0x1f, 	FALSE, 	FALSE, 	FALSE},
 		{mc->ram,							0,		FALSE,	TRUE,	FALSE},
 		{NULL,								0,		FALSE,	FALSE,	FALSE}
 	};
-
-	memcpy(mc->banks, banks, sizeof(banks));
+	memcpy(mc->normal_banks, banks, sizeof(banks));
+	update_bootmap_pages(mc);
+	mc->banks					= mc->normal_banks;
 	return 0;
 }
 

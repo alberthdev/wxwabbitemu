@@ -2,8 +2,6 @@
 #define EXPORTVAR_H
 
 #include "link.h"
-#include <stdio.h>
-
 
 typedef struct {
 	FILE* stream;
@@ -17,12 +15,15 @@ typedef struct {
 	int eof;
 } MFILE;
 
-MFILE *ExportVar(int slot, char* fn, symbol83P_t* sym);
-MFILE *mopen(const char * filename,const char * mode );
-int mclose(MFILE* mf);
-int meof(MFILE* mf);
-int mgetc(MFILE* mf);
-int mputc(int c,MFILE* mf);
-int msize(MFILE* mf);
+MFILE *ExportVar(LPCALC, TCHAR *, symbol83P_t *);
+MFILE *ExportApp(LPCALC, TCHAR *, apphdr_t *);
+MFILE *ExportRom(TCHAR *lpszFile, LPCALC lpCalc);
+MFILE * ExportOS(TCHAR *lpszFile, unsigned char *buffer, int size);
+MFILE *mopen(const TCHAR *filename, const TCHAR *mode);
+int mclose(MFILE *);
+int meof(MFILE *);
+int mgetc(MFILE *);
+int mputc(int, MFILE *);
+int msize(MFILE *);
 
 #endif

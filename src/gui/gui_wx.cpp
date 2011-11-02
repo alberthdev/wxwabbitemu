@@ -10,8 +10,6 @@
 #define max(a, b)  (((a) > (b)) ? (a) : (b))
 #define min(a, b)  (((a) < (b)) ? (a) : (b))
 
-
-extern wxString CalcModelTxt[11];
 bool gif_anim_advance;
 bool silent_mode = false;
 bool DEBUG = true;
@@ -61,34 +59,37 @@ enum
 	EVT_MENU(ID_About, MyFrame::OnAbout)
 END_EVENT_TABLE()*/
 
+static MyFrame* frames[MAX_CALCS];
 class MyApp: public wxApp
 {
 	virtual bool OnInit();
 	//virtual int MainLoop();
 	void OnTimer(wxTimerEvent& event);
 	wxTimer *timer;
-public:
+	MyFrame * gui_frame(LPCALC lpCalc);
 	void getTimer(int slot);
+public:
 };
 
 IMPLEMENT_APP(MyApp)
 char* wxStringToChar(wxString input)
 {
-#if (wxUSE_UNICODE)
 		size_t size = input.size() + 1;
 		char *buffer = new char[size];//No need to multiply by 4, converting to 1 byte char only.
+#if (wxUSE_UNICODE)
 		memset(buffer, 0, size); //Good Practice, Can use buffer[0] = '&#65533;' also.
 		wxEncodingConverter wxec;
 		wxec.Init(wxFONTENCODING_ISO8859_1, wxFONTENCODING_ISO8859_1, wxCONVERT_SUBSTITUTE);
 		wxec.Convert(input.mb_str(), buffer);
 		return buffer; //To free this buffer memory is user responsibility.
 #else
-		return (char *)(input.c_str());
+		strcpy(buffer, input.c_str());
+		return buffer;
 #endif
 }
 
-char load_file_buffer[PATH_MAX];
-bool LoadRomIntialDialog() {
+//TODO: BuckeyeDude: replace with fileutilities.c
+char * LoadRomIntialDialog() {
 	wxString strFilter 	= wxT("\
 Known types ( *.sav; *.rom)|*.sav;*.rom|\
 Save States  (*.sav)|*.sav|\
@@ -97,34 +98,42 @@ All Files (*.*)|*.*");
 	wxFileDialog dialog(NULL, wxT("Wabbitemu: Please select a ROM or save state"),
 	wxT(""), wxT(""), strFilter, wxFD_OPEN | wxFD_FILE_MUST_EXIST);//, wxDefaultPosition,wxDefaultSize, "filedlg")
 	if (dialog.ShowModal() == wxID_OK) {
-		strcpy(load_file_buffer, wxStringToChar(dialog.GetPath()));
-		return true;
+		return wxStringToChar(dialog.GetPath());
 	}
 	else
-		return false;
+		return NULL;
 }
 
 bool MyApp::OnInit()
 {
 	wxImage::AddHandler(new wxPNGHandler);
 
-	memset(calcs, 0, sizeof(calcs));
-	int slot = calc_slot_new();
-	calcs[slot].SkinEnabled = false;
-	slot = rom_load(slot, calcs[slot].rom_path);
-	if (slot != -1) gui_frame(slot);
-	else {
-		bool loadFile = LoadRomIntialDialog();
+	memset(frames, 0, sizeof(frames));
+	LPCALC lpCalc = calc_slot_new();
+	lpCalc->SkinEnabled = false;
+	MyFrame *frame;
+	int result = rom_load(lpCalc, lpCalc->rom_path);
+	if (result == TRUE) {
+		frame = gui_frame(lpCalc);
+	} else {
+		calc_slot_free(lpCalc);
+		char *filePath = LoadRomIntialDialog();
 		//wxMessageBox(string, wxT("OnInit"), wxOK, NULL);
 		//printf_d("hello", string);
-		if (loadFile) {
-			slot = calc_slot_new();
-			slot = rom_load(slot, load_file_buffer);
-			if (slot != -1) gui_frame(slot);
-			else return FALSE;
-		} else return FALSE;
+		if (filePath != NULL) {
+			lpCalc = calc_slot_new();
+			result = rom_load(lpCalc, filePath);
+			delete filePath;
+			if (result == TRUE) {
+				frame = gui_frame(lpCalc);
+			} else {
+				return FALSE;
+			}
+		} else {
+			return FALSE;
+		}
 	}
-	calcs[slot].wxFrame->SetFocus();
+	frame->SetFocus();
 	timer = new wxTimer();
 	timer->Connect(wxEVT_TIMER, (wxObjectEventFunction) &MyApp::OnTimer);
 	timer->Start(FPS, false);
@@ -139,7 +148,7 @@ unsigned GetTickCount()
 {
 		struct timeval tv;
 		if(gettimeofday(&tv, NULL) != 0)
-				return 0;
+			return 0;
 
 		return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
 }
@@ -170,7 +179,7 @@ void MyApp::OnTimer(wxTimerEvent& event) {
 		int i;
 		for (i = 0; i < MAX_CALCS; i++) {
 			if (calcs[i].active) {
-				gui_draw(i);
+				frames[i]->gui_draw();
 			}
 		}
 	// Frame skip if we're too far ahead.
@@ -178,47 +187,43 @@ void MyApp::OnTimer(wxTimerEvent& event) {
 		difference += TPF;
 }
 
-int gui_draw(int slot) {
-	gslot = slot;
-	calcs[slot].wxLCD->Refresh();
-	calcs[slot].wxLCD->Update();
-	calcs[slot].wxFrame->Refresh();
-	calcs[slot].wxFrame->Update();
+int MyFrame::gui_draw() {
+	wxLCD->Refresh();
+	wxLCD->Update();
+	this->Refresh();
+	this->Update();
 
-	if (calcs[slot].gif_disp_state != GDS_IDLE) {
+	if (lpCalc->gif_disp_state != GDS_IDLE) {
 		static int skip = 0;
 		if (skip == 0) {
 			gif_anim_advance = true;
-			calcs[slot].wxFrame->Update();
+			this->Update();
 		}
 		skip = (skip + 1) % 4;
 	}
 }
 
-int gui_frame(int slot) {
-	if (!calcs[slot].Scale)
-    	calcs[slot].Scale = 2; //Set original scale
-    	
-	// Set gslot so the CreateWindow functions operate on the correct calc
-	gslot = slot;
-	calcs[slot].wxFrame = new MyFrame(slot);
-	calcs[slot].wxFrame->Show(true);
+MyFrame * MyApp::gui_frame(LPCALC lpCalc) {
+	if (!lpCalc->scale)
+    	lpCalc->scale = 2; //Set original scale
+    
+	MyFrame *mainFrame = new MyFrame(lpCalc);
+	mainFrame->Show(true);
+	frames[lpCalc->slot] = mainFrame;
 
-	calcs[slot].wxLCD = new MyLCD(slot);
-	calcs[slot].wxLCD->Show(true);
-	if (calcs[slot].wxFrame == NULL /*|| calcs[slot].hwndLCD == NULL*/) return -1;
-	calcs[slot].running = TRUE;
-	calcs[slot].wxFrame->SetSpeed(100);
+	mainFrame->wxLCD = new MyLCD(mainFrame, lpCalc);
+	mainFrame->wxLCD->Show(true);
+	lpCalc->running = TRUE;
+	mainFrame->SetSpeed(100);
 	
-	calcs[slot].wxFrame->Centre(0);   //Centres the frame
+	mainFrame->Centre(0);   //Centres the frame
 	
-	gui_frame_update(slot);
-	return 0;
+	mainFrame->gui_frame_update();
+	return mainFrame;
 }
 
-int gui_frame_update(int slot) {
-	LPCALC lpCalc = &calcs[slot];
-	wxMenuBar *wxMenu = lpCalc->wxFrame->GetMenuBar();
+void MyFrame::gui_frame_update() {
+	wxMenuBar *wxMenu = this->GetMenuBar();
 	lpCalc->calcSkin = wxGetBitmapFromMemory(TI_83p);
 	lpCalc->keymap = wxGetBitmapFromMemory(TI_83p_Keymap).ConvertToImage();
 	int skinWidth, skinHeight, keymapWidth, keymapHeight;
@@ -275,39 +280,39 @@ int gui_frame_update(int slot) {
 		if (!lpCalc->SkinEnabled) {
 			wxMenu->Check(ID_Calc_Skin, false);
 			// Create status bar
-			wxStatusBar *wxStatus = lpCalc->wxFrame->GetStatusBar();
+			wxStatusBar *wxStatus = this->GetStatusBar();
 			if (wxStatus == NULL)
-				wxStatus = calcs[slot].wxFrame->CreateStatusBar(1, wxST_SIZEGRIP, wxID_ANY );
+				wxStatus = this->CreateStatusBar(1, wxST_SIZEGRIP, wxID_ANY );
 			const int iStatusWidths[] = {100, -1};
 			wxStatus->SetFieldsCount(2, iStatusWidths);
 			wxStatus->SetStatusText(CalcModelTxt[lpCalc->model], 1);
 			
-			wxSize skinSize(128*lpCalc->Scale, 64*lpCalc->Scale+4); //The +4 is important to show all LCD
+			wxSize skinSize(128*lpCalc->scale, 64*lpCalc->scale+4); //The +4 is important to show all LCD
 			
 			if (wxMenu)
-				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, calcs[slot].wxFrame));
+				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, this));
 			
 			
-			lpCalc->wxFrame->SetClientSize(skinSize);
-			lpCalc->wxFrame->SetSize(128*lpCalc->Scale, 64*lpCalc->Scale+60);
+			this->SetClientSize(skinSize);
+			this->SetSize(128 * lpCalc->scale, 64 * lpCalc->scale + 60);
 		} else {
 			wxMenu->Check(ID_Calc_Skin, true);
-			wxStatusBar *wxStatus = lpCalc->wxFrame->GetStatusBar();
+			wxStatusBar *wxStatus = this->GetStatusBar();
 			if (wxStatus != NULL) {
 				wxStatus->Destroy();
 			}
 			wxSize skinSize(350, 725);
 			if (wxMenu)
-				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, lpCalc->wxFrame));
-			lpCalc->wxFrame->SetClientSize(skinSize);
+				skinSize.IncBy(0, wxSystemSettings::GetMetric(wxSYS_MENU_Y, this));
+			this->SetClientSize(skinSize);
 		}
 	}
 	
-	calcs[slot].wxFrame->SendSizeEvent();
+	this->SendSizeEvent();
 }
 
 extern wxRect db_rect;
-int gui_debug(int slot) {
+int gui_debug(LPCALC lpCalc) {
 	/*MyDebugger hdebug;
 	wxRect pos = {CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT+600, CW_USEDEFAULT+400};
 	if (db_rect.left != -1) CopyRect(&pos, &db_rect);
@@ -319,7 +324,7 @@ int gui_debug(int slot) {
 		SwitchToThisWindow(hdebug, TRUE);
 		return -1;
 	}
-	calcs[slot].running = FALSE;
+	lpCalc->running = FALSE;
 	hdebug = CreateWindowEx(
 		WS_EX_APPWINDOW,
 		g_szDebugName,
@@ -328,32 +333,33 @@ int gui_debug(int slot) {
 		pos.left, pos.top, pos.right, pos.bottom,
 		0, 0, g_hInst, NULL);
 
-	calcs[slot].hwndDebug = hdebug;
+	lpCalc->hwndDebug = hdebug;
 	SendMessage(hdebug, WM_SIZE, 0, 0);*/
 	return 0;
 }
 
 void printf_d( const char* format, ... ) {
-	if (DEBUG == false) return;
+#ifdef _DEBUG
 	va_list args;
 	//fprintf( stdout, "Error: " );
 	va_start( args, format );
 	vfprintf( stdout, format, args );
 	va_end( args );
+#endif
 }
 
-MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
+MyFrame::MyFrame(LPCALC lpCalc) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
 {
+	this->lpCalc = lpCalc;
 	this->SetWindowStyleFlag(wxBORDER_RAISED);
-	slot = curslot;
 	wxSize skinSize(350, 725);
-	calcs[slot].SkinSize = skinSize;
-	LCD_t *lcd = calcs[slot].cpu.pio.lcd;
-	int scale = calcs[slot].Scale;
+	lpCalc->SkinSize = skinSize;
+	LCD_t *lcd = lpCalc->cpu.pio.lcd;
+	int scale = lpCalc->scale;
 	int draw_width = lcd->width * scale;
 	int draw_height = 64 * scale;
 	wxRect lcdRect((128 * scale - draw_width) / 2, 0, draw_width, draw_height);
-	calcs[slot].LCDRect = lcdRect;
+	lpCalc->LCDRect = lcdRect;
 
 	wxSize windowSize;
 	this->SetSizeHints( wxDefaultSize, wxDefaultSize );
@@ -561,10 +567,12 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
 	m_menubar->Check(ID_Size_200, true);
 	
 	//int menuSize = wxSystemSettings::GetMetric(wxSYS_MENU_Y);
-	if (calcs[slot].SkinEnabled)
-		windowSize = calcs[slot].SkinSize;
-	else
-		windowSize.Set(128 * calcs[slot].Scale, 64 * calcs[slot].Scale+60);
+	if (lpCalc->SkinEnabled) {
+		windowSize = lpCalc->SkinSize;
+	} else {
+	//what is this +60?
+		windowSize.Set(128 * scale, 64 * scale + 60);
+	}
 	
 	#if (defined(__WXMSW__) && BIG_WINDOWS_ICON == 1)
 	wxBitmap bitmap(wxT(“wabbiticon.png”), wxBITMAP_TYPE_PNG);
@@ -581,32 +589,27 @@ MyFrame::MyFrame(int curslot) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
 // Resize function
 void MyFrame::OnResize(wxSizeEvent& event) {
 	event.Skip(true);
-	LPCALC lpCalc = &calcs[slot];
-	if (calcs[slot].SkinEnabled)
+	if (lpCalc->SkinEnabled)
 		return;
-	if (!calcs[slot].SkinEnabled)
-	{
-		int width_scale = event.GetSize().GetWidth() / 128;
-		int height_scale = (event.GetSize().GetHeight()-60) / 64;
-		int scale = max(2, max(width_scale, height_scale));
+	int width_scale = event.GetSize().GetWidth() / 128;
+	int height_scale = (event.GetSize().GetHeight()-60) / 64;
+	int scale = max(2, max(width_scale, height_scale));
 
-		/*int new_width = event.GetSize().GetWidth();
-		int new_height = event.GetSize().GetHeight();
-		if (new_width > this->GetSize().GetWidth() || new_height > this->GetSize().GetHeight())
-			scale++;
-		else
-			scale--;*/
-		calcs[slot].Scale = max(2, scale);
-		this->SetSize(wxDefaultCoord, wxDefaultCoord, scale * 128, scale * 64 + 60, wxSIZE_USE_EXISTING);
-	}
+	/*int new_width = event.GetSize().GetWidth();
+	int new_height = event.GetSize().GetHeight();
+	if (new_width > this->GetSize().GetWidth() || new_height > this->GetSize().GetHeight())
+		scale++;
+	else
+		scale--;*/
+	lpCalc->scale = max(2, scale);
+	this->SetSize(wxDefaultCoord, wxDefaultCoord, scale * 128, scale * 64 + 60, wxSIZE_USE_EXISTING);
 }
 
 void MyFrame::OnPaint(wxPaintEvent& event)
 {
 	wxPaintDC dc(this);
-	LPCALC lpCalc = &calcs[slot];
 	if (lpCalc->SkinEnabled) {
-		lpCalc->wxLCD->Update();
+		this->wxLCD->Update();
 		wxBitmap test = wxGetBitmapFromMemory(TI_83p);
 		dc.DrawBitmap(test, 0, 0, true);
 	}
@@ -614,23 +617,19 @@ void MyFrame::OnPaint(wxPaintEvent& event)
 
 void MyFrame::OnFileNew(wxCommandEvent &event) {
 	char *newFilePath = (char *) malloc(PATH_MAX);
-	strcpy(newFilePath, calcs[slot].rom_path);
-	int slot = calc_slot_new();
-	if (rom_load(slot, newFilePath) != -1) {
-		calcs[slot].SkinEnabled = calcs[slot].SkinEnabled;
-		calcs[slot].Scale = calcs[slot].Scale;
-		gui_frame(slot);
-	} else {
+	strcpy(newFilePath, lpCalc->rom_path);
+	lpCalc = calc_slot_new();
+	if (rom_load(lpCalc, newFilePath) == -1) {
 		wxMessageBox(wxT("Failed to create new calc"));
 	}
 }
 
 void MyFrame::OnFileOpen(wxCommandEvent &event) {
-	GetOpenSendFileName(slot, 0);
+	GetOpenSendFileName(lpCalc, 0);
 }
 
 void MyFrame::OnFileSave(wxCommandEvent &event) {
-	SaveStateDialog(slot);
+	SaveStateDialog(lpCalc);
 }
 
 void MyFrame::OnFileClose(wxCommandEvent &event) {
@@ -639,8 +638,8 @@ void MyFrame::OnFileClose(wxCommandEvent &event) {
 
 void MyFrame::OnSetSize(wxCommandEvent &event) {
 	/* This function is called when user changes size of LCD in menu */
-    wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
-    if (calcs[slot].SkinEnabled) {
+    wxMenuBar *wxMenu = this->GetMenuBar();
+    if (lpCalc->SkinEnabled) {
 		wxMessageBox(wxString(wxT("Hey there sneaky one! You got past the menu! Unfortunately, we can't let you past - otherwise things would break! Sorry, but nice try.")), wxString(wxT("Wabbitemu - Gotcha!")), wxOK, this);
 	} else {
 	    int eventID;
@@ -653,22 +652,22 @@ void MyFrame::OnSetSize(wxCommandEvent &event) {
 	    
 	    switch (eventID) {
 	        case ID_Size_100:
-	            calcs[slot].Scale = 1;  //This is half of the Wabbit default, but equals real LCD
+	            lpCalc->scale = 1;  //This is half of the Wabbit default, but equals real LCD
 	            wxMenu->Check(ID_Size_100,true);
 	            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 100% \n");
 	            break;
 	        case ID_Size_200:
-	            calcs[slot].Scale = 2; //Wabbit default, twice the LCD
+	            lpCalc->scale = 2; //Wabbit default, twice the LCD
 	            wxMenu->Check(ID_Size_200,true);
 	            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 200% \n");
 	            break;
 	        case ID_Size_300:
-	            calcs[slot].Scale = 3;
+	            lpCalc->scale = 3;
 	            wxMenu->Check(ID_Size_300,true);
 	            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 300% \n");
 	            break;
 	        case ID_Size_400:
-	            calcs[slot].Scale = 4;
+	            lpCalc->scale = 4;
 	            wxMenu->Check(ID_Size_400,true);
 	            printf_d("[wxWabbitemu] [OnSetSize] Set Scale 400% \n");
 	            break;
@@ -676,16 +675,17 @@ void MyFrame::OnSetSize(wxCommandEvent &event) {
 		    printf_d("[wxWabbitemu] [W] [OnSetSize] Some strange, evil thing called this function. Disregarding. \n");
 		    break;
 	    }
-	    if (!calcs[slot].SkinEnabled) {
+	    if (!lpCalc->SkinEnabled) {
 			/* Update size of frame to match the new LCD Size */
-	        calcs[slot].wxFrame->SetSize(128*calcs[slot].Scale, 64*calcs[slot].Scale+60);
+			//why +60
+	        this->SetSize(128 * lpCalc->scale, 64 * lpCalc->scale + 60);
 	    }
 	}
 }
 
 void MyFrame::OnSetSpeed(wxCommandEvent &event) {
 	printf_d("[wxWabbitemu] [OnSetSpeed] Function called! \n");
-	wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
+	wxMenuBar *wxMenu = this->GetMenuBar();
 	int eventID;
 	wxMenu->Check(ID_Speed_500, false);
 	wxMenu->Check(ID_Speed_400, false);
@@ -701,32 +701,32 @@ void MyFrame::OnSetSpeed(wxCommandEvent &event) {
 	printf_d("[wxWabbitemu] [OnSetSpeed] Got widget ID that called this function: %d \n",eventID);
 	switch (eventID) {
 		case ID_Speed_100:
-			calcs[slot].wxFrame->SetSpeed(100);
+			this->SetSpeed(100);
 			wxMenu->Check(ID_Speed_100, true);
 			printf_d("[wxWabbitemu] [OnSetSpeed] Setting emulated calc speed to 100%%. \n");
 			break;
 		case ID_Speed_200:
-			calcs[slot].wxFrame->SetSpeed(200);
+			this->SetSpeed(200);
 			wxMenu->Check(ID_Speed_200, true);
 			printf_d("[wxWabbitemu] [OnSetSpeed] Setting emulated calc speed to 200%%. \n");
 			break;
 		case ID_Speed_25:
-			calcs[slot].wxFrame->SetSpeed(25);
+			this->SetSpeed(25);
 			wxMenu->Check(ID_Speed_25, true);
 			printf_d("[wxWabbitemu] [OnSetSpeed] Setting emulated calc speed to 25%%. \n");
 			break;
 		case ID_Speed_400:
-			calcs[slot].wxFrame->SetSpeed(400);
+			this->SetSpeed(400);
 			wxMenu->Check(ID_Speed_400, true);
 			printf_d("[wxWabbitemu] [OnSetSpeed] Setting emulated calc speed to 400%%. \n");
 			break;
 		case ID_Speed_50:
-			calcs[slot].wxFrame->SetSpeed(50);
+			this->SetSpeed(50);
 			wxMenu->Check(ID_Speed_50, true);
 			printf_d("[wxWabbitemu] [OnSetSpeed] Setting emulated calc speed to 50%%. \n");
 			break;
 		case ID_Speed_500:
-			calcs[slot].wxFrame->SetSpeed(500);
+			this->SetSpeed(500);
 			wxMenu->Check(ID_Speed_500, true);
 			printf_d("[wxWabbitemu] [OnSetSpeed] Setting emulated calc speed to 500%%. \n");
 			break;
@@ -737,7 +737,7 @@ void MyFrame::OnSetSpeed(wxCommandEvent &event) {
 }
 
 void MyFrame::OnSetSpeedCustom(wxCommandEvent &event) {
-	wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
+	wxMenuBar *wxMenu = this->GetMenuBar();
 	long resp;
 	printf_d("[wxWabbitemu] [OnSetSpeedCustom] Function called! Opening numerical input dialog...\n");
 	resp = wxGetNumberFromUser(wxString(wxT("Enter the speed (in percentage) you wish to set:")), wxString(wxT("")), wxString(wxT("Wabbitemu - Custom Speed")), 100, 0, 10000);
@@ -751,7 +751,7 @@ void MyFrame::OnSetSpeedCustom(wxCommandEvent &event) {
 		wxMenu->Check(ID_Speed_50, false);
 		wxMenu->Check(ID_Speed_25, false);
 		wxMenu->Check(ID_Speed_Custom, true);
-		calcs[slot].wxFrame->SetSpeed(resp);
+		this->SetSpeed(resp);
 		printf_d("[wxWabbitemu] [OnSetSpeedCustom] Speed set to %i%%. \n", resp);
 	} else {
 		// note to self: does the "entered something invalid" apply?? supposedly, OnSetSpeedCustom is checked...
@@ -770,28 +770,28 @@ void MyFrame::OnSetSpeedCustom(wxCommandEvent &event) {
 }
 
 void MyFrame::OnPauseEmulation(wxCommandEvent &event) {
-	wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
-	if (calcs[this->slot].running) {
+	wxMenuBar *wxMenu = this->GetMenuBar();
+	if (lpCalc->running) {
 		//Tick is checked and emulation stops
-		calcs[this->slot].running = FALSE;
+		lpCalc->running = FALSE;
 		wxMenu->Check(ID_Calc_Pause, true);
 	} else {
 		//Tick is unchecked and emulation resumes
-		calcs[this->slot].running = TRUE;
+		lpCalc->running = TRUE;
 		wxMenu->Check(ID_Calc_Pause, false);
 	}
 }
 
 void MyFrame::SetSpeed(int speed) {
-	calcs[slot].speed = speed;
-	wxMenuBar *wxMenu = calcs[slot].wxFrame->GetMenuBar();
+	lpCalc->speed = speed;
+	wxMenuBar *wxMenu = this->GetMenuBar();
 }
 
 void MyFrame::OnKeyDown(wxKeyEvent& event)
 {
 	int keycode = event.GetKeyCode();
 	if (keycode == WXK_F8) {
-		if (calcs[slot].speed == 100)
+		if (lpCalc->speed == 100)
 			SetSpeed(400);
 		else
 			SetSpeed(100);
@@ -805,10 +805,10 @@ void MyFrame::OnKeyDown(wxKeyEvent& event)
 		}
 	}
 
-	keyprog_t *kp = keypad_key_press(&calcs[slot].cpu, keycode);
+	keyprog_t *kp = keypad_key_press(&lpCalc->cpu, keycode);
 	if (kp) {
-		if ((calcs[slot].cpu.pio.keypad->keys[kp->group][kp->bit] & KEY_STATEDOWN) == 0) {
-			calcs[slot].cpu.pio.keypad->keys[kp->group][kp->bit] |= KEY_STATEDOWN;
+		if ((lpCalc->cpu.pio.keypad->keys[kp->group][kp->bit] & KEY_STATEDOWN) == 0) {
+			lpCalc->cpu.pio.keypad->keys[kp->group][kp->bit] |= KEY_STATEDOWN;
 			this->Update();
 			FinalizeButtons();
 		}
@@ -820,10 +820,10 @@ void MyFrame::OnKeyUp(wxKeyEvent& event)
 {
 	int key = event.GetKeyCode();
 	if (key == WXK_SHIFT) {
-		keypad_key_release(&calcs[slot].cpu, WXK_LSHIFT);
-		keypad_key_release(&calcs[slot].cpu, WXK_RSHIFT);
+		keypad_key_release(&lpCalc->cpu, WXK_LSHIFT);
+		keypad_key_release(&lpCalc->cpu, WXK_RSHIFT);
 	} else {
-		keypad_key_release(&calcs[slot].cpu, key);
+		keypad_key_release(&lpCalc->cpu, key);
 	}
 	FinalizeButtons();
 }
@@ -835,26 +835,26 @@ void MyFrame::OnFileQuit(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnCalcSkin(wxCommandEvent& event)
 {
-	wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
-	calcs[slot].SkinEnabled = !calcs[slot].SkinEnabled;
+	wxMenuBar *wxMenu = this->GetMenuBar();
+	lpCalc->SkinEnabled = !lpCalc->SkinEnabled;
 	
 	// Enable/disable sizing menu items.
-	//m_sizeMenu->Enable(!calcs[slot].SkinEnabled);
-	wxMenu->Enable(ID_Size_100, !calcs[slot].SkinEnabled);
-	wxMenu->Enable(ID_Size_200, !calcs[slot].SkinEnabled);
-	wxMenu->Enable(ID_Size_300, !calcs[slot].SkinEnabled);
-	wxMenu->Enable(ID_Size_400, !calcs[slot].SkinEnabled);
+	//m_sizeMenu->Enable(!lpCalc->SkinEnabled);
+	wxMenu->Enable(ID_Size_100, !lpCalc->SkinEnabled);
+	wxMenu->Enable(ID_Size_200, !lpCalc->SkinEnabled);
+	wxMenu->Enable(ID_Size_300, !lpCalc->SkinEnabled);
+	wxMenu->Enable(ID_Size_400, !lpCalc->SkinEnabled);
 	
 	// Connect or disconnect the OnResize event.
-	if (calcs[slot].SkinEnabled) {
-		prevCalcScale = calcs[slot].Scale;
-		calcs[slot].Scale = 2;
+	if (lpCalc->SkinEnabled) {
+		prevCalcScale = lpCalc->scale;
+		lpCalc->scale = 2;
 		this->Disconnect(wxEVT_SIZE, (wxObjectEventFunction) &MyFrame::OnResize);
 	} else {
-		calcs[slot].Scale = prevCalcScale;
+		lpCalc->scale = prevCalcScale;
 		this->Connect(wxEVT_SIZE, (wxObjectEventFunction) &MyFrame::OnResize);
 	}
-	gui_frame_update(slot);
+	gui_frame_update();
 	this->Refresh();
 	this->Update();
 }
@@ -872,9 +872,9 @@ void MyFrame::OnHelpWebsite(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnGIF(wxCommandEvent& WXUNUSED(event))
 {
-	wxMenuBar *wxMenu = calcs[this->slot].wxFrame->GetMenuBar();
+	wxMenuBar *wxMenu = this->GetMenuBar();
 	printf_d("OnGIF called\n");
-	wxFileDialog* saveGIFDialog = new wxFileDialog(calcs[slot].wxLCD, wxT("Save GIF file"), wxT(""), wxT(""), wxT("\
+	wxFileDialog* saveGIFDialog = new wxFileDialog(NULL, wxT("Save GIF file"), wxT(""), wxT(""), wxT("\
 GIF File (*.gif)|*.GIF;*.gif;*.Gif;*.GIf;*.gIf;*.gIF;*.giF|\
 All Files (*.*)|*.*\0"),wxFD_SAVE|wxFD_OVERWRITE_PROMPT, wxDefaultPosition);
 	if (saveGIFDialog->ShowModal() != wxID_OK)
@@ -889,14 +889,14 @@ All Files (*.*)|*.*\0"),wxFD_SAVE|wxFD_OVERWRITE_PROMPT, wxDefaultPosition);
 	if (gif_write_state == GIF_IDLE) {
 		gif_write_state = GIF_START;
 		for (int i = 0; i < MAX_CALCS; i++)
-			if (calcs[slot].active)
-				calcs[slot].gif_disp_state = GDS_STARTING;
+			if (lpCalc->active)
+				lpCalc->gif_disp_state = GDS_STARTING;
 		wxMenu->Check(ID_File_Gif, true);
 	} else {
 		gif_write_state = GIF_END;
 		for (int i = 0; i < MAX_CALCS; i++)
-			if (calcs[slot].active)
-				calcs[slot].gif_disp_state = GDS_ENDING;
+			if (lpCalc->active)
+				lpCalc->gif_disp_state = GDS_ENDING;
 		wxMenu->Check(ID_File_Gif, false);
 	}
 }
@@ -904,20 +904,20 @@ All Files (*.*)|*.*\0"),wxFD_SAVE|wxFD_OVERWRITE_PROMPT, wxDefaultPosition);
 void MyFrame::OnQuit(wxCloseEvent& event)
 {
 	printf_d("[wxWabbitemu] OnQuit called! \n");
-	calcs[this->slot].active = FALSE;
+	lpCalc->active = FALSE;
 	/* Created event in preparation to fix crash bug - this should NOT
 	 * affect normal operation. */
 	//printf_d("[wxTextEditor] [OnQuit] Killing all timers in current window... \n");
-	//wxTimer *thetimer = calcs[this->slot].wxFrame.timer;
+	//wxTimer *thetimer = this.timer;
 	//wxTimer *thetimer = MyApp::timer;
 	Destroy();
 }
 
 void MyFrame::FinalizeButtons() {
 	int group, bit;
-	keypad_t *kp = calcs[slot].cpu.pio.keypad;
-	for(group=0;group<7;group++) {
-		for(bit=0;bit<8;bit++) {
+	keypad_t *kp = lpCalc->cpu.pio.keypad;
+	for(group = 0; group < 7; group++) {
+		for(bit = 0; bit < 8; bit++) {
 			if ((kp->keys[group][bit] & KEY_STATEDOWN) &&
 				((kp->keys[group][bit] & KEY_MOUSEPRESS) == 0) &&
 				((kp->keys[group][bit] & KEY_KEYBOARDPRESS) == 0)) {
