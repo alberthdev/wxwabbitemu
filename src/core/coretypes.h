@@ -6,7 +6,6 @@
 #include <stdint.h>
 
 #ifndef _WINDOWS
-typedef char TCHAR;
 typedef void *LPVOID;
 typedef const char *LPCTSTR;
 typedef unsigned char u_char;
