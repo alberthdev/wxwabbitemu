@@ -60,12 +60,12 @@ enum
 END_EVENT_TABLE()*/
 
 static MyFrame* frames[MAX_CALCS];
+static wxTimer *timer;
 class MyApp: public wxApp
 {
 	virtual bool OnInit();
 	//virtual int MainLoop();
 	void OnTimer(wxTimerEvent& event);
-	wxTimer *timer;
 	MyFrame * gui_frame(LPCALC lpCalc);
 	void getTimer(int slot);
 public:
@@ -157,7 +157,7 @@ unsigned GetTickCount()
 void MyApp::OnTimer(wxTimerEvent& event) {
 	static int difference;
 	static unsigned prevTimer;
-	unsigned dwTimer = GetTickCount();
+	unsigned dwTimer = clock();
 	
 	// How different the timer is from where it should be
 	// guard from erroneous timer calls with an upper bound

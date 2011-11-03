@@ -72,7 +72,7 @@ typedef std::string tstring;
 #include <time.h>
 #include <ctype.h>
 
-typedef char TCHAR;
+#define TCHAR char
 typedef void *LPVOID;
 typedef const char *LPCTSTR;
 #define MAX_PATH 256
