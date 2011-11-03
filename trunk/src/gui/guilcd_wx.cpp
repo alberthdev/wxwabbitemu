@@ -1,5 +1,4 @@
 #include "guilcd_wx.h"
-#include "calc.h"
 #include "core.h"
 #include "droptarget.h"
 
@@ -100,14 +99,59 @@ void MyLCD::OnResize(wxSizeEvent& event)
 	event.Skip(false);
 }
 
+//TODO: forward these events somehow
 void MyLCD::OnKeyDown(wxKeyEvent& event)
 {
-	mainFrame->ProcessEvent(event);
+	int keycode = event.GetKeyCode();
+	if (keycode == WXK_F8) {
+		if (lpCalc->speed == 100)
+			lpCalc->speed = 400;
+		else
+			lpCalc->speed = 100;
+	}
+	if (keycode == WXK_SHIFT) {
+		wxUint32 raw = event.GetRawKeyCode();
+		if (raw == 65505) {
+			keycode = WXK_LSHIFT;
+		} else {
+			keycode = WXK_RSHIFT;
+		}
+	}
+
+	keyprog_t *kp = keypad_key_press(&lpCalc->cpu, keycode);
+	if (kp) {
+		if ((lpCalc->cpu.pio.keypad->keys[kp->group][kp->bit] & KEY_STATEDOWN) == 0) {
+			lpCalc->cpu.pio.keypad->keys[kp->group][kp->bit] |= KEY_STATEDOWN;
+			this->Update();
+			FinalizeButtons();
+		}
+	}
 }
 
 void MyLCD::OnKeyUp(wxKeyEvent& event)
 {
-	mainFrame->ProcessEvent(event);
+	int key = event.GetKeyCode();
+	if (key == WXK_SHIFT) {
+		keypad_key_release(&lpCalc->cpu, WXK_LSHIFT);
+		keypad_key_release(&lpCalc->cpu, WXK_RSHIFT);
+	} else {
+		keypad_key_release(&lpCalc->cpu, key);
+	}
+	FinalizeButtons();
+}
+
+void MyLCD::FinalizeButtons() {
+	int group, bit;
+	keypad_t *kp = lpCalc->cpu.pio.keypad;
+	for(group = 0; group < 7; group++) {
+		for(bit = 0; bit < 8; bit++) {
+			if ((kp->keys[group][bit] & KEY_STATEDOWN) &&
+				((kp->keys[group][bit] & KEY_MOUSEPRESS) == 0) &&
+				((kp->keys[group][bit] & KEY_KEYBOARDPRESS) == 0)) {
+					kp->keys[group][bit] &= (~KEY_STATEDOWN);
+			}
+		}
+	}
 }
 
 void MyLCD::OnPaint(wxPaintEvent& event)

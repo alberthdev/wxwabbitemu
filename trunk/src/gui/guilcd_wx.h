@@ -5,9 +5,9 @@
 #include <wx/frame.h>
 #include <wx/wx.h>
 #include <wx/palette.h>
+#include "calc.h"
 #include "lcd.h"
 #include <stdlib.h>
-#include "calc.h"
 
 void SaveStateDialog(LPCALC lpCalc);
 #define MAX_SHADES 255
@@ -27,6 +27,7 @@ private:
 	void OnResize(wxSizeEvent& event);
 	void OnLeftButtonDown(wxMouseEvent& event);
 	void OnLeftButtonUp(wxMouseEvent& event);
+	void FinalizeButtons();
 
 	LPCALC lpCalc;
 	wxFrame *mainFrame;

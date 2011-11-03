@@ -2,7 +2,9 @@
 
 #include "var.h"
 #include "calc.h"
+#ifdef _WINDOWS
 #include "miniunz.h"
+#endif
 
 char self_test[] = "Self Test?";
 char catalog[] = "CATALOG";

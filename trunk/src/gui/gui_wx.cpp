@@ -108,6 +108,7 @@ bool MyApp::OnInit()
 {
 	wxImage::AddHandler(new wxPNGHandler);
 
+	printf("TPF: %d", TPF);
 	memset(frames, 0, sizeof(frames));
 	LPCALC lpCalc = calc_slot_new();
 	lpCalc->SkinEnabled = false;
@@ -157,7 +158,7 @@ unsigned GetTickCount()
 void MyApp::OnTimer(wxTimerEvent& event) {
 	static int difference;
 	static unsigned prevTimer;
-	unsigned dwTimer = clock();
+	unsigned dwTimer = GetTickCount();
 	
 	// How different the timer is from where it should be
 	// guard from erroneous timer calls with an upper bound
@@ -183,8 +184,9 @@ void MyApp::OnTimer(wxTimerEvent& event) {
 			}
 		}
 	// Frame skip if we're too far ahead.
-	} else
+	} else {
 		difference += TPF;
+	}
 }
 
 int MyFrame::gui_draw() {
@@ -813,7 +815,7 @@ void MyFrame::OnKeyDown(wxKeyEvent& event)
 			FinalizeButtons();
 		}
 	}
-	return;
+
 }
 
 void MyFrame::OnKeyUp(wxKeyEvent& event)
