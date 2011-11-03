@@ -583,7 +583,8 @@ void calc_unpause_linked() {
 
 #define FRAME_SUBDIVISIONS	(1024)
 int calc_run_all(void) {
-	int i, j, active_calc = -1;
+	int i, j;
+	LPCALC activeCalc;
 
 	for (i = 0; i < FRAME_SUBDIVISIONS; i++) {
 		/*link_hub[MAX_CALCS]->host = 0;*/
@@ -592,17 +593,17 @@ int calc_run_all(void) {
 				/*if (link_hub[j] != NULL)
 					link_hub[MAX_CALCS]->host |= link_hub[j]->host;*/
 
-				active_calc = j;
+				activeCalc = &calcs[j];
 				int time = (int)((int64_t) calcs[j].speed * calcs[j].timer_c.freq / FPS / 100) / FRAME_SUBDIVISIONS;
 				calc_run_tstates(&calcs[j], time);
 			}
 		}
 
 		//this code handles screenshoting if were actually taking screenshots right now
-		if (active_calc >= 0 && calcs[active_calc].cpu.timer_c != NULL &&
-				((tc_elapsed(calcs[active_calc].cpu.timer_c) - calcs[active_calc].cpu.pio.lcd->lastgifframe) >= 0.01)) {
+		if (activeCalc != NULL && activeCalc->cpu.timer_c != NULL &&
+				((tc_elapsed(activeCalc->cpu.timer_c) - activeCalc->cpu.pio.lcd->lastgifframe) >= 0.01)) {
 			handle_screenshot();
-			calcs[active_calc].cpu.pio.lcd->lastgifframe += 0.01;
+			activeCalc->cpu.pio.lcd->lastgifframe += 0.01;
 		}
 	}
 
