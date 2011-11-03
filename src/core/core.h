@@ -43,7 +43,7 @@
 #define FPS 50
 #endif
 // ticks per frame
-#define TPF (CLOCKS_PER_SEC / FPS)
+#define TPF (1000 / FPS)
 // 81 speed
 #define MHZ_2 2000000
 // 86 speed
