@@ -608,14 +608,14 @@ TIFILE_t* newimportvar(LPCTSTR filePath, BOOL only_check_header) {
 	FILE *infile = NULL;
 	TIFILE_t *tifile;
 	
-	TCHAR extension[5] = _T("");
-	const TCHAR *pext = _tcsrchr(filePath, _T('.'));
+	TCHAR extension[5] = "";
+	const TCHAR *pext = strrchr(filePath, '.');
 	if (pext != NULL)
 	{
 #ifdef _WINDOWS
 		StringCbCopy(extension, sizeof(extension), pext);
 #else
-		_tcscpy_s(extension, pext);
+		strcpy(extension, pext);
 #endif
 	}
 

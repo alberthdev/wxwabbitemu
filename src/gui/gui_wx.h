@@ -39,7 +39,7 @@ public:
 	void OnKeyDown(wxKeyEvent& event);
 	void OnKeyUp(wxKeyEvent& event);
 	void SetSpeed(int speed);
-	int gui_draw();
+	void gui_draw();
 	void gui_frame_update();
 	int gui_debug();
 	//void OnShow(wxShowEvent& event);
@@ -59,6 +59,7 @@ private:
     
 	void OnCalcSkin(wxCommandEvent& event);
 	void OnPauseEmulation(wxCommandEvent& event);
+	void OnTurnCalcOn(wxCommandEvent& event);
 	
 	void OnSetSpeed(wxCommandEvent& event);
 	void OnSetSpeedCustom(wxCommandEvent& event);

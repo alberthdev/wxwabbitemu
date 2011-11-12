@@ -32,7 +32,7 @@ LINK_ERR SendFile(const LPCALC lpCalc, LPCTSTR lpszFileName, SEND_FLAG Destinati
 
 					u_int i;
 					for (i = 0; i < lpCalc->applist.count; i++) {
-						if (_tcsncmp((TCHAR *) var->flash->name, lpCalc->applist.apps[i].name, 8) == 0) {
+						if (strcmp((TCHAR *) var->flash->name, lpCalc->applist.apps[i].name) == 0) {
 							lpCalc->last_transferred_app = &lpCalc->applist.apps[i];
 							break;
 						}
@@ -64,7 +64,7 @@ LINK_ERR SendFile(const LPCALC lpCalc, LPCTSTR lpszFileName, SEND_FLAG Destinati
 			}
 		case LABEL_TYPE:
 			{
-				_tcscpy_s(lpCalc->labelfn, lpszFileName);
+				strcpy(lpCalc->labelfn, lpszFileName);
 				VoidLabels(lpCalc);
 				labels_app_load(lpCalc, lpCalc->labelfn);
 				result = LERR_SUCCESS;

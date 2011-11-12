@@ -59,7 +59,7 @@ typedef struct GIF_TREE {
 
 int gif_write_state = GIF_IDLE;
 
-TCHAR gif_file_name[512] = _T("wabbitemu.gif");
+TCHAR gif_file_name[512] = "wabbitemu.gif";
 BOOL gif_autosave = FALSE;
 BOOL gif_use_increasing = FALSE;
 #ifdef HIGH_SHADE_GIF
