@@ -1,4 +1,4 @@
-
+#define _T(z) z
 typedef struct {
 	TCHAR name[32];
 	int bit;

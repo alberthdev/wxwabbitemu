@@ -672,7 +672,7 @@ SAVESTATE_t* SaveSlot(void *lpInput) {
 	runsave = lpCalc->running;
 	lpCalc->running = FALSE;
 	
-	save = CreateSave(_T("Revsoft"), _T("Test save"), lpCalc->model);
+	save = CreateSave("Revsoft", "Test save", lpCalc->model);
 
 	SaveCPU(save, &lpCalc->cpu);
 	SaveMEM(save, &lpCalc->mem_c);

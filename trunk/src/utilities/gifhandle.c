@@ -15,7 +15,7 @@
 
 TCHAR *generate_gif_name(TCHAR *fn, int num, TCHAR *dest) {
 	size_t i;
-	for (i = _tcslen(fn) - 1; 
+	for (i = strlen(fn) - 1; 
 	 	 i && fn[i] != '.';
 	 	 i--);
 	 	 

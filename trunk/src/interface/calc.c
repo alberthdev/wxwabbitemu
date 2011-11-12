@@ -20,6 +20,54 @@
 #include "CPage.h"
 #endif
 
+calc_t calcs[MAX_CALCS];
+LPCALC lpDebuggerCalc;
+
+#ifdef WITH_BACKUPS
+#define MAX_BACKUPS 10
+debugger_backup * backups[MAX_CALCS];
+int number_backup;
+int current_backup_index;
+int num_backup_per_sec;
+#endif
+
+#ifdef WITH_AVI
+#include "avi_utils.h"
+HAVI recording_avi;
+BOOL is_recording;
+#endif
+
+u_int frame_counter;
+int startX;
+int startY;
+BOOL exit_save_state;
+BOOL new_calc_on_load_files;
+BOOL do_backups;
+BOOL show_wizard;
+BOOL break_on_exe_violation;
+BOOL break_on_invalid_flash;
+BOOL sync_cores;
+link_t *link_hub[MAX_CALCS + 1];
+
+
+const TCHAR *CalcModelTxt[]
+#ifdef CALC_C
+#define _T(z) z
+= {	//"???",
+	_T("TI-81"),
+	_T("TI-82"),
+	_T("TI-83"),
+	_T("TI-85"),
+	_T("TI-86"),
+	_T("TI-73"),
+	_T("TI-83+"),
+	_T("TI-83+SE"),
+	_T("TI-84+"),
+	_T("TI-84+SE"),
+	_T("???")}
+#endif
+;
+
 /*
  * Determine the slot for a new calculator.  Return a pointer to the calc
  */
@@ -555,7 +603,11 @@ BOOL calc_start_screenshot(calc_t *calc, const TCHAR *filename)
 	if (gif_write_state == GIF_IDLE)
 	{
 		gif_write_state = GIF_START;
+		#ifdef WINVER
 		_tcscpy_s(gif_file_name, filename);
+		#else
+		strcpy(gif_file_name, filename);
+		#endif
 		return TRUE;
 	}
 	else

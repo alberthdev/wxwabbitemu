@@ -40,11 +40,11 @@ LD="ld"
 
 # CCFLAGS - additional arguments to add on to the C compiler.
 CCFLAGS="-c -g -w -I . `wx-config --version=2.8 --cflags 2>/dev/null` -ggdb -I core -I hardware -I utilities -I gui -I interface"
-CCDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER -D_LINUX"
+CCDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER -D_LINUX -DWXWABBITEMU_DEBUG_OUTPUT"
 
 # CPPFLAGS - additional arguments to add on to the C++ compiler.
 CPPFLAGS="-c -g -w -I . `wx-config --version=2.8 --cppflags 2>/dev/null` -ggdb -I core -I hardware -I utilities -I gui -I interface"
-CPPDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER -D_LINUX"
+CPPDEFINES="-DHIGH_SHADE_GIF -DVERBOSE -DWXVER -D_LINUX -DWXWABBITEMU_DEBUG_OUTPUT"
 
 # LDFLAGS - additional or required arguments to add on to the linker.
 LDFLAGS="`wx-config --version=2.8 --libs 2>/dev/null`"
@@ -58,6 +58,7 @@ NO_COLORS=0
 CLEAN_EVERYTHING=0
 OVERWRITE=0
 USE_BUILD_HASH=0
+DEBUG=0
 
 # Functions
 
@@ -89,6 +90,10 @@ function parsearg() {
 			'-w' | '--overwrite' )
 				printbold "Will overwrite any old compiled files, including object files."
 				OVERWRITE=1
+				;;
+			'-d' | '--debug' )
+				printbold "Will show compile commands executed."
+				DEBUG=1
 				;;
 			'-h' | '--help' )
 				showhelp
@@ -364,7 +369,9 @@ function COMPILEC() {
 				fi
 				printdone "Creating object directory..."
 			fi
-			
+			if [ "$DEBUG" = "1" ];then 
+				echo "DEBUG: Executing command: $CPP $CCFLAGS $csource -o obj/"$objfile" $CCDEFINES"
+			fi
 			printwork "Building $csource""..."
 			$CPP $CCFLAGS $csource -o obj/"$objfile" $CCDEFINES
 			checkfail $? "Building $csource""..."
@@ -446,6 +453,9 @@ function COMPILEC() {
 			printdone "Creating object directory..."
 		fi
 		
+		if [ "$DEBUG" = "1" ];then 
+			echo "DEBUG: Executing command: $CPP $CCFLAGS $1 -o obj/"$objfile" $CCDEFINES"
+		fi
 		printwork "Building $1""..."
 		$CC $CCFLAGS $1 -o obj/"$objfile" $CCDEFINES
 		checkfail $? "Building $1""..."
@@ -535,6 +545,9 @@ function COMPILECPP() {
 				printdone "Creating object directory..."
 			fi
 			
+			if [ "$DEBUG" = "1" ];then 
+				echo "DEBUG: Executing command: $CPP $CCFLAGS $cppsource -o obj/"$objfile" $CPPDEFINES"
+			fi
 			printwork "Building $cppsource""..."
 			$CPP $CPPFLAGS $cppsource -o obj/"$objfile" $CPPDEFINES
 			checkfail $? "Building $cppsource""..."
@@ -616,6 +629,9 @@ function COMPILECPP() {
 			printdone "Creating object directory..."
 		fi
 		
+		if [ "$DEBUG" = "1" ];then 
+			echo "DEBUG: Executing command: $CPP $CCFLAGS $cppsource -o obj/"$objfile" $CPPDEFINES"
+		fi
 		printwork "Building $1""..."
 		$CPP $CPPFLAGS $1 -o obj/"$objfile" $CPPDEFINES
 		checkfail $? "Building $1""..."
@@ -678,6 +694,7 @@ versionCheck
 # .cpp file, and LINKLD combines all *.o files together
 # into one binary.
 ########################################################
+COMPILEC charfuncs.c
 COMPILEC core/*.c
 COMPILEC debugger/*.c
 #COMPILECPP debugger/*.cpp

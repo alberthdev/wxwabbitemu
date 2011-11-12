@@ -198,11 +198,11 @@ void calc_erase_certificate(unsigned char *, int);
 void port_debug_callback(void *, void *);
 void mem_debug_callback(void *);
 
-#ifdef CALC_C
-#define GLOBAL
-#else
+//#ifdef CALC_C
 #define GLOBAL extern
-#endif
+//#else
+//#define GLOBAL extern
+//#endif
 
 GLOBAL calc_t calcs[MAX_CALCS];
 GLOBAL LPCALC lpDebuggerCalc;
