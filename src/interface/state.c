@@ -383,10 +383,11 @@ TCHAR *symbol_to_string(CPU_t *cpu, symbol83P_t *sym, TCHAR *buffer) {
 			}
 #ifdef WINVER
 			StringCbPrintf(p, _tcslen(p), _T("*10^%d"), exp);
+			p += _tcslen(p);
 #else
 			sprintf(p, "*10^%d", exp);
+			p += strlen(p);
 #endif
-			p += _tcslen(p);
 		} else {
 			for (i = min(exp, 0); i < sigdigs || i < exp; i++) {
 				*p++ = (i >= 0 ? FP[i] : 0) + '0';
@@ -424,7 +425,11 @@ TCHAR *symbol_to_string(CPU_t *cpu, symbol83P_t *sym, TCHAR *buffer) {
 			if (i != 0) *p++ = ',';
 			elem.address = ptr;
 			symbol_to_string(cpu, &elem, p);
+			#ifdef WINVER
 			p += _tcslen(p);
+			#else
+			p += strlen(p);
+			#endif
 			ptr += (elem.type_ID == RealObj) ? 9 : 18;
 		}
 		
@@ -453,7 +458,11 @@ TCHAR *symbol_to_string(CPU_t *cpu, symbol83P_t *sym, TCHAR *buffer) {
 				if (i != 0) *p++ = ',';
 				elem.address = ptr;
 				symbol_to_string(cpu, &elem, p);
+				#ifdef WINVER
 				p += _tcslen(p);
+				#else
+				p += strlen(p);
+				#endif
 			}
 			*p++ = ']';
 			if (j + 1 < rows) {

@@ -11,7 +11,7 @@
 label_struct *lookup_label(LPCALC lpCalc, TCHAR *label_name) {
 	int i;
 	for (i = 0; lpCalc->labels[i].name != NULL; i++) {
-		if (_tcsicmp(lpCalc->labels[i].name, label_name) == 0)
+		if (strcmp(lpCalc->labels[i].name, label_name) == 0)
 			return &lpCalc->labels[i];
 	}
 	return NULL;
@@ -47,7 +47,7 @@ BOOL label_search_tios(TCHAR *label, int equate) {
 	}
 
 	for(int i = 0; bcalls[i].address != -1; i++ ) {
-		if (_tcscmp(label, bcalls[i].name) == 0) {
+		if (strcmp(label, bcalls[i].name) == 0) {
 			if (bcalls[i].address == (equate & 0xFFFF) ) {
 				return TRUE;
 			}
@@ -55,13 +55,13 @@ BOOL label_search_tios(TCHAR *label, int equate) {
 	}
 	
 	for(int i = 0; flags83p[i].flag != -1; i++ ) {
-		if (_tcscmp(label, flags83p[i].name) == 0) {
+		if (strcmp(label, flags83p[i].name) == 0) {
 			if (flags83p[i].flag == (equate & 0xFFFF)) {
 				return TRUE;
 			}
 		}
 		for(int b = 0; b < 8; b++) {
-			if (_tcscmp(label, flags83p[i].bits[b].name) == 0) {
+			if (strcmp(label, flags83p[i].bits[b].name) == 0) {
 				if (flags83p[i].bits[b].bit == (equate & 0xFFFF)) {
 					return TRUE;
 				}
@@ -97,7 +97,7 @@ int labels_app_load(LPCALC lpCalc, LPCTSTR lpszFileName) {
 	labelFile = fopen(lpszFileName, "r");
 #endif
 	if (labelFile == NULL) {
-		_putts(_T("Error opening label files."));
+		puts("Error opening label files.");
 		return 1;
 	}
 	
@@ -105,7 +105,7 @@ int labels_app_load(LPCALC lpCalc, LPCTSTR lpszFileName) {
 	VoidLabels(lpCalc);
 
 	while (!feof(labelFile)) {
-#ifdef _UNICODE
+#if defined(_UNICODE) && defined(WINVER)
 		fgets(readBuf, 256, labelFile);
 		MultiByteToWideChar(CP_ACP, 0, readBuf, -1, buffer, ARRAYSIZE(buffer));
 #else
@@ -123,7 +123,7 @@ int labels_app_load(LPCALC lpCalc, LPCTSTR lpszFileName) {
 			i = sscanf(buffer, "%s = $%X", name, &equate);
 #endif
 		if (i == 2) {
-			length = (int) _tcslen(name);
+			length = (int) strlen(name);
 			if (!label_search_tios(name, equate)) {
 				
 				label->name = (TCHAR *) malloc((length + 1) * sizeof(TCHAR));
