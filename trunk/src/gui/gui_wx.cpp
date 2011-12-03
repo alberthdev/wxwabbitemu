@@ -12,6 +12,14 @@
 
 bool gif_anim_advance;
 bool silent_mode = false;
+#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+#warning wxWabbitemu benchmarking is enabled - this option will slow down the emulator.
+bool BENCHMARKING = false;
+bool ENABLE_GUI_UPDATING = true;
+bool ENABLE_CALC_EMULATION = true;
+int BENCHMARKING_HIGHEST_EMU_TIME, BENCHMARKING_LOWEST_EMU_TIME = 0;
+int BENCHMARKING_HIGHEST_GUI_TIME, BENCHMARKING_LOWEST_GUI_TIME = 0;
+#endif
 bool DEBUG = true;
 int prevCalcScale;
 enum
@@ -49,6 +57,11 @@ enum
 	
 	ID_Debug_Reset,
 	ID_Debug_Open,
+	#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+	ID_Debug_Benchmarking,
+	ID_Debug_Benchmarking_ToggleGUIUpdate,
+	ID_Debug_Benchmarking_ToggleCalcEmu,
+	#endif
 	
 	ID_Help_About,
 	ID_Help_Website
@@ -67,7 +80,6 @@ class MyApp: public wxApp
 	virtual bool OnInit();
 	//virtual int MainLoop();
 	void OnTimer(wxTimerEvent& event);
-	MyFrame * gui_frame(LPCALC lpCalc);
 	void getTimer(int slot);
 public:
 };
@@ -109,7 +121,7 @@ bool MyApp::OnInit()
 {
 	wxImage::AddHandler(new wxPNGHandler);
 
-	printf("TPF: %d", TPF);
+	printf("TPF: %d\n", TPF);
 	memset(frames, 0, sizeof(frames));
 	LPCALC lpCalc = calc_slot_new();
 	lpCalc->SkinEnabled = false;
@@ -155,11 +167,52 @@ unsigned GetTickCount()
 		return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
 }
 
+int getNumOfActiveCalcs() {
+	int active_calcs = 0;
+	for (int i = 0; i < MAX_CALCS; i++) {
+		if (calcs[i].active) {
+			active_calcs++;
+		}
+	}
+	return active_calcs;
+}
+
+void printf_d( const char* format, ... ) {
+#ifdef WXWABBITEMU_DEBUG_OUTPUT
+	va_list args;
+	//fprintf( stdout, "Error: " );
+	va_start( args, format );
+	vfprintf( stdout, format, args );
+	va_end( args );
+#endif
+}
+
+struct timeval initMSTimer() {
+	struct timeval start;
+	gettimeofday(&start, NULL);
+	return start;
+}
+
+int getMSFromTimer(struct timeval startTime) {
+	struct timeval end;
+	long mtime,seconds,useconds;
+	gettimeofday(&end, NULL);
+	
+	seconds = end.tv_sec - startTime.tv_sec;
+	useconds = end.tv_usec - startTime.tv_usec;
+	//printf_d("[getMSFromTimer] DEBUG: seconds = %ld useconds = %ld end.tv_usec = %ld \n", seconds, useconds, end.tv_usec);
+	mtime = ((seconds) * 1000 + useconds/1000.0) + 0.5;
+	
+	return mtime;
+}
 
 void MyApp::OnTimer(wxTimerEvent& event) {
 	static int difference;
 	static unsigned prevTimer;
 	unsigned dwTimer = GetTickCount();
+	#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+	struct timeval start;
+	#endif
 	
 	// How different the timer is from where it should be
 	// guard from erroneous timer calls with an upper bound
@@ -172,18 +225,46 @@ void MyApp::OnTimer(wxTimerEvent& event) {
 	// Are we greater than Ticks Per Frame that would call for
 	// a frame skip?
 	if (difference > -TPF) {
+		#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+		// NOTE: This timer may screw up TPF counting!
+		if (BENCHMARKING) gettimeofday(&start, NULL);
+		if (ENABLE_CALC_EMULATION)
+		#endif
 		calc_run_all();
+		
+		#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+		if (BENCHMARKING) printf_d("[wxWabbitemu] [B] [MyApp::OnTimer] Runtime for calc_run_all() is %lu ms \n", getMSFromTimer(start));
+		if (BENCHMARKING) {
+			if ((BENCHMARKING_HIGHEST_EMU_TIME < (int)getMSFromTimer(start)) || ((BENCHMARKING_HIGHEST_EMU_TIME == 0 && ENABLE_CALC_EMULATION == 1)))
+				BENCHMARKING_HIGHEST_EMU_TIME = (int)getMSFromTimer(start);
+			if ((BENCHMARKING_LOWEST_EMU_TIME > (int)getMSFromTimer(start)) || ((BENCHMARKING_LOWEST_EMU_TIME == 0) && ENABLE_CALC_EMULATION == 1))
+				BENCHMARKING_LOWEST_EMU_TIME = (int)getMSFromTimer(start);
+		}
+		#endif
 		while (difference >= TPF) {
 			calc_run_all();
 			difference -= TPF;
 		}
 
 		int i;
+		#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+		if (BENCHMARKING) gettimeofday(&start, NULL);
+		if (ENABLE_GUI_UPDATING)
+		#endif
 		for (i = 0; i < MAX_CALCS; i++) {
 			if (calcs[i].active) {
 				frames[i]->gui_draw();
 			}
 		}
+		#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+		if (BENCHMARKING) printf_d("[wxWabbitemu] [B] [MyApp::OnTimer] Runtime for frames[i]->gui_draw() is %lu ms \n", getMSFromTimer(start));
+		if (BENCHMARKING) {
+			if ((BENCHMARKING_HIGHEST_GUI_TIME < (int)getMSFromTimer(start)) || ((BENCHMARKING_HIGHEST_GUI_TIME == 0 && ENABLE_GUI_UPDATING == 1)))
+				BENCHMARKING_HIGHEST_GUI_TIME = (int)getMSFromTimer(start);
+			if ((BENCHMARKING_LOWEST_GUI_TIME > (int)getMSFromTimer(start)) || ((BENCHMARKING_LOWEST_GUI_TIME == 0) && ENABLE_GUI_UPDATING == 1))
+				BENCHMARKING_LOWEST_GUI_TIME = (int)getMSFromTimer(start);
+		}
+		#endif
 	// Frame skip if we're too far ahead.
 	} else {
 		difference += TPF;
@@ -191,10 +272,22 @@ void MyApp::OnTimer(wxTimerEvent& event) {
 }
 
 void MyFrame::gui_draw() {
+	#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+	struct timeval start;
+	if (BENCHMARKING) gettimeofday(&start, NULL);
+	#endif
 	wxLCD->Refresh();
+	#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+	if (BENCHMARKING) printf_d("[wxWabbitemu] [B] [gui_draw] Runtime for wxLCD->Refresh(); is %lu ms \n", getMSFromTimer(start));
+	if (BENCHMARKING) gettimeofday(&start, NULL);
+	#endif
 	wxLCD->Update();
-	this->Refresh();
-	this->Update();
+	#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+	if (BENCHMARKING) printf_d("[wxWabbitemu] [B] [gui_draw] Runtime for wxLCD->Update(); is %lu ms \n", getMSFromTimer(start));
+	if (BENCHMARKING) gettimeofday(&start, NULL);
+	#endif
+	//this->Refresh();
+	//this->Update();
 
 	if (lpCalc->gif_disp_state != GDS_IDLE) {
 		static int skip = 0;
@@ -204,9 +297,12 @@ void MyFrame::gui_draw() {
 		}
 		skip = (skip + 1) % 4;
 	}
+	#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+	if (BENCHMARKING) printf_d("[wxWabbitemu] [B] [gui_draw] Runtime for GIF handling is %lu ms \n", getMSFromTimer(start));
+	#endif
 }
 
-MyFrame * MyApp::gui_frame(LPCALC lpCalc) {
+MyFrame *gui_frame(LPCALC lpCalc) {
 	if (!lpCalc->scale)
 		lpCalc->scale = 2; //Set original scale
 	
@@ -341,16 +437,6 @@ int gui_debug(LPCALC lpCalc) {
 	lpCalc->hwndDebug = hdebug;
 	SendMessage(hdebug, WM_SIZE, 0, 0);*/
 	return 0;
-}
-
-void printf_d( const char* format, ... ) {
-#ifdef WXWABBITEMU_DEBUG_OUTPUT
-	va_list args;
-	//fprintf( stdout, "Error: " );
-	va_start( args, format );
-	vfprintf( stdout, format, args );
-	va_end( args );
-#endif
 }
 
 MyFrame::MyFrame(LPCALC lpCalc) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
@@ -522,6 +608,27 @@ MyFrame::MyFrame(LPCALC lpCalc) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
 	m_debugMenuItem = new wxMenuItem( m_debugMenu, ID_Debug_Open, wxString( wxT("Open Debugger...") ) , wxEmptyString, wxITEM_NORMAL );
 	m_debugMenu->Append( m_debugMenuItem );
 	
+	#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+	wxMenuItem* m_benchmarkMenuItem;
+	m_benchmarkMenuItem = new wxMenuItem( m_debugMenu, ID_Debug_Benchmarking, wxString( wxT("Emulation Benchmarking (slow)") ) , wxEmptyString, wxITEM_CHECK );
+	m_debugMenu->Append( m_benchmarkMenuItem );
+	
+	wxMenu *m_BenchmarkingOptsMenu = new wxMenu();
+	m_debugMenu->Append(-1, wxT("Benchmarking Options"), m_BenchmarkingOptsMenu);
+	
+	wxMenuItem* m_toggleGUIUpdateMenuItem;
+	m_toggleGUIUpdateMenuItem = new wxMenuItem( m_BenchmarkingOptsMenu, ID_Debug_Benchmarking_ToggleGUIUpdate, wxString( wxT("GUI Updating") ) , wxEmptyString, wxITEM_CHECK );
+	m_BenchmarkingOptsMenu->Append( m_toggleGUIUpdateMenuItem );
+	m_toggleGUIUpdateMenuItem->Check();
+	m_toggleGUIUpdateMenuItem->Enable(false);
+	
+	wxMenuItem* m_toggleCalcEmuMenuItem;
+	m_toggleCalcEmuMenuItem = new wxMenuItem( m_BenchmarkingOptsMenu, ID_Debug_Benchmarking_ToggleCalcEmu, wxString( wxT("Calculator Emulation") ) , wxEmptyString, wxITEM_CHECK );
+	m_BenchmarkingOptsMenu->Append( m_toggleCalcEmuMenuItem );
+	m_toggleCalcEmuMenuItem->Check();
+	m_toggleCalcEmuMenuItem->Enable(false);
+	#endif
+	
 	m_menubar->Append( m_debugMenu, wxT("Debug") );
 	
 	wxMenu *m_helpMenu = new wxMenu();
@@ -565,6 +672,12 @@ MyFrame::MyFrame(LPCALC lpCalc) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
 	this->Connect(ID_Size_200, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSize);
 	this->Connect(ID_Size_300, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSize);
 	this->Connect(ID_Size_400, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnSetSize);
+	
+	#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+	this->Connect(ID_Debug_Benchmarking, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnBenchmarking);
+	this->Connect(ID_Debug_Benchmarking_ToggleGUIUpdate, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnBenchToggleGUIUpdate);
+	this->Connect(ID_Debug_Benchmarking_ToggleCalcEmu, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnBenchToggleCalcEmu);
+	#endif
 	
 	this->Connect(ID_Help_About, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpAbout);
 	this->Connect(ID_Help_Website, wxEVT_COMMAND_MENU_SELECTED, (wxObjectEventFunction) &MyFrame::OnHelpWebsite);
@@ -629,11 +742,25 @@ void MyFrame::OnPaint(wxPaintEvent& event)
 }
 
 void MyFrame::OnFileNew(wxCommandEvent &event) {
-	char *newFilePath = (char *) malloc(PATH_MAX);
-	strcpy(newFilePath, lpCalc->rom_path);
-	lpCalc = calc_slot_new();
-	if (rom_load(lpCalc, newFilePath) == -1) {
-		wxMessageBox(wxT("Failed to create new calc"));
+	printf_d("[wxWabbitemu] [OnFileNew] Function called!\n");
+	printf_d("[wxWabbitemu] [OnFileNew] Creating another calc...\n");
+	LPCALC lpCalcNew = calc_slot_new();
+	printf_d("[wxWabbitemu] [OnFileNew] Loading the same ROM into new calc...\n");
+	if (rom_load(lpCalcNew, lpCalc->rom_path)) {
+		printf_d("[wxWabbitemu] [OnFileNew] Setting new calc attributes...\n");
+		lpCalcNew->SkinEnabled = lpCalc->SkinEnabled;
+		lpCalcNew->bCutout = lpCalc->bCutout;
+		lpCalcNew->scale = lpCalc->scale;
+		/* Nope, this doesn't exist yet... :/ */
+		//lpCalcNew->FaceplateColor = lpCalc->FaceplateColor;
+		//lpCalcNew->bAlphaBlendLCD = lpCalc->bAlphaBlendLCD;
+		printf_d("[wxWabbitemu] [OnFileNew] Turning on new calc... (disabled due to hanging)\n");
+		//calc_turn_on(lpCalcNew);
+		printf_d("[wxWabbitemu] [OnFileNew] Creating new window for the new calc...\n");
+		gui_frame(lpCalcNew);
+	} else {
+		calc_slot_free(lpCalcNew);
+		wxMessageBox(wxT("Failed to create new calc!"));
 	}
 }
 
@@ -808,6 +935,49 @@ void MyFrame::OnTurnCalcOn(wxCommandEvent& event) {
 		wxMessageBox(wxT("Could not turn calculator on!"), wxT("wxWabbitemu Error"), wxOK | wxICON_ERROR, this);
 }
 
+#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+void MyFrame::OnBenchmarking(wxCommandEvent& event) {
+	printf_d("[wxWabbitemu] [B] [OnBenchmarking] Function called!\n");
+	wxMenuBar *wxMenu = this->GetMenuBar();
+	BENCHMARKING = !BENCHMARKING;
+	if (BENCHMARKING) {
+		printf_d("[wxWabbitemu] [B] [OnBenchmarking] Benchmarking enabled! Emulator may become very slow.\n");
+	} else {
+		printf_d("[wxWabbitemu] [B] [OnBenchmarking] Benchmarking disabled!\n");
+		printf_d("[wxWabbitemu] [B] [OnBenchmarking] Benchmarking statistics:\n");
+		printf_d("[wxWabbitemu] [B] [OnBenchmarking] GUI updating: longest time is %ims, shortest time %ims\n", BENCHMARKING_HIGHEST_GUI_TIME, BENCHMARKING_LOWEST_GUI_TIME);
+		printf_d("[wxWabbitemu] [B] [OnBenchmarking] Calc emulation: longest time is %ims, shortest time %ims\n", BENCHMARKING_HIGHEST_EMU_TIME, BENCHMARKING_LOWEST_EMU_TIME);
+	}
+	wxMenu->Check(ID_Debug_Benchmarking, BENCHMARKING);
+	wxMenu->Enable(ID_Debug_Benchmarking_ToggleCalcEmu, BENCHMARKING);
+	wxMenu->Enable(ID_Debug_Benchmarking_ToggleGUIUpdate, BENCHMARKING);
+}
+
+void MyFrame::OnBenchToggleGUIUpdate(wxCommandEvent& event) {
+	printf_d("[wxWabbitemu] [B] [OnBenchToggleGUIUpdate] Function called!\n");
+	wxMenuBar *wxMenu = this->GetMenuBar();
+	ENABLE_GUI_UPDATING = !ENABLE_GUI_UPDATING;
+	if (ENABLE_GUI_UPDATING) {
+		printf_d("[wxWabbitemu] [B] [OnBenchToggleGUIUpdate] GUI updating enabled!\n");
+	} else {
+		printf_d("[wxWabbitemu] [B] [OnBenchToggleGUIUpdate] GUI updating disabled! The GUI LCD will no longer be updated.\n");
+	}
+	wxMenu->Check(ID_Debug_Benchmarking_ToggleGUIUpdate, ENABLE_GUI_UPDATING);
+}
+
+void MyFrame::OnBenchToggleCalcEmu(wxCommandEvent& event) {
+	printf_d("[wxWabbitemu] [B] [OnBenchToggleCalcEmu] Function called!\n");
+	wxMenuBar *wxMenu = this->GetMenuBar();
+	ENABLE_CALC_EMULATION = !ENABLE_CALC_EMULATION;
+	if (ENABLE_CALC_EMULATION) {
+		printf_d("[wxWabbitemu] [B] [OnBenchToggleCalcEmu] Calculator emulation enabled!\n");
+	} else {
+		printf_d("[wxWabbitemu] [B] [OnBenchToggleCalcEmu] Calculator emulation disabled! Some functions of the program may be impaired.\n");
+	}
+	wxMenu->Check(ID_Debug_Benchmarking_ToggleCalcEmu, ENABLE_CALC_EMULATION);
+}
+#endif
+
 void MyFrame::OnKeyDown(wxKeyEvent& event)
 {
 	int keycode = event.GetKeyCode();
@@ -927,10 +1097,16 @@ All Files (*.*)|*.*\0"),wxFD_SAVE|wxFD_OVERWRITE_PROMPT, wxDefaultPosition);
 void MyFrame::OnQuit(wxCloseEvent& event)
 {
 	printf_d("[wxWabbitemu] OnQuit called! \n");
-	lpCalc->active = FALSE;
 	/* Created event in preparation to fix crash bug - this should NOT
 	 * affect normal operation. */
-	printf_d("[wxWabbitemu] [OnQuit] Killing all timers in current window... \n");
+	printf_d("[wxWabbitemu] [OnQuit] Killing emulation/GUI update timer(s)... \n");
+	printf_d("[wxWabbitemu] [OnQuit] Number of active calcs [getNumOfActiveCalcs() value]: %i \n", getNumOfActiveCalcs());
+	if (getNumOfActiveCalcs() <= 1) {
+		timer->Stop();
+	} else {
+		printf_d("[wxWabbitemu] [OnQuit] Not killing emulation/GUI update timer since other calcs are still running. \n");
+	}
+	lpCalc->active = FALSE;
 	//wxTimer *thetimer = this.timer;
 	//wxTimer *thetimer = MyApp::timer;
 	calc_slot_free(lpCalc);
