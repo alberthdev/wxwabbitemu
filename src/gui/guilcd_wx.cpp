@@ -158,7 +158,7 @@ void MyLCD::OnPaint(wxPaintEvent& event)
 {
 	wxPaintDC *dc = new wxPaintDC(this);
 	if (lpCalc->SkinEnabled) {
-		this->Update();
+		//this->Update();
 		wxBitmap skin = lpCalc->calcSkin;
 		dc->DrawBitmap(skin, 0, 0, true);
 	}

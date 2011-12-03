@@ -21,12 +21,12 @@
 #include "calc.h"
 #include "skins/ti83p.h"
 
- #define wxGetBitmapFromMemory(name) _wxGetBitmapFromMemory(name ## _png, sizeof(name ## _png))
+#define wxGetBitmapFromMemory(name) _wxGetBitmapFromMemory(name ## _png, sizeof(name ## _png))
 
- inline wxBitmap _wxGetBitmapFromMemory(const unsigned char *data, int length) {
+inline wxBitmap _wxGetBitmapFromMemory(const unsigned char *data, int length) {
    wxMemoryInputStream is(data, length);
    return wxBitmap(wxImage(is, wxBITMAP_TYPE_PNG, -1), -1);
- }
+}
 
 char* wxStringToChar(wxString);
 int SetGIFName();
@@ -42,6 +42,7 @@ public:
 	void gui_draw();
 	void gui_frame_update();
 	int gui_debug();
+	void OnTimer(wxTimerEvent& event);
 	//void OnShow(wxShowEvent& event);
 	//DECLARE_EVENT_TABLE()
 protected:
@@ -65,6 +66,12 @@ private:
 	void OnSetSpeedCustom(wxCommandEvent& event);
 	void OnSetSize(wxCommandEvent& event);
 	
+	#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
+	void OnBenchmarking(wxCommandEvent& event);
+	void OnBenchToggleCalcEmu(wxCommandEvent& event);
+	void OnBenchToggleGUIUpdate(wxCommandEvent& event);
+	#endif
+	
 	void OnPaint(wxPaintEvent& event);
 	// Resize
 	void OnResize(wxSizeEvent& event);
@@ -74,5 +81,6 @@ private:
 	void OnQuit(wxCloseEvent& event);
 	void FinalizeButtons();
 };
+MyFrame* gui_frame(LPCALC lpCalc);
 
 #endif
