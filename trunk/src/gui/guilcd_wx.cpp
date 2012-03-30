@@ -1,27 +1,25 @@
 #include "guilcd_wx.h"
+#include "gui_wx.h"
 #include "core.h"
 #include "droptarget.h"
 
-
-enum {
-	ID_LCD,
-};
+BEGIN_EVENT_TABLE(WabbitemuLCD, wxWindow)
+	EVT_PAINT(WabbitemuLCD::OnPaint)
+	EVT_KEY_DOWN(WabbitemuLCD::OnKeyDown)
+	EVT_KEY_UP(WabbitemuLCD::OnKeyUp)
+	
+	EVT_LEFT_DOWN(WabbitemuLCD::OnLeftButtonDown)
+	EVT_LEFT_UP(WabbitemuLCD::OnLeftButtonUp)
+END_EVENT_TABLE()
 
 unsigned char redColors[MAX_SHADES+1];
 unsigned char greenColors[MAX_SHADES+1];
 unsigned char blueColors[MAX_SHADES+1];
-MyLCD::MyLCD(wxFrame *mainFrame, LPCALC lpCalc)
+WabbitemuLCD::WabbitemuLCD(wxFrame *mainFrame, LPCALC lpCalc)
 	: wxWindow(mainFrame, ID_LCD, wxPoint(0,0),
 		wxSize(lpCalc->cpu.pio.lcd->width * lpCalc->scale, 64 * lpCalc->scale)) {
 	this->lpCalc = lpCalc;
-	int scale = lpCalc->scale;
 	this->mainFrame = mainFrame;
-	this->Connect(wxEVT_PAINT, wxPaintEventHandler(MyLCD::OnPaint));
-	this->Connect(wxID_ANY, wxEVT_KEY_DOWN, (wxObjectEventFunction) &MyLCD::OnKeyDown);
-	this->Connect(wxID_ANY, wxEVT_KEY_UP, (wxObjectEventFunction) &MyLCD::OnKeyUp);
-	//this->Connect(wxEVT_SIZE, (wxObjectEventFunction) &MyLCD::OnResize);
-	this->Connect(wxEVT_LEFT_DOWN, (wxObjectEventFunction) &MyLCD::OnLeftButtonDown);
-	this->Connect(wxEVT_LEFT_UP, (wxObjectEventFunction) &MyLCD::OnLeftButtonUp);
 	this->SetDropTarget(new DnDFile(this, lpCalc));
 #define LCD_HIGH	255
 	for (int i = 0; i <= MAX_SHADES; i++) {
@@ -31,7 +29,7 @@ MyLCD::MyLCD(wxFrame *mainFrame, LPCALC lpCalc)
 	}
 }
 
-void MyLCD::OnLeftButtonDown(wxMouseEvent& event)
+void WabbitemuLCD::OnLeftButtonDown(wxMouseEvent& event)
 {
 	event.Skip(true);
 	static wxPoint pt;
@@ -77,13 +75,13 @@ void MyLCD::OnLeftButtonDown(wxMouseEvent& event)
 	}
 }
 
-void MyLCD::OnLeftButtonUp(wxMouseEvent& event)
+void WabbitemuLCD::OnLeftButtonUp(wxMouseEvent& event)
 {
 	event.Skip(true);
 	static wxPoint pt;
 	keypad_t *kp = lpCalc->cpu.pio.keypad;
 
-	ReleaseMouse();
+	//ReleaseMouse();
 
 	for(int group = 0; group < 7; group++) {
 		for(int bit = 0; bit < 8; bit++) {
@@ -94,13 +92,13 @@ void MyLCD::OnLeftButtonUp(wxMouseEvent& event)
 	lpCalc->cpu.pio.keypad->on_pressed &= ~KEY_MOUSEPRESS;
 }
 
-void MyLCD::OnResize(wxSizeEvent& event)
+void WabbitemuLCD::OnResize(wxSizeEvent& event)
 {
 	event.Skip(false);
 }
 
 //TODO: forward these events somehow
-void MyLCD::OnKeyDown(wxKeyEvent& event)
+void WabbitemuLCD::OnKeyDown(wxKeyEvent& event)
 {
 	int keycode = event.GetKeyCode();
 	if (keycode == WXK_F8) {
@@ -128,7 +126,7 @@ void MyLCD::OnKeyDown(wxKeyEvent& event)
 	}
 }
 
-void MyLCD::OnKeyUp(wxKeyEvent& event)
+void WabbitemuLCD::OnKeyUp(wxKeyEvent& event)
 {
 	int key = event.GetKeyCode();
 	if (key == WXK_SHIFT) {
@@ -140,7 +138,7 @@ void MyLCD::OnKeyUp(wxKeyEvent& event)
 	FinalizeButtons();
 }
 
-void MyLCD::FinalizeButtons() {
+void WabbitemuLCD::FinalizeButtons() {
 	int group, bit;
 	keypad_t *kp = lpCalc->cpu.pio.keypad;
 	for(group = 0; group < 7; group++) {
@@ -154,8 +152,11 @@ void MyLCD::FinalizeButtons() {
 	}
 }
 
-void MyLCD::OnPaint(wxPaintEvent& event)
+void WabbitemuLCD::OnPaint(wxPaintEvent& event)
 {
+	if (this->mainFrame->IsIconized()) {
+		return;
+	}
 	wxPaintDC *dc = new wxPaintDC(this);
 	if (lpCalc->SkinEnabled) {
 		//this->Update();
@@ -168,18 +169,19 @@ void MyLCD::OnPaint(wxPaintEvent& event)
 	if (wxStatus) {
 		if (clock() > lpCalc->sb_refresh + CLOCKS_PER_SEC / 2) {
 			wxString sz_status;
-			if (lcd->active)
+			if (lcd->active) {
 				sz_status.sprintf(wxT("FPS: %0.2lf"), lcd->ufps);
-			else
+			} else {
 				sz_status.sprintf(wxT("FPS: -"));
+			}
 			wxStatus->SetStatusText(sz_status, 0);
 			lpCalc->sb_refresh = clock();
 		}
 	}
 	delete dc;
-}
+} 
 
-void MyLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
+void WabbitemuLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 {
 	unsigned char *screen;
 	LCD_t *lcd = lpCalc->cpu.pio.lcd;

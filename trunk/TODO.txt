@@ -21,30 +21,6 @@ with spaces to the end of the colon+space.
 
 That said, here are the things to be done:
 
-= Image based keypad support
-++++ Suggested by: alberthrocks
-++++ Rationale: meet the current featureset of Wabbitemu, is a MUST
-++++            (no one likes memorizing keys :P)
-++++ Who's working on it: Nobody (Buckeye should, since this is probably
-++++                      MUCH easier to implement from Wabbitemu. :P
-++++                      (As he said, it requires some kind of resource
-++++                      inclusion in which is available in wxWidgets,
-++++                      but is somewhat tricky, and is kinda similar to
-++++                      Windows' resource inclusion.)
-++++ Implementor's notes: N/A
-
-= GUI button based keypad support
-++++ Suggested by: alberthrocks
-++++ Rationale: meet the current featureset of Wabbitemu, is a MUST
-++++            (no one likes memorizing keys :P)
-++++ Who's working on it: alberthrocks (GUI code, and possibly button
-++++                                    event binding as well - may
-++++                                    need help with that)
-++++ Implementor's notes: I'll be using wxGlade (exporting C++) to create
-++++                      the GUI, since it's pretty fast and easy to use.
-++++                      Event binding will probably either be done
-++++                      inside wxGlade or outside (in the code).
-
 = GIF recording
 ++++ Suggested by: alberthrocks
 ++++ Rationale: meet the current featureset of Wabbitemu
@@ -64,21 +40,9 @@ That said, here are the things to be done:
 ++++ Who's working on it: Nobody
 ++++ Implementor's notes: N/A
 
-= Emulation Adjustment (pausing, speed modifying, resetting)
-++++ Suggested by: alberthrocks
-++++ Rationale: meet the current featureset of Wabbitemu
-++++ Who's working on it: Nobody
-++++ Implementor's notes: N/A
-
 = Linking
 ++++ Suggested by: alberthrocks
 ++++ Rationale: meet the current featureset of Wabbitemu
-++++ Who's working on it: Nobody
-++++ Implementor's notes: N/A
-
-= Send/Extract files to and from emulated calculator
-++++ Suggested by: alberthrocks
-++++ Rationale: meet the current featureset of Wabbitemu, is a MUST
 ++++ Who's working on it: Nobody
 ++++ Implementor's notes: N/A
 

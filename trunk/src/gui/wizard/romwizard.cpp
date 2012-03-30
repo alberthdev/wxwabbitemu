@@ -1,0 +1,237 @@
+#include "romwizard.h"
+#include "gui_wx.h"
+#include "fileutilities.h"
+#include "exportvar.h"
+
+#include "rom/bf73.h"
+#include "rom/bf83p.h"
+#include "rom/bf83pse.h"
+#include "rom/bf84p.h"
+#include "rom/bf84pse.h"
+
+BEGIN_EVENT_TABLE(RomWizard, wxWizard)
+	EVT_WIZARD_FINISHED(wxID_ANY, RomWizard::OnFinish)
+	EVT_WIZARD_PAGE_CHANGED(wxID_ANY, RomWizard::OnPageChanged)
+END_EVENT_TABLE()
+
+RomWizard::RomWizard() : wxWizard (NULL, wxID_ANY, _T("ROM Wizard")) {
+	startPage = new WizardStartPage(this);
+	calcTypePage = new WizardCalcTypePage(this);
+	startPage->next = calcTypePage;
+	calcTypePage->prev = startPage;
+	osPage = new WizardOSPage(this);
+	calcTypePage->next = osPage;
+	osPage->prev = calcTypePage;
+	SetPageSize(startPage->GetBestSize());
+}
+
+bool RomWizard::Begin() {
+	return this->RunWizard(startPage);
+}
+
+void RomWizard::OnPageChanged(wxWizardEvent &event) {
+	if (calcTypePage == event.GetPage()) {
+		if (startPage->m_copyRadio->GetValue()) {
+			calcTypePage->EnableRadios(true);
+		} else {
+			calcTypePage->EnableRadios(false);
+		}
+	} else if (osPage == event.GetPage()) {
+		osPage->creatingROM = startPage->m_createRadio->GetValue();
+		osPage->m_choice1->Clear();
+		switch (calcTypePage->GetModel()) {
+			case TI_73:
+				osPage->m_choice1->Append("OS 1.91");
+				osPage->m_choice1->Enable(true);
+				osPage->m_choice1->SetSelection(0);
+				break;
+			case TI_83P:
+			case TI_83PSE:
+				osPage->m_choice1->Append("OS 1.19");
+				osPage->m_choice1->Enable(true);
+				osPage->m_choice1->SetSelection(0);
+				break;
+			case TI_84P:
+			case TI_84PSE:
+				osPage->m_choice1->Append("OS 2.43");
+				osPage->m_choice1->Append("OS 2.55 MP");
+				osPage->m_choice1->Enable(true);
+				osPage->m_choice1->SetSelection(0);
+				break;
+			default:
+				osPage->m_choice1->Enable(false);
+				break;
+		}
+		wxWindow *win = FindWindowById(wxID_FORWARD, startPage->GetParent());
+		if (osPage->creatingROM) {
+			win->SetLabel("Finish");
+		} else {
+			win->SetLabel("Next >");
+		}
+	}
+}
+
+void RomWizard::ModelInit(LPCALC lpCalc, int model)
+{
+	switch(model) {
+		case TI_73:
+			calc_init_83p(lpCalc);
+			break;
+		case TI_83P:
+			calc_init_83p(lpCalc);
+			break;
+		case TI_83PSE:
+			calc_init_83pse(lpCalc);
+			break;
+		case TI_84P:
+			calc_init_84p(lpCalc);
+			break;
+		case TI_84PSE:
+			calc_init_83pse(lpCalc);
+			break;
+	}
+}
+
+BOOL RomWizard::ExtractBootFree(wxString &bootfreePath, int model) {
+	wxString tempFile = wxFileName::GetTempDir();
+	tempFile.Append("/bootfree.hex");
+	bootfreePath = tempFile;
+	char *filePath = wxStringToChar(tempFile);
+	FILE *file = fopen(filePath, "wb");
+	const unsigned char *output;
+	size_t size;
+	switch(model) {
+		case TI_73:
+			output = bf73_hex;
+			size = sizeof(bf73_hex);
+			break;
+		case TI_83P:
+			output = bf83pbe_hex;
+			size = sizeof(bf83pbe_hex);
+			break;
+		case TI_83PSE:
+			output = bf83pse_hex;
+			size = sizeof(bf83pse_hex);
+			break;
+		case TI_84P:
+			output = bf84pbe_hex;
+			size = sizeof(bf84pbe_hex);
+			break;
+		case TI_84PSE:
+			output = bf84pse_hex;
+			size = sizeof(bf84pse_hex);
+			break;
+	}
+	for (int i = 0; i < size; i++) {
+		fputc(output[i], file);
+	}
+	fclose(file);
+	delete filePath;
+	return TRUE;
+}
+
+BOOL RomWizard::DownloadOS(wxString &osFilePath, int model, BOOL version)
+{
+	wxString tempFile = wxFileName::GetTempDir();
+	tempFile.Append("/os.8xu");
+	osFilePath = tempFile;
+	const char *url;
+	switch (model) {
+		case TI_73:
+			url = "http://education.ti.com/downloads/files/73/TI73_OS.73u";
+			break;
+		case TI_83P:
+		case TI_83PSE:
+			url = "http://education.ti.com/downloads/files/83plus/TI83Plus_OS.8Xu";
+			break;
+		case TI_84P:
+		case TI_84PSE:
+			if (version)
+				url = "http://education.ti.com/downloads/files/83plus/TI84Plus_OS243.8Xu";
+			else
+				url = "http://education.ti.com/downloads/files/83plus/TI84Plus_OS.8Xu";
+			break;
+	}
+	wxURL wxURL(url);
+	if (wxURL.GetError() == wxURL_NOERR){
+		wxInputStream *input = wxURL.GetInputStream();
+		FILE *file = fopen(tempFile, "wb");
+		while (!input->Eof()){
+			fputc(input->GetC(), file);
+		}
+		fclose(file);
+		delete input;
+		return TRUE;
+	}
+	return FALSE;
+}
+
+void RomWizard::OnFinish(wxWizardEvent &event) {
+	if (startPage->m_browseRadio->GetValue()) {
+		wxString path = startPage->m_filePicker1->GetPath();
+		char *normalPath = wxStringToChar(path);
+		LPCALC lpCalc = calc_slot_new();
+		BOOL success = rom_load(lpCalc, normalPath);
+		if (!success) {
+			//should never get here
+			event.Veto();
+			return;
+		}
+		gui_frame(lpCalc);
+		delete normalPath;
+		return;
+	}
+	if (startPage->m_createRadio->GetValue()) {
+		TCHAR buffer[255];
+		wxString osPath;
+		SaveFile(buffer, "ROMs  (*.rom)\0*.rom\0Bins  (*.bin)\0*.bin\0All Files (*.*)\0*.*\0\0",
+					"Wabbitemu Export Rom", "rom");
+		int model = calcTypePage->GetModel();
+		if (osPage->m_downloadOS->GetValue()) {
+			bool succeeded = DownloadOS(osPath, model, osPage->m_choice1->GetSelection() == 0);
+			if (!succeeded) {
+				wxMessageBox(_T("Unable to download file"), _T("Download failed"), wxOK);
+			}
+		} else {
+			osPath = osPage->m_filePicker2->GetPath();
+		}
+		LPCALC lpCalc = calc_slot_new();
+		//ok yes i know this is retarded...but this way we can use Load_8xu
+		//outside this function...
+		wxString hexFile;
+		ExtractBootFree(hexFile, model);
+		ModelInit(lpCalc, model);
+		//slot stuff
+		//LoadRegistrySettings(lpCalc);
+		char *path = wxStringToChar(osPath);
+		strcpy(lpCalc->rom_path, path);
+		delete path;
+		
+		lpCalc->active = TRUE;
+		lpCalc->model = model;
+		lpCalc->cpu.pio.model = model;
+		FILE *file = fopen(hexFile, "rb");
+		writeboot(file, &lpCalc->mem_c, -1);
+		fclose(file);
+		remove(hexFile);
+		//if you don't want to load an OS, fine...
+		if (osPath.length() > 0) {
+			TIFILE_t *tifile = newimportvar(osPath);
+			if (tifile == NULL || tifile->type != FLASH_TYPE) {
+				wxMessageBox(_T("Error: OS file is corrupt"), _T("Error"), wxOK);
+			} else {
+				forceload_os(&lpCalc->cpu, tifile);
+				if (osPage->m_downloadOS->GetValue()) {
+					remove(osPath);
+				}
+			}
+		}
+		calc_erase_certificate(lpCalc->mem_c.flash,lpCalc->mem_c.flash_size);
+		calc_reset(lpCalc);
+		//calc_turn_on(lpCalc);
+		gui_frame(lpCalc);
+		//write the output from file
+		MFILE *romfile = ExportRom(buffer, lpCalc);
+		mclose(romfile);
+	}
+}

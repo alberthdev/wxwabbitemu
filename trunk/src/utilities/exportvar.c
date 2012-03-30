@@ -293,8 +293,10 @@ MFILE * ExportOS(TCHAR *lpszFile, unsigned char *buffer, int size) {
 	for (i = 0; i < 24; i++) mputc(0x00, file);
 	//size of Intel hex
 	int tempnum =  77 * (size >> 5) + (size / PAGE_SIZE) * 17 + 11;
-	int size = size & 0x1F;
-	if (size) tempnum += (size << 1) + 13;
+	size = size & 0x1F;
+	if (size) {
+		tempnum += (size << 1) + 13;	
+	}
 	mputc(tempnum & 0xFF, file);	//little endian
 	mputc((tempnum >> 8) & 0xFF, file);
 	mputc((tempnum >> 16) & 0xFF, file);
@@ -358,7 +360,7 @@ void intelhex (MFILE* outfile, const unsigned char* buffer, int size, int page, 
 	}
 }
 
-//Prog’s, List AppVar and Group
+//ProgÂ’s, List AppVar and Group
 MFILE *ExportVar(LPCALC lpCalc, TCHAR* fn, symbol83P_t* sym) {
 	MFILE *outfile;
 	unsigned char mem[0x10020];

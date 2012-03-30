@@ -2,14 +2,15 @@
 
 #include "var.h"
 #include "calc.h"
+#include "fileutilities.h"
 #ifdef _WINDOWS
 #include "miniunz.h"
 #endif
 
-char self_test[] = "Self Test?";
-char catalog[] = "CATALOG";
-char txt73[] = "GRAPH  EXPLORER  SOFTWARE";
-char txt86[] = "Already Installed";
+const char self_test[] = "Self Test?";
+const char catalog[] = "CATALOG";
+const char txt73[] = "GRAPH  EXPLORER  SOFTWARE";
+const char txt86[] = "Already Installed";
 
 
 #define tmpread( fp ) \
@@ -21,7 +22,7 @@ char txt86[] = "Already Installed";
 	}
 
 
-int CmpStringCase(char *str1, unsigned char *str2) {
+int CmpStringCase(const char *str1, unsigned char *str2) {
 	return _strnicmp(str1, (char *) str2, strlen(str1));
 }
 
@@ -39,6 +40,37 @@ int FindRomVersion(int calc, char *string, unsigned char *rom, int size) {
 		}
 	}
 	switch (calc) {
+		case TI_81:
+			//1.1k doesnt ld a,* first
+			if (rom[0] == 0xC3) {
+				string[0] = '1';
+				string[1] = '.';
+				string[2] = '1';
+				string[3] = 'K';
+				string[4] = '\0';
+			} else if (rom[1] == 0x17) {
+				//2.0V has different val to load
+				string[0] = '2';
+				string[1] = '.';
+				string[2] = '0';
+				string[3] = 'V';
+				string[4] = '\0';
+			} else if (rom[5] == 0x09) {
+				//1.6K outs a 0x09
+				string[0] = '1';
+				string[1] = '.';
+				string[2] = '6';
+				string[3] = 'K';
+				string[4] = '\0';
+			} else {
+				//assume its a 1.8K for now
+				string[0] = '1';
+				string[1] = '.';
+				string[2] = '8';
+				string[3] = 'K';
+				string[4] = '\0';
+			}
+			break;
 		case TI_82:
 			for(i = 0; i < (size - strlen(catalog) - 10); i++) {
 				if (!CmpStringCase(catalog, rom + i)) {
@@ -67,36 +99,38 @@ int FindRomVersion(int calc, char *string, unsigned char *rom, int size) {
 			if (calc != TI_82) break;
 
 		case TI_83:
-			if (calc == TI_83) {
-				for(i = 0; i < (size - strlen(txt86) - 10); i++) {
-					if (!CmpStringCase(txt86, rom + i)) {
-						calc = TI_86;
-							for(i = 0; i < size - strlen(self_test) - 10; i++) {
-								if (CmpStringCase(self_test, rom + i) == 0) break;
+		case TI_86:
+			for(i = 0; i < (size - strlen(txt86) - 10); i++) {
+				if (!CmpStringCase(txt86, rom + i)) {
+					calc = TI_86;
+						for(i = 0; i < size - strlen(self_test) - 10; i++) {
+							if (CmpStringCase(self_test, rom + i) == 0) break;
+						}
+						for(; i < size - 40; i++) {
+							if (isdigit(rom[i])) break;
+						}
+						if (i < size - 40) {
+							for(b = 0; (b + i) < (size - 4) && b < 32; b++) {
+								if (rom[b + i] != ' ')
+									string[b] = rom[b + i];
+								else string[b] = 0;
 							}
-							for(; i < size - 40; i++) {
-								if (isdigit(rom[i])) break;
-							}
-							if (i < size - 40) {
-								for(b = 0; (b + i) < (size - 4) && b < 32; b++) {
-									if (rom[b + i] != ' ')
-										string[b] = rom[b + i];
-									else string[b] = 0;
-								}
-								string[31] = 0;
-							} else {
-								string[0] = '?';
-								string[1] = '?';
-								string[2] = '?';
-								string[3] = 0;
-							}
-						break;
-					}
+							string[31] = 0;
+						} else {
+							string[0] = '?';
+							string[1] = '?';
+							string[2] = '?';
+							string[3] = 0;
+						}
+					break;
 				}
 			}
-			if (calc == TI_86) break;
 
-			for(i = 0; i < (size - strlen(self_test) - 10); i++) {
+			if (calc == TI_86) {
+				break;
+			}
+
+			for (i = 0; i < (size - strlen(self_test) - 10); i++) {
 				if (CmpStringCase(self_test, rom + i)==0) break;
 			}
 			if ((i + 64) < size) {
@@ -178,8 +212,8 @@ TIFILE_t* ImportZipFile(LPCTSTR filePath, TIFILE_t *tifile) {
 	unzFile uf;
 	TCHAR path[MAX_PATH];
 	uf = unzOpen(filePath);
-	StringCbCopy(path, sizeof(path), _tgetenv(_T("appdata")));
-	StringCbCat(path, sizeof(path), _T("\\Wabbitemu"));
+	GetAppDataString(path, sizeof(path));
+	StringCbCat(path, sizeof(path), _T("\\Zip"));
 	int err = extract_zip(uf, path);
 	unzClose(uf);
 	return err ? NULL: tifile;
@@ -540,11 +574,20 @@ TIFILE_t* ImportVarData(FILE *infile, TIFILE_t *tifile, int varNumber) {
 	if (tifile->var == NULL)
 		return FreeTiFile(tifile);
 
+	char name_length = 8;
+	if (tifile->model == TI_86 || tifile->model == TI_85) {
+		//skip name length
+		name_length = tifile->var->name_length = tmpread(infile);
+		if (tifile->model == TI_86) {
+			name_length = 8;
+		}
+	}
+
 	tifile->var->headersize		= headersize;
 	tifile->var->length			= length;
 	tifile->var->vartype		= vartype;
 	ptr = tifile->var->name;
-	for(i = 0; i < 8 && !feof(infile); i++) {
+	for(i = 0; i < name_length && !feof(infile); i++) {
 		tmpread(infile);
 		ptr[i] = tmp;
 	}
@@ -560,7 +603,7 @@ TIFILE_t* ImportVarData(FILE *infile, TIFILE_t *tifile, int varNumber) {
 		tmp = fgetc(infile);
 		if (tmp == EOF)
 			return FreeTiFile(tifile);
-		ptr[i++] =tmp;
+		ptr[i++] = tmp;
 	} else {
 		ptr[i++] = 0;
 		ptr[i++] = 0;
@@ -579,8 +622,6 @@ TIFILE_t* ImportVarData(FILE *infile, TIFILE_t *tifile, int varNumber) {
 		return FreeTiFile(tifile);
 
 	i = 0;
-	if (tifile->model == TI_86)
-		fgetc(infile);
 
 	for(i = 0; i < tifile->var->length && !feof(infile); i++) {
 		tmp = fgetc(infile);
@@ -636,8 +677,9 @@ TIFILE_t* newimportvar(LPCTSTR filePath, BOOL only_check_header) {
 #ifdef _WINDOWS
 	if (!_tcsicmp(extension, _T(".tig")) || !_tcsicmp(extension, _T(".zip")) ) {
 		tifile->type = ZIP_TYPE;
-		if (!only_check_header)
+		if (!only_check_header) {
 			ImportZipFile(filePath, tifile);
+		}
 		return tifile;
 	}
 #endif
