@@ -11,6 +11,8 @@
 #include "dbbreakpoints.h"
 #endif
 
+#define BIT(bit) (1 << bit)
+
 /*
 	NOTE ABOUT 83+SE AND 84+SE:
 		There is no difference in hardware code between the 83+SE
@@ -79,7 +81,7 @@ void port3_83pse(CPU_t *cpu, device_t *dev) {
 		cpu->bus = stdint->intactive;
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-		if ( (!(stdint->intactive & 0x08)) && (cpu->bus & 0x08) ) {
+		if ( (!(stdint->intactive & BIT(3))) && (cpu->bus & BIT(3)) ) {
 			cpu->pio.lcd->active = TRUE;		//I'm worried about this
 			/*
 			Normally when the calc is set to a low power state and hits a halt
@@ -97,7 +99,7 @@ void port3_83pse(CPU_t *cpu, device_t *dev) {
 	}
 	
 	/*Read note above*/
-	if (!(stdint->intactive & 0x08)  && (cpu->halt == TRUE)) {
+	if (!(stdint->intactive & BIT(3))  && (cpu->halt == TRUE)) {
 		cpu->pio.lcd->active = FALSE;
 	}
 
@@ -139,18 +141,32 @@ void port3_83pse(CPU_t *cpu, device_t *dev) {
 }
 
 void port4_83pse(CPU_t *cpu, device_t *dev) {
-	STDINT_t * stdint = (STDINT_t *) dev->aux;
-	XTAL_t* xtal = &cpu->pio.se_aux->xtal;
+	STDINT_t *stdint = (STDINT_t *) dev->aux;
+	XTAL_t *xtal = &cpu->pio.se_aux->xtal;
 	if (cpu->input) {
 		unsigned char result = 0;
-		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk1) > stdint->timermax1) result += 2;
-		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk2) > stdint->timermax2) result += 4;
-		if (stdint->on_latch) result += 1;
-		if (!cpu->pio.keypad->on_pressed) result += 8;
+		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk1) > stdint->timermax1) {
+			result += BIT(1);
+		}
+		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk2) > stdint->timermax2) {
+			result += BIT(2);
+		}
+		if (stdint->on_latch) {
+			result += BIT(0);
+		}
+		if (!cpu->pio.keypad->on_pressed) {
+			result += BIT(3);
+		}
 		
-		if (xtal->timers[0].underflow) result += 32;
-		if (xtal->timers[1].underflow) result += 64;
-		if (xtal->timers[2].underflow) result += 128;
+		if (xtal->timers[0].underflow) {
+			result += BIT(5);
+		}
+		if (xtal->timers[1].underflow) {
+			result += BIT(6);
+		}
+		if (xtal->timers[2].underflow) {
+			result += BIT(7);
+		}
 		
 		cpu->bus = result;
 		cpu->input = FALSE;
@@ -162,7 +178,7 @@ void port4_83pse(CPU_t *cpu, device_t *dev) {
 		stdint->timermax2 = ( stdint->freq[freq] / 2.0f );
 		stdint->lastchk2  = stdint->lastchk1 + ( stdint->freq[freq] / 4.0f );
 
-		if (cpu->bus & 1) {
+		if (cpu->bus & BIT(0)) {
 			cpu->mem_c->boot_mapped = TRUE;
 			cpu->mem_c->banks = cpu->mem_c->bootmap_banks;
 			update_bootmap_pages(cpu->mem_c);
@@ -219,8 +235,9 @@ void port14_83pse(CPU_t *cpu, device_t *dev) {
 		cpu->bus = !cpu->mem_c->flash_locked;
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-		if (!cpu->mem_c->banks[mc_bank(cpu->pc)].ram && is_priveleged_page(cpu))
-			cpu->mem_c->flash_locked = !(cpu->bus & 0x01);
+		if (is_priveleged_page(cpu)) {
+			cpu->mem_c->flash_locked = !(cpu->bus & BIT(0));
+		}
 		cpu->output = FALSE;
 	}
 }
@@ -602,10 +619,10 @@ void port23_83pse(CPU_t *cpu, device_t *dev) {
 void port24_83pse(CPU_t *cpu, device_t *dev) {
 	if (cpu->input) {
 		cpu->input = FALSE;
-		cpu->bus = *((int *)dev->aux);
+		cpu->bus = cpu->mem_c->port24;
 	} else if (cpu->output) {
 		cpu->output = FALSE;
-		*((int *)dev->aux) = cpu->bus & 0x3;
+		cpu->mem_c->port24 = cpu->bus;
 	}
 }
 
@@ -755,12 +772,12 @@ void port31_83pse(CPU_t *cpu, device_t *dev) {
 	XTAL_t* xtal = (XTAL_t *) dev->aux;
 	TIMER_t* timer = &xtal->timers[(DEV_INDEX(dev) - 0x30) / 3];
 	if (cpu->input) {
-		cpu->bus  = timer->loop;
+		cpu->bus  = timer->loop ? 1 : 0;
 		cpu->bus += timer->interrupt ? 2 : 0;
 		cpu->bus += timer->underflow ? 4 : 0;
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-		timer->loop			= cpu->bus & 0x01;
+		timer->loop			= cpu->bus & 0x01 ? 1 : 0;
 		timer->interrupt	= cpu->bus & 0x02 ? 1 : 0;
 		timer->underflow	= FALSE;
 		timer->generate		= FALSE;
@@ -769,15 +786,15 @@ void port31_83pse(CPU_t *cpu, device_t *dev) {
 }
 
 
-void port32_83pse(CPU_t *cpu, device_t *dev) {
-	XTAL_t* xtal = (XTAL_t *) dev->aux;
-	TIMER_t* timer = &xtal->timers[(DEV_INDEX(dev)-0x30)/3];
+
+void handlextal(CPU_t *cpu,XTAL_t* xtal) {
+	TIMER_t* timer = &xtal->timers[0];
 	
 	// overall xtal timer ticking
 	xtal->ticks = (unsigned long long)(tc_elapsed(cpu->timer_c) * 32768.0);
 	xtal->lastTime = tc_elapsed(cpu->timer_c);
 	
-	for(int i = 0; i < NumElm(xtal->timers); i++)
+	for (int i = 0; i < NumElm(xtal->timers); i++)
 	{
 		timer = &xtal->timers[i];
 		if (timer->active)
@@ -824,6 +841,13 @@ void port32_83pse(CPU_t *cpu, device_t *dev) {
 		if (timer->generate && !cpu->halt)
 			cpu->interrupt = TRUE;
 	}
+}
+		
+void port32_83pse(CPU_t *cpu, device_t *dev) {
+	XTAL_t* xtal = (XTAL_t *) dev->aux;
+	TIMER_t* timer = &xtal->timers[(DEV_INDEX(dev)-0x30)/3];
+	
+	handlextal(cpu, xtal);	
 		
 	if (cpu->input) {
 		cpu->bus = timer->count;
@@ -901,8 +925,6 @@ void clock_read(CPU_t *cpu, device_t *dev) {
 		cpu->output = FALSE;
 	}
 }
-
-#define BIT(bit) (1 << bit)
 
 #define USB_LINE_INTERRUPT_MASK BIT(2);
 #define USB_PROTOCOL_INTERRUPT_MASK BIT(4);
@@ -982,6 +1004,7 @@ void port54_83pse(CPU_t *cpu, device_t *dev) {
 	} else if (cpu->output) {
 		cpu->output = FALSE;
 		usb->Port54 = cpu->bus & (BIT(0) | BIT(1) | BIT(2) | BIT(6) | BIT(7));
+		usb->USBPowered = !(cpu->bus & (BIT(1)));
 	}
 }
 
@@ -1092,263 +1115,6 @@ void fake_usb(CPU_t *cpu, device_t *dev) {
 		cpu->output = FALSE;
 	}
 }
-
-
-void flashwrite83pse(CPU_t *cpu, unsigned short addr, unsigned char data) {
-	int bank = addr >> 14;
-	switch(cpu->mem_c->step) {
-		case 0:
-			if ((addr & 0x0FFF) == 0x0AAA) {
-				if (data == 0xAA) cpu->mem_c->step++;
-			}
-			break;
-		case 1:
-			if ((addr & 0x0FFF) == 0x0555) {
-				if (data == 0x55) cpu->mem_c->step++;
-				else endflash(cpu);
-			} else endflash(cpu);
-			break;
-		case 2:
-			if ((addr & 0x0FFF) == 0x0AAA) {
-				if (data == 0xA0) {
-					cpu->mem_c->cmd = 0xA0;		//Program
-					cpu->mem_c->step++;
-				} else if ( data == 0x80 ) {
-					printf("\n");
-					cpu->mem_c->cmd = 0x80;		//Erase
-					cpu->mem_c->step++;
-				} else if ( data == 0x20 ) {
-					puts("Fast");
-					cpu->mem_c->cmd = 0x20;		//Fast mode
-					cpu->mem_c->step = 6;
-				} else if (data == 0x90) {
-					cpu->mem_c->cmd = 0x90;		//Auto select
-					cpu->mem_c->step++;
-				} else endflash(cpu);
-			} else endflash(cpu);
-			break;
-		case 3: {
-			int value = 0;
-			if (cpu->mem_c->cmd == 0xA0 && cpu->mem_c->step == 3) {
-				value = *(cpu->mem_c->banks[bank].addr + (addr & 0x3fff));
-				(*(cpu->mem_c->banks[bank].addr + (addr & 0x3fff))) &= data;  //AND LOGIC!!
-				if ((~((~value) | (~data))) != value)
-					value = (~value) & 0x80 | 0x20;
-				endflash(cpu);
-			}
-			if ((addr & 0x0FFF) == 0x0AAA) {
-				if (data==0xAA) cpu->mem_c->step++;
-			}
-			if (data == 0xF0) { 
-				if (value)
-					cpu->bus = value;
-				endflash(cpu);
-			}
-			break;
-		}
-		case 4:
-			if ((addr & 0x0FFF) == 0x0555 ) {
-				if (data == 0x55) cpu->mem_c->step++;
-			}
-			if (data == 0xF0) endflash(cpu);
-			break;
-		case 5:
-			if ((addr & 0x0FFF) == 0x0AAA) {
-				if (data == 0x10) {			//Erase entire chip...Im not sure if 
-					int i;					//boot page is included, so I'll leave it off. DrDnar 7/8/11: boot sector is included
-					for(i = 0; i < cpu->mem_c->flash_size; i++ ) {
-						cpu->mem_c->flash[i] = 0xFF;
-					}
-				} 
-			}
-			if (data == 0xF0) endflash(cpu);
-			if (data == 0x30) {		//erase sectors
-				int i;
-				int spage = (cpu->mem_c->banks[bank].page<<1) + ((addr >> 13) & 0x01);
-
-				printf("Spage = %03d , Page = %02X , Addr = %04X \n", spage, spage / 2, ((spage & 0x00F8) * 0x2000));
-				if (spage < 248) {
-					int startaddr = ((spage & 0x00F8 ) * 0x2000);
-					int endaddr   = (startaddr + 0x10000);
-					for(i = startaddr; i < endaddr; i++) {
-						cpu->mem_c->flash[i] = 0xFF;
-					}
-				} else if (spage < 252) {
-					for(i = 0x1F0000; i < 0x1F8000; i++ ) {
-						cpu->mem_c->flash[i] = 0xFF;
-					}
-				} else if (spage < 253) {
-//					printf("\nAddress: 1E:0000 -- ERASED\n");
-					for(i = 0x1F8000; i < 0x1FA000; i++) {
-						cpu->mem_c->flash[i] = 0xFF;
-
-					}
-				} else if (spage < 254) {
-//											printf("\nAddress: 1E:2000 -- ERASED\n");
-					for(i = 0x1FA000; i< 0x1FC000; i++) {
-						cpu->mem_c->flash[i] = 0xFF;
-					}
-				} else if (spage < 256) {
-// I comment this off because this is the boot page
-// it suppose to be write protected...
-//BuckeyeDude 6/27/11: new info has been discovered boot code is writeable under certain conditions
-					for(i = 0x1FC000; i < 0x200000; i++) {
-						cpu->mem_c->flash[i] = 0xFF;
-					}
-				}
-			}
-			endflash(cpu);
-			break;
-		case 6:
-			if (data == 0x90) {
-				cpu->mem_c->step = 7;	//check if exit fast mode
-			} else if (data == 0xA0) {
-				cpu->mem_c->step = 8;	//write byte in fast mode
-			}
-			break;
-		case 7:
-			if (data == 0xF0) {
-				endflash(cpu);
-			} else cpu->mem_c->step = 6;
-			break;
-		case 8: {
-			int value = *(cpu->mem_c->banks[bank].addr + (addr & 0x3fff));
-			(*(cpu->mem_c->banks[bank].addr + (addr & 0x3fff))) &= data;  //AND LOGIC!!
-			if ((~((~value) | (~data))) != value)
-				cpu->bus = (~value) & 0x80 | 0x20;
-			cpu->mem_c->step = 6;
-			break;
-		}
-		default:
-			endflash(cpu);
-			break;
-	}
-}
-
-void flashwrite84p(CPU_t *cpu, unsigned short addr, unsigned char data) {
-	int bank = addr >> 14;
-	switch(cpu->mem_c->step) {
-		case 0:
-			if ((addr & 0x0FFF) == 0x0AAA) {
-				if (data == 0xAA) cpu->mem_c->step++;
-			}
-			break;
-		case 1:
-			if ((addr & 0x0FFF) == 0x0555) {
-				if (data == 0x55) cpu->mem_c->step++;
-				else endflash(cpu);
-			} else endflash(cpu);
-			break;
-		case 2:
-			if ((addr & 0x0FFF) == 0x0AAA) {
-				if (data == 0xA0) {
-					cpu->mem_c->cmd = 0xA0;		//Program
-					cpu->mem_c->step++;
-				} else if ( data == 0x80 ) {
-					cpu->mem_c->cmd = 0x80;		//Erase
-					cpu->mem_c->step++;
-				} else if ( data == 0x20 ) {
-					puts("Fast");
-					cpu->mem_c->cmd = 0x20;		//Fast mode
-					cpu->mem_c->step = 6;
-				} else if (data == 0x90) {		//Auto select
-					cpu->mem_c->cmd = 0x90;
-					cpu->mem_c->step++;
-				} else endflash(cpu);
-			} else endflash(cpu);
-			break;
-		case 3:
-			if (cpu->mem_c->cmd == 0xA0 && cpu->mem_c->step == 3) {
-				(*(cpu->mem_c->banks[bank].addr + (addr & 0x3fff))) &= data;  //AND LOGIC!!
-//				if (cpu->mem_c->banks[bank].page == 0x1E) printf("\n");
-//				if (cpu->mem_c->banks[bank].page == 0x1E || cpu->mem_c->banks[bank].page == 0x08 ) {
-//					printf("Address: %02X:%04X  <- %02X  \n",cpu->mem_c->banks[bank].page ,addr&0x3fff,data);
-//				}
-//				if (cpu->mem_c->banks[bank].page == 0x1E) printf("\n");
-				endflash(cpu);
-			}
-			if ((addr & 0x0FFF) == 0x0AAA) {
-				if (data == 0xAA) cpu->mem_c->step++;
-			}
-			if (data == 0xF0) endflash(cpu);
-			break;
-		case 4:
-			if ((addr & 0x0FFF) == 0x0555) {
-				if (data == 0x55) cpu->mem_c->step++;
-			}
-			if (data == 0xF0) endflash(cpu);
-			break;
-		case 5:
-			if ((addr & 0x0FFF) == 0x0AAA) {
-				if (data == 0x10) {			//Erase entire chips
-					int i;
-					for( i = 0; i < (cpu->mem_c->flash_size) ; i++ ) {
-						cpu->mem_c->flash[i] = 0xFF;
-					}
-				}
-			}
-			if (data == 0xF0) endflash(cpu);
-			if (data == 0x30) {		//erase sectors
-				int i;
-				int spage = (cpu->mem_c->banks[bank].page << 1) + ((addr >> 13) & 0x01);
-//				printf("Spage = %03d , Page = %02X , Addr = %04X \n",spage, spage/2,( ( spage & 0x00F8 ) * 0x2000 ) );
-				if (spage < 120) {
-					int startaddr = (spage & 0x00F8) * 0x2000;
-					int endaddr   = startaddr + 0x10000;
-					for(i = startaddr; i < endaddr; i++) {
-						cpu->mem_c->flash[i] = 0xFF;
-					}
-				} else if (spage < 124) {
-					for(i = 0xF0000; i < 0xF8000; i++) {
-						cpu->mem_c->flash[i] = 0xFF;
-					}
-				} else if (spage < 125) {
-//					printf("\nAddress: 1E:0000 -- ERASED\n");
-					for(i = 0xF8000; i < 0xFA000; i++) {
-						cpu->mem_c->flash[i] = 0xFF;
-
-					}
-				} else if (spage < 126) {
-//					printf("\nAddress: 1E:2000 -- ERASED\n");
-					for(i = 0xFA000; i < 0xFC000; i++) {
-						cpu->mem_c->flash[i]=0xFF;
-					}
-				} else if (spage < 128) {
-
-// I comment this off because this is the boot page
-// it suppose to be write protected...
-					for(i = 0xFC000; i < 0x100000; i++) {
-						cpu->mem_c->flash[i] = 0xFF;
-					}
-
-				}
-			}
-			endflash(cpu);
-			break;
-		case 6:
-			if (data == 0x90) {
-				cpu->mem_c->step = 7;	//check if exit fast mode
-			} else if (data == 0xA0) {
-				cpu->mem_c->step = 8;	//write byte in fast mode
-			}
-			break;
-		case 7:
-			if (data == 0xF0) {
-				endflash(cpu);
-			} else cpu->mem_c->step = 6;
-			break;
-		case 8:
-			(*(cpu->mem_c->banks[bank].addr + (addr & 0x3fff))) &= data;  //AND LOGIC!!
-			cpu->mem_c->step = 6;
-			break;
-
-		default:
-			endflash(cpu);
-			break;
-	}
-}
-
-
 
 /*----------------------------------------------*/
 /*												*/
@@ -1492,7 +1258,8 @@ int device_init_83pse(CPU_t *cpu) {
 	//I know this seems silly but the way we check for protected ports is done by flash
 	//is unlocked and this is how you unlock flash so...
 	//cpu->pio.devices[0x14].protected_port = TRUE;
-	
+	cpu->pio.devices[0x15].active = TRUE;
+	cpu->pio.devices[0x15].code = (devp) port15_83pse;
 
 // MD5
 	for (int i = 0x18; i <= 0x1F; i++) {

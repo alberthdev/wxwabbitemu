@@ -11,14 +11,14 @@
 
 void SaveStateDialog(LPCALC lpCalc);
 #define MAX_SHADES 255
-class MyLCD: public wxWindow
+class WabbitemuLCD: public wxWindow
 {
 public:
-    MyLCD(wxFrame *mainFrame, LPCALC lpCalc);
+    WabbitemuLCD(wxFrame *mainFrame, LPCALC lpCalc);
 
 	void PaintNow();
 protected:
-	
+	DECLARE_EVENT_TABLE()
 private:
 	void OnKeyDown(wxKeyEvent& event);
 	void OnKeyUp(wxKeyEvent& event);

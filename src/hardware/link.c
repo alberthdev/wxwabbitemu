@@ -50,6 +50,7 @@ int link_init(CPU_t *cpu) {
 int link_connect_hub(int slot, CPU_t *cpu) {
 	link_hub[slot] = cpu->pio.link;
 	cpu->pio.link->client = &link_hub[MAX_CALCS]->host;
+	link_hub_count++;
 	return 0;
 }
 
@@ -79,8 +80,9 @@ int link_disconnect(CPU_t *cpu) {
 static void link_wait(CPU_t *cpu, time_t tstates) {
 	long long time_end = tc_tstates(cpu->timer_c) + tstates;
 
-	while (tc_tstates(cpu->timer_c) < time_end)
+	while (tc_tstates(cpu->timer_c) < time_end) {
 		CPU_step(cpu);
+	}
 }
 
 /* Send a byte through the virtual link
@@ -220,8 +222,14 @@ static void link_send_pkt(CPU_t *cpu, u_char command_ID, void *data) {
 			data_len = sizeof(TI_VARHDR);
 			// Non flash calculators do not pass
 			// version or 2nd flags
-			if (cpu->pio.model < TI_83P)
-				data_len -= 2;
+			if (cpu->pio.model < TI_83P) {
+				//85/86 does have name length 
+				if (cpu->pio.model == TI_85 || cpu->pio.model == TI_86) {
+					data_len--;
+				} else {
+					data_len -= 2;
+				}
+			}
 		}
 		cpu->pio.link->vlink_send -= (sizeof(TI_PKTHDR) + data_len);
 		break;
@@ -329,22 +337,27 @@ static void link_recv_pkt(CPU_t *cpu, TI_PKTHDR *hdr, u_char *data) {
 static void link_RTS(CPU_t *cpu, TIVAR_t *var, int dest) {
 	TI_VARHDR var_hdr;
 
+	if (cpu->pio.model == TI_85 || cpu->pio.model == TI_86) {
+		memset(&var_hdr, ' ', sizeof(TI_VARHDR));
+		memset(var_hdr.name86, 0, sizeof(var_hdr.name86));
+		strncpy(var_hdr.name86, (char *) var->name, 8);
+		var_hdr.name_length = var->name_length;
+	} else {
+		memset(var_hdr.name, 0, sizeof(var_hdr.name));
+		strncpy(var_hdr.name, (char *) var->name, 8);
+		var_hdr.version = var->version;
+
+		if (dest == SEND_RAM) {
+			var_hdr.type_ID2 = 0x00;
+		} else if (dest == SEND_ARC) {
+			var_hdr.type_ID2 = 0x80;
+		} else {
+			var_hdr.type_ID2 = var->flag;
+		}
+	}
+
 	var_hdr.length = link_endian(var->length);
 	var_hdr.type_ID = var->vartype;
-	memset(var_hdr.name, 0, sizeof(var_hdr.name));
-#ifdef WINVER
-	strncpy(var_hdr.name, (char *) var->name, 8);
-#else
-	strncpy(var_hdr.name, (char *) var->name, 8);
-#endif
-	var_hdr.version = var->version;
-	if (dest == SEND_RAM) {
-		var_hdr.type_ID2 = 0x00;
-	} else if (dest == SEND_ARC) {
-		var_hdr.type_ID2 = 0x80;
-	} else {
-		var_hdr.type_ID2 = var->flag;
-	}
 
 	//printf("Model: %d, length: %d\n", cpu->pio.model, link_endian(tifile->var->length));
 	if (cpu->pio.model == TI_82 || cpu->pio.model == TI_85)
@@ -391,7 +404,7 @@ LINK_ERR link_send_backup(CPU_t *cpu, TIFILE_t *tifile, SEND_FLAG dest) {
 
 		// Send the VAR with Backup style header
 		link_send_pkt(cpu, CID_VAR, &bkhdr);
-		
+
 		int group = cpu->pio.model == TI_85 ? 6 : 1;
 		int bit = cpu->pio.model == TI_85 ? 4 : 0;
 		keypad_press(cpu, group, bit);
@@ -721,19 +734,28 @@ LINK_ERR forceload_os(CPU_t *cpu, TIFILE_t *tifile) {
 	if (tifile->flash == NULL)
 		return LERR_FILE;
 
-	//BOOL bClearSector = FALSE;
 	for (i = 0; i < ARRAYSIZE(tifile->flash->data); i++) {
 		if (tifile->flash->data[i] == NULL) {
-			//if (!bClearSector) {
 				continue;
-			//}
 		}
-		/*if (!bClearSector) {
-			for (int j = i - 1; j >= (i / 4) * 4 && i > 0; j--) {
-				memset(dest[j], 0xFF, PAGE_SIZE);
-			}
+		if (i > 0x10) {
+			page = i + cpu->mem_c->flash_pages - 0x20;
+		} else {
+			page = i;
 		}
-		bClearSector = TRUE;*/
+		int sector = (page / 4) * 4;
+		int size;
+		if (sector >= cpu->mem_c->flash_pages - 4) {
+			size = PAGE_SIZE * 2;
+		} else {
+			size = PAGE_SIZE * 4;
+		}
+		memset(dest[sector], 0xFF, size);
+	}
+	for (i = 0; i < ARRAYSIZE(tifile->flash->data); i++) {
+		if (tifile->flash->data[i] == NULL) {
+				continue;
+		}
 		if (i > 0x10) {
 			page = i + cpu->mem_c->flash_pages - 0x20;
 		} else {
@@ -741,21 +763,12 @@ LINK_ERR forceload_os(CPU_t *cpu, TIFILE_t *tifile) {
 		}
 
 		memcpy(dest[page], tifile->flash->data[i], PAGE_SIZE);
-
-		/*if (page % 4) {
-			bClearSector = FALSE;
-		}*/
 	}
-
+	
 	//valid OS
 	dest[0][0x56] = 0x5A;
 	dest[0][0x57] = 0xA5;
 
-	// Delay for a few seconds so the calc will be responsive
-	cpu->pio.link->vlink_size = 100;
-	for (cpu->pio.link->vlink_send = 0; cpu->pio.link->vlink_send < 100; cpu->pio.link->vlink_send += 20) {
-		link_wait(cpu, MHZ_6*1);
-	}
 	return LERR_SUCCESS;
 }
 

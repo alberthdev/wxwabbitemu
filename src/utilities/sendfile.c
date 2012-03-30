@@ -8,7 +8,7 @@
 //from the given filename
 LINK_ERR SendFile(const LPCALC lpCalc, LPCTSTR lpszFileName, SEND_FLAG Destination)
 {
-	TIFILE_t *var = newimportvar(lpszFileName);
+	TIFILE_t *var = newimportvar(lpszFileName, FALSE);
 
 	LINK_ERR result;
 	if (var != NULL)
@@ -32,7 +32,7 @@ LINK_ERR SendFile(const LPCALC lpCalc, LPCTSTR lpszFileName, SEND_FLAG Destinati
 
 					u_int i;
 					for (i = 0; i < lpCalc->applist.count; i++) {
-						if (strcmp((TCHAR *) var->flash->name, lpCalc->applist.apps[i].name) == 0) {
+						if (_tcsncmp((TCHAR *) var->flash->name, lpCalc->applist.apps[i].name, 8) == 0) {
 							lpCalc->last_transferred_app = &lpCalc->applist.apps[i];
 							break;
 						}
@@ -64,7 +64,7 @@ LINK_ERR SendFile(const LPCALC lpCalc, LPCTSTR lpszFileName, SEND_FLAG Destinati
 			}
 		case LABEL_TYPE:
 			{
-				strcpy(lpCalc->labelfn, lpszFileName);
+				_tcscpy_s(lpCalc->labelfn, lpszFileName);
 				VoidLabels(lpCalc);
 				labels_app_load(lpCalc, lpCalc->labelfn);
 				result = LERR_SUCCESS;

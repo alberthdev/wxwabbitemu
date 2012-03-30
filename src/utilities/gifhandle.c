@@ -15,11 +15,11 @@
 
 TCHAR *generate_gif_name(TCHAR *fn, int num, TCHAR *dest) {
 	size_t i;
-	for (i = strlen(fn) - 1; 
-	 	 i && fn[i] != '.';
-	 	 i--);
+	for (i = _tcslen(fn) - 1; i && fn[i] != '.'; i--);
 	 	 
-	if (i) fn[i] = '\0';
+	if (i) {
+		fn[i] = '\0';
+	}
 	
 #ifdef WINVER
 	StringCbPrintf(dest, _tcslen(dest) + 4, _T("%s%d.gif"), fn, num);
@@ -27,7 +27,9 @@ TCHAR *generate_gif_name(TCHAR *fn, int num, TCHAR *dest) {
 	sprintf(dest, "%s%d.gif", fn, num);
 #endif
 	
-	if (i) fn[i] = '.';
+	if (i)  {
+		fn[i] = '.';
+	}
 	return dest;
 }
 
@@ -46,17 +48,25 @@ BOOL get_gif_filename() {
 	if (gif_autosave) {
 		/* do file save */
 		if (gif_use_increasing) {
-			FILE *test = (FILE*) 1;
+			FILE *test = NULL;
+			BOOL fileExists = FALSE;
+			i = 0;
 					
-			for (i = 0; test; i++) {
+			 do {
 				generate_gif_name(gif_fn_backup, i, gif_file_name);
 #ifdef _WINDOWS
 				_tfopen_s(&test, gif_file_name, _T("r"));
 #else
 				test = fopen(gif_file_name, "r");
 #endif
-				if (test) fclose(test);
-			}
+				i++;
+				if (test) {
+					fclose(test);
+					fileExists = TRUE;
+				} else {
+					fileExists = FALSE;
+				}
+			} while (fileExists);
 		}
 	} else {
 #ifdef _WINDOWS
@@ -151,11 +161,12 @@ void handle_screenshot() {
 	for (i = 0; i < MAX_CALCS; i++) {
 		running_backup[i] = calcs[i].running;
 		calcs[i].running = FALSE;
+		lcd = calcs[i].cpu.pio.lcd;
 		//find the calc with the highest number of shades and use that as our number for the gif
-		//since i'm to lazy to implement them individually :P
-		if (calcs[i].active && shades < calcs[i].cpu.pio.lcd->shades)
-			shades = calcs[i].cpu.pio.lcd->shades;
-		//we also need to find the size of all the lcds
+		//since I'm to lazy to implement them individually :P
+		if (calcs[i].active && lcd && shades < lcd->shades)
+			shades = lcd->shades;
+		//we also need to find the size of all the LCDs
 	}
 
 	/*if ((gif_write_state != GIF_IDLE) && (!lpCalc->running))

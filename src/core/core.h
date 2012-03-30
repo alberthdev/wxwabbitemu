@@ -2,7 +2,7 @@
 #define CORE_H
 
 #include "coretypes.h"
-#include "stdafx.h"
+//#include "stdafx.h"
 
 #define TI_81		0
 #define TI_82		1
@@ -125,21 +125,21 @@ typedef struct waddr {
 	uint16_t addr;
 } waddr_t;
 
-enum RAM_PROT_MODE {
+typedef enum {
 	MODE0 = 0,			//Execution is allowed on pages 81h, 83h, 85h, 87h, 89h, 8Bh, 8Dh, and 8Fh. 
 	MODE1 = 1,			//Execution is allowed on pages 81h, 85h, 89h, and 8Dh. 
 	MODE2 = 2,			//Execution is allowed on pages 81h and 89h. 
 	MODE3 = 3,			//Execution is allowed on pages 81h only. 
-};
+} RAM_PROT_MODE;
 
-enum BREAK_TYPE {
+typedef enum {
 	NORMAL_BREAK = 0x1,
 	MEM_WRITE_BREAK = 0x2,
 	MEM_READ_BREAK = 0x4,
-	CLEAR_NORMAL_BREAK = MEM_READ_BREAK | MEM_WRITE_BREAK,
-	CLEAR_MEM_WRITE_BREAK = MEM_READ_BREAK | NORMAL_BREAK,
-	CLEAR_MEM_READ_BREAK = MEM_WRITE_BREAK | NORMAL_BREAK,
-};
+	CLEAR_NORMAL_BREAK = ~NORMAL_BREAK,
+	CLEAR_MEM_WRITE_BREAK = ~MEM_WRITE_BREAK,
+	CLEAR_MEM_READ_BREAK = ~MEM_READ_BREAK,
+} BREAK_TYPE;
 
 typedef struct memory_context {
 	/* to be defined */
@@ -165,6 +165,7 @@ typedef struct memory_context {
 	int ram_pages;
 	int step;					// These 3 are for flash programming
 	unsigned char cmd;			// step tells what cycle of the command you are on,
+	BOOL flash_sector_erase;	// whether flash is in the middle of erasing
 
 	bank_state_t *banks;		//pointer to the correct bank state currently
 	bank_state_t normal_banks[5];		//Current state of each bank
@@ -195,7 +196,13 @@ typedef struct memory_context {
 
 	int port0E;
 	int port0F;
-	int port24;
+	union {
+		struct {
+			BOOL flash_enabled : 1;
+			BOOL flash_disabled : 1;
+		};
+		uint16_t port24;
+	};
 
 	int port27_remap_count;		// amount of 64 byte chunks remapped from RAM page 0 to bank 3
 	int port28_remap_count;		// amount of 64 byte chunks remapped from RAM page 1 to bank 1
@@ -215,6 +222,11 @@ typedef struct device {
 	BOOL protected_port;
 } device_t;
 
+typedef struct interrupt {
+	unsigned char interrupt_val;
+	unsigned char skip_factor;
+	unsigned char skip_count;
+} interrupt_t;
 
 typedef struct pio_context {
 	int model;
@@ -226,9 +238,8 @@ typedef struct pio_context {
 	/* list other cross model devices here */
 
 	device_t devices[256];
-	int interrupt[256];
-	unsigned int skip_factor[256];
-	unsigned int skip_count[256];
+	interrupt_t interrupt[256];
+	int num_interrupt;
 	devp breakpoint_callback;
 } pio_context_t, pioc;
 
@@ -238,7 +249,6 @@ typedef struct reverse_time {
 	regpair(upper_data2, lower_data2, data2);
 	BYTE bus;
 	BYTE r;
-	reverse_time *prev;
 } reverse_time_t;
 
 typedef struct CPU {
@@ -269,9 +279,14 @@ typedef struct CPU {
 	timerc *timer_c;
 	void (*exe_violation_callback)(void *);
 	int cpu_version;
+	reverse_time_t prev_instruction_list[512];
 	reverse_time_t *prev_instruction;
-	reverse_time_t *first_intruction;
+	int reverse_instr;
+	BOOL reverse_wrap;
 	BOOL do_opcode_callback;
+	BOOL is_link_instruction;
+	unsigned long long linking_time;
+	unsigned long long hasHitEnter;
 } CPU_t;
 
 typedef void (*opcodep)(CPU_t*);
@@ -307,8 +322,9 @@ void update_bootmap_pages(memc *mem_c);
 int tc_init(timerc*, int);
 int CPU_init(CPU_t*, memc*, timerc*);
 int CPU_step(CPU_t*);
-unsigned char CPU_mem_read(CPU_t *cpu, unsigned short addr);
-unsigned char CPU_mem_write(CPU_t *cpu, unsigned short addr, unsigned char data);
+int CPU_connected_step(CPU_t *cpu);
+inline unsigned char CPU_mem_read(CPU_t *cpu, unsigned short addr);
+inline unsigned char CPU_mem_write(CPU_t *cpu, unsigned short addr, unsigned char data);
 CPU_t* CPU_clone(CPU_t *cpu);
 #define HALT_SCALE	3
 
@@ -321,7 +337,23 @@ void displayreg(CPU_t *);
 #endif
 
 
+#ifdef NO_TIMER_ELAPSED
+#define tc_add( timer_z , num ) \
+	(timer_z)->tstates += (uint64_t) num;
 
+#define tc_sub( timer_z , num ) \
+	(timer_z)->tstates -= (uint64_t) num;
+
+#define SEtc_add( timer_z , num ) \
+	if (cpu->pio.model >= TI_83PSE) {\
+		timer_z->tstates += num; \
+	}
+#define SEtc_sub( timer_z , num ) \
+	if (cpu->pio.model >= TI_83PSE) {\
+		timer_z->tstates -= num; \
+	}
+
+#else
 #define tc_add( timer_z , num ) \
 	(timer_z)->tstates += (uint64_t) num; \
 	(timer_z)->elapsed += ((double)(num))/((double)(timer_z)->freq);
@@ -329,12 +361,6 @@ void displayreg(CPU_t *);
 #define tc_sub( timer_z , num ) \
 	(timer_z)->tstates -= (uint64_t) num; \
 	(timer_z)->elapsed -= ((double)(num))/((double)(timer_z)->freq);
-
-#define tc_elapsed( timer_z ) \
-	((timer_z)->elapsed)
-
-#define tc_tstates( timer_z ) \
-	((timer_z)->tstates)
 
 #define SEtc_add( timer_z , num ) \
 	if (cpu->pio.model >= TI_83PSE) {\
@@ -348,7 +374,19 @@ void displayreg(CPU_t *);
 	}
 
 
-#define endflash(cpu_v) cpu_v->mem_c->step=0;
+#define tc_elapsed( timer_z ) \
+	((timer_z)->elapsed)
+#endif
+
+#define tc_tstates( timer_z ) \
+	((timer_z)->tstates)
+
+#define endflash_break(cpu_v) cpu_v->mem_c->step = 0;\
+		if (break_on_invalid_flash) {\
+			cpu->mem_c->mem_write_break_callback(cpu);\
+		}
+
+#define endflash(cpu_v) cpu_v->mem_c->step = 0;
 
 #define addschar(address_m, offset_m) ( ( (unsigned short) address_m ) + ( (char) offset_m ) )
 

@@ -5,13 +5,13 @@
 #include "lcd.h"
 #include "link.h"
 #include "calc.h"
-//#include "stdint.h"
 #include "83psehw.h"
+#include "fileutilities.h"
 
 extern int def(FILE *, FILE *, int);
 extern int inf(FILE *, FILE *);
 
-BOOL cmpTags(char *str1, char *str2) {
+BOOL cmpTags(const char *str1, const char *str2) {
 	int i;
 	for(i = 0; i < 4; i++) {
 		if (str1[i] != str2[i]) return FALSE;
@@ -40,7 +40,7 @@ int fgeti(FILE* stream) {
 	return r;
 }
 
-SAVESTATE_t* CreateSave(TCHAR *author, TCHAR *comment , int model) {
+SAVESTATE_t* CreateSave(const TCHAR *author, const TCHAR *comment , int model) {
 	SAVESTATE_t* save = (SAVESTATE_t*) malloc(sizeof(SAVESTATE_t));
 	if (!save) return NULL;
 
@@ -86,12 +86,6 @@ void ClearSave(SAVESTATE_t* save) {
 				free(save->chunks[i]->data);
 				save->chunks[i]->data = NULL;
 			}
-/*
-				if (save->chunks[i]->cpdata) {
-					free(save->chunks[i]->cpdata);
-					save->chunks[i]->cpdata = NULL;
-				}
-*/
 			free(save->chunks[i]);
 
 			save->chunks[i] = NULL;
@@ -103,9 +97,10 @@ void ClearSave(SAVESTATE_t* save) {
 void FreeSave(SAVESTATE_t* save) {
 	ClearSave(save);
 	free(save);
+	save = NULL;
 }
 
-CHUNK_t* FindChunk(SAVESTATE_t* save, char* tag) {
+CHUNK_t* FindChunk(SAVESTATE_t* save, const char *tag) {
 	int i;
 	for(i = 0; i < save->chunk_count; i++) {
 		if (cmpTags(save->chunks[i]->tag, tag) == TRUE) {
@@ -116,7 +111,7 @@ CHUNK_t* FindChunk(SAVESTATE_t* save, char* tag) {
 	return NULL;
 }
 
-CHUNK_t* NewChunk(SAVESTATE_t* save, char* tag) {
+CHUNK_t* NewChunk(SAVESTATE_t* save, const char *tag) {
 	int chunk = save->chunk_count;
 
 	if (FindChunk(save, tag) != NULL) {
@@ -137,7 +132,6 @@ CHUNK_t* NewChunk(SAVESTATE_t* save, char* tag) {
 	save->chunks[chunk]->tag[1]	= tag[1];
 	save->chunks[chunk]->tag[2]	= tag[2];
 	save->chunks[chunk]->tag[3]	= tag[3];
-	//memcpy(save->chunks[chunk]->tag, tag, sizeof()
 	save->chunks[chunk]->size	= 0;
 	save->chunks[chunk]->data	= NULL;
 	save->chunks[chunk]->pnt	= 0;
@@ -145,7 +139,7 @@ CHUNK_t* NewChunk(SAVESTATE_t* save, char* tag) {
 	return save->chunks[chunk];
 }
 
-BOOL DelChunk(SAVESTATE_t *save, char *tag) {
+BOOL DelChunk(SAVESTATE_t *save, const char *tag) {
 	int i;
 	for(i = 0; i < save->chunk_count; i++) {
 		if (cmpTags(save->chunks[i]->tag, tag) == TRUE) {
@@ -163,10 +157,11 @@ BOOL DelChunk(SAVESTATE_t *save, char *tag) {
 }
 
 
-void CheckPNT(CHUNK_t* chunk) {
+BOOL CheckPNT(CHUNK_t* chunk) {
 	if (chunk->size < chunk->pnt) {
-		_tprintf_s(_T("Chunk size is %d while pnt is %d \n"), chunk->size, chunk->pnt);
+		return FALSE;
 	}
+	return TRUE;
 }
 
 BOOL WriteChar(CHUNK_t* chunk, char value) {
@@ -304,15 +299,17 @@ BOOL WriteBlock(CHUNK_t* chunk, unsigned char *pnt, int length) {
 	
 
 	
-unsigned char ReadChar(CHUNK_t* chunk) {
+unsigned char ReadChar(CHUNK_t* chunk, BOOL *valOK = NULL) {
 	unsigned char value;
 	value = chunk->data[chunk->pnt];
 	chunk->pnt += sizeof(unsigned char);
-	CheckPNT(chunk);
+	if (valOK) {
+		*valOK = CheckPNT(chunk);
+	}
 	return value;
 }
 
-unsigned short ReadShort(CHUNK_t* chunk) {
+unsigned short ReadShort(CHUNK_t* chunk, BOOL *valOK = NULL) {
 	int i;
 	uint16_t value;
 	unsigned char *pnt = (unsigned char *)(&value);
@@ -324,11 +321,13 @@ unsigned short ReadShort(CHUNK_t* chunk) {
 		*pnt++ = chunk->data[i+chunk->pnt];
 	}
 	chunk->pnt += sizeof(value);
-	CheckPNT(chunk);
+	if (valOK) {
+		*valOK = CheckPNT(chunk);
+	}
 	return value;
 }
 
-unsigned int ReadInt(CHUNK_t* chunk) {
+unsigned int ReadInt(CHUNK_t* chunk, BOOL *valOK = NULL) {
 	int i;
 	uint32_t value;
 	unsigned char *pnt = (unsigned char *)(&value);
@@ -340,7 +339,9 @@ unsigned int ReadInt(CHUNK_t* chunk) {
 		*pnt++ = chunk->data[i+chunk->pnt];
 	}
 	chunk->pnt += sizeof(value);
-	CheckPNT(chunk);
+	if (valOK) {
+		*valOK = CheckPNT(chunk);
+	}
 	return value;
 }
 
@@ -454,11 +455,12 @@ void SaveCPU(SAVESTATE_t* save, CPU_t* cpu) {
 	WriteInt(chunk, cpu->prefix);
 
 	
-	/*pio*/
+	/* pio */
 	for(i = 0; i < 256; i++) {
-		WriteInt(chunk, cpu->pio.interrupt[i]);
-		WriteInt(chunk, cpu->pio.skip_factor[i]);
-		WriteInt(chunk, cpu->pio.skip_count[i]);
+		interrupt_t *val = &cpu->pio.interrupt[i];
+		WriteInt(chunk, val->interrupt_val);
+		WriteInt(chunk, val->skip_factor);
+		WriteInt(chunk, val->skip_count);
 	}
 }
 	
@@ -688,7 +690,6 @@ SAVESTATE_t* SaveSlot(void *lpInput) {
 
 void LoadCPU(SAVESTATE_t* save, CPU_t* cpu) {
 	CHUNK_t* chunk = FindChunk(save, CPU_tag);
-	
 	chunk->pnt = 0;
 	
 	cpu->a = ReadChar(chunk);
@@ -737,9 +738,10 @@ void LoadCPU(SAVESTATE_t* save, CPU_t* cpu) {
 	cpu->prefix = ReadInt(chunk);
 	int i;
 	for(i = 0; i < 256; i++) {
-		cpu->pio.interrupt[i] = ReadInt(chunk);
-		cpu->pio.skip_factor[i] = ReadInt(chunk);
-		cpu->pio.skip_count[i] = ReadInt(chunk);
+		interrupt_t *val = &cpu->pio.interrupt[i];
+		val->interrupt_val = ReadInt(chunk);
+		val->skip_factor = ReadInt(chunk);
+		val->skip_count = ReadInt(chunk);
 	}
 	
 }
@@ -748,8 +750,9 @@ void LoadCPU(SAVESTATE_t* save, CPU_t* cpu) {
 
 void LoadMEM(SAVESTATE_t* save, memc* mem) {
 	int i;
-	CHUNK_t* chunk = FindChunk(save,MEM_tag);
+	CHUNK_t* chunk = FindChunk(save, MEM_tag);
 	chunk->pnt = 0;
+
 	mem->flash_size	= ReadInt(chunk);
 	mem->flash_pages= ReadInt(chunk);
 	mem->ram_size	= ReadInt(chunk);
@@ -844,43 +847,45 @@ void LoadMEM(SAVESTATE_t* save, memc* mem) {
 		if (chunk) {
 			for (int i = 0; i < num_ram_breaks; i++)
 			{
-				int addr = ReadInt(chunk);
-				waddr_t waddr;
-				waddr.addr = addr % PAGE_SIZE;
-				waddr.page = addr / PAGE_SIZE;
-				waddr.is_ram = TRUE;
-				BREAK_TYPE type = (BREAK_TYPE) ReadInt(chunk);
-				switch (type) {
-				case MEM_READ_BREAK:
-					set_mem_read_break(mem, waddr);
-					break;
-				case MEM_WRITE_BREAK:
-					set_mem_read_break(mem, waddr);
-					break;
-				default:
-					set_break(mem, waddr);
-					break;
+				BOOL valOk;
+				int addr = ReadInt(chunk, &valOk);
+				if (valOk) {
+					waddr_t waddr;
+					waddr.addr = addr % PAGE_SIZE;
+					waddr.page = addr / PAGE_SIZE;
+					waddr.is_ram = TRUE;
+					BREAK_TYPE type = (BREAK_TYPE) ReadInt(chunk);
+					switch (type) {
+					case MEM_READ_BREAK:
+						set_mem_read_break(mem, waddr);
+						break;
+					case MEM_WRITE_BREAK:
+						set_mem_read_break(mem, waddr);
+						break;
+					default:
+						set_break(mem, waddr);
+						break;
+					}
 				}
 			}
 		}
 	}
 }
 
-
 void LoadTIMER(SAVESTATE_t* save, timerc* time) {
 	CHUNK_t* chunk = FindChunk(save,TIMER_tag);
 	chunk->pnt = 0;
+
 	time->tstates	= ReadLong(chunk);
 	time->freq		= (uint32_t) ReadLong(chunk);
 	time->elapsed	= ReadDouble(chunk);
 	time->lasttime	= ReadDouble(chunk);	// this isn't used.
 }
 
-
-
 void LoadLCD(SAVESTATE_t* save, LCD_t* lcd) {
 	CHUNK_t* chunk = FindChunk(save,LCD_tag);
 	chunk->pnt = 0;
+
 	lcd->active		= ReadInt(chunk);
 	lcd->word_len	= ReadInt(chunk);
 	lcd->x			= ReadInt(chunk);
@@ -908,6 +913,7 @@ void LoadLCD(SAVESTATE_t* save, LCD_t* lcd) {
 void LoadLINK(SAVESTATE_t* save, link_t* link) {
 	CHUNK_t* chunk	= FindChunk(save,LINK_tag);
 	chunk->pnt = 0;
+
 	link->host		= ReadChar(chunk);
 }
 
@@ -915,6 +921,7 @@ void LoadSTDINT(SAVESTATE_t* save, STDINT_t* stdint) {
 	int i;
 	CHUNK_t* chunk		= FindChunk(save,STDINT_tag);
 	chunk->pnt = 0;
+
 	stdint->intactive	= ReadChar(chunk);
 	stdint->lastchk1	= ReadDouble(chunk);
 	stdint->timermax1	= ReadDouble(chunk);
@@ -929,29 +936,46 @@ void LoadSTDINT(SAVESTATE_t* save, STDINT_t* stdint) {
 
 void LoadSE_AUX(SAVESTATE_t* save, SE_AUX_t *se_aux) {
 	int i;
-	if (!se_aux) return;
-	CHUNK_t* chunk = FindChunk(save,SE_AUX_tag);
-	if (!chunk) return;
-	
-	BOOL is_83p = save->model < TI_83PSE && save->version_minor == 1;
-	if (!is_83p) {
-		se_aux->clock.enable		= ReadChar(chunk);
-		se_aux->clock.set			= ReadInt(chunk);
-		se_aux->clock.base			= ReadInt(chunk);
-		se_aux->clock.lasttime		= ReadDouble(chunk);
-	
-		for(i = 0; i < 7; i++) {
-			se_aux->delay.reg[i]	= ReadChar(chunk);
-		}
-	
-		for(i = 0; i < NumElm(se_aux->md5.reg); i++)
-		{
-			se_aux->md5.reg[i]		= ReadInt(chunk);
-		}
-		se_aux->md5.s				= ReadChar(chunk);
-		se_aux->md5.mode			= ReadChar(chunk);
+	if (!se_aux) {
+		return;
+	}
+	CHUNK_t* chunk = FindChunk(save, SE_AUX_tag);
+	if (!chunk) {
+		return;
 	}
 	
+	BOOL is_83p = save->model < TI_83PSE && save->version_minor == 1;
+	if (is_83p) {
+		LINKASSIST_t *linka = (LINKASSIST_t *) se_aux;
+		linka->link_enable	= ReadChar(chunk);
+		linka->in			= ReadChar(chunk);
+		linka->out			= ReadChar(chunk);
+		linka->working		= ReadChar(chunk);
+		linka->receiving	= ReadInt(chunk);
+		linka->read			= ReadInt(chunk);
+		linka->ready		= ReadInt(chunk);
+		linka->error		= ReadInt(chunk);
+		linka->sending		= ReadInt(chunk);
+		linka->last_access	= ReadDouble(chunk);
+		linka->bit			= ReadInt(chunk);
+		return;
+	}
+	
+	se_aux->clock.enable		= ReadChar(chunk);
+	se_aux->clock.set			= ReadInt(chunk);
+	se_aux->clock.base			= ReadInt(chunk);
+	se_aux->clock.lasttime		= ReadDouble(chunk);
+	
+	for(i = 0; i < 7; i++) {
+		se_aux->delay.reg[i]	= ReadChar(chunk);
+	}
+	
+	for(i = 0; i < NumElm(se_aux->md5.reg); i++)
+	{
+		se_aux->md5.reg[i]		= ReadInt(chunk);
+	}
+	se_aux->md5.s				= ReadChar(chunk);
+	se_aux->md5.mode			= ReadChar(chunk);
 	
 	se_aux->linka.link_enable	= ReadChar(chunk);
 	se_aux->linka.in			= ReadChar(chunk);
@@ -964,12 +988,9 @@ void LoadSE_AUX(SAVESTATE_t* save, SE_AUX_t *se_aux) {
 	se_aux->linka.sending		= ReadInt(chunk);
 	se_aux->linka.last_access	= ReadDouble(chunk);
 	se_aux->linka.bit			= ReadInt(chunk);
-		
+
 	se_aux->xtal.lastTime		= ReadDouble(chunk);
 	se_aux->xtal.ticks			= ReadLong(chunk);
-
-	if (is_83p)
-		return;
 
 	for(i = 0; i < 3; i++) {
 		se_aux->xtal.timers[i].lastTstates	= ReadLong(chunk);
@@ -1059,12 +1080,8 @@ void WriteSave(const TCHAR *fn, SAVESTATE_t* save, int compress) {
 #endif
 	} else {
 #ifdef WINVER
-		TCHAR *env;
-		size_t envLen;
-		_ttmpnam_s(tmpfn);
-		_tdupenv_s(&env, &envLen, _T("appdata"));
-		StringCbCopy(temp_save, sizeof(temp_save), env);
-		free(env);
+		tmpnam_s(tmpfn, sizeof(tmpfn));
+		GetAppDataString(temp_save, sizeof(temp_save));
 		StringCbCat(temp_save, sizeof(temp_save), tmpfn);
 		_tfopen_s(&ofile, temp_save, _T("wb"));
 #else
@@ -1118,7 +1135,7 @@ void WriteSave(const TCHAR *fn, SAVESTATE_t* save, int compress) {
 		ofile = fopen(temp_save,"rb");
 #endif
 		if (!ofile) {
-			_putts(_T("Could not open tmp file for read"));
+			_putts(_T("Could not open temp file for read"));
 			return;
 		}
 		//int error;
@@ -1164,11 +1181,7 @@ SAVESTATE_t* ReadSave(FILE *ifile) {
 		i = fgetc(ifile);
 #ifdef WINVER
 		_ttmpnam_s(tmpfn);
-		TCHAR *env;
-		size_t envLen;
-		_tdupenv_s(&env, &envLen, _T("appdata"));
-		StringCbCopy(temp_save, sizeof(temp_save), env);
-		free(env);
+		GetAppDataString(temp_save, sizeof(temp_save));
 		StringCbCat(temp_save, sizeof(temp_save), tmpfn);
 		_tfopen_s(&tmpfile, temp_save, _T("wb"));
 #else
@@ -1201,14 +1214,14 @@ SAVESTATE_t* ReadSave(FILE *ifile) {
 		
 		fclose(tmpfile);
 #ifdef WINVER
-		_tfopen_s(&ifile, temp_save, _T("rb"));	//this is not a leak, ifile gets closed
+		_tfopen_s(&ifile, temp_save, _T("rb"));	//this is not a leak, file gets closed
 											// outside of this routine.
 #else
-		ifile = fopen(temp_save,"rb");	//this is not a leak, ifile gets closed
+		ifile = fopen(temp_save,"rb");	//this is not a leak, file gets closed
 										// outside of this routine.
 #endif
 		if (!ifile) {
-			_putts(_T("Could not open tmp file for read"));
+			_putts(_T("Could not open temp file for read"));
 			return NULL;
 		}
 		compressed = TRUE;

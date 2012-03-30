@@ -18,7 +18,7 @@ void bit_ind(CPU_t *cpu, char offset) {
 	} else {
 		address = cpu->iy + offset;
 	}
- 	reg = CPU_mem_read(cpu,address);
+	reg = CPU_mem_read(cpu,address);
 	result = reg & test_mask;
 	cpu->f = signchk(result) + zerochk(result) +
 		 x5chk16(address) + HC_MASK +
@@ -121,7 +121,7 @@ void rl_ind(CPU_t *cpu, char offset) {
 		result = (result<<1)+(cpu->f&1);
 		CPU_mem_write(cpu, cpu->ix + offset, result);
 	} else {
-        result = CPU_mem_read(cpu, cpu->iy + offset);
+		result = CPU_mem_read(cpu, cpu->iy + offset);
 		carry = (result >> 7) & 1;
 		result = (result << 1) + (cpu->f & 1);
 		CPU_mem_write(cpu, cpu->iy + offset, result);
@@ -168,7 +168,7 @@ void rlc_ind(CPU_t *cpu, char offset) {
 		result = (result << 1) + carry;
 		CPU_mem_write(cpu, cpu->ix + offset, result);
 	} else {
-        result = CPU_mem_read(cpu, cpu->iy + offset);
+		result = CPU_mem_read(cpu, cpu->iy + offset);
 		carry = (result>>7)&1;
 		result = (result<<1) + carry;
 		CPU_mem_write(cpu, cpu->iy + offset, result);
@@ -213,7 +213,7 @@ void rr_ind(CPU_t *cpu, char offset) {
 		result = (result>>1) + ((cpu->f & 1)<<7);
 		CPU_mem_write(cpu, cpu->ix + offset, result);
 	} else {
-        result = CPU_mem_read(cpu, cpu->iy + offset);
+		result = CPU_mem_read(cpu, cpu->iy + offset);
 		carry = result & 1;
 		result = (result>>1) + ((cpu->f & 1)<<7);
 		CPU_mem_write(cpu, cpu->iy + offset, result);
@@ -258,7 +258,7 @@ void rrc_ind(CPU_t *cpu, char offset) {
 		result = (result>>1) + (carry << 7);
 		CPU_mem_write(cpu, cpu->ix + offset, result);
 	} else {
-        result = CPU_mem_read(cpu, cpu->iy + offset);
+		result = CPU_mem_read(cpu, cpu->iy + offset);
 		carry = result & 1;
 		result = (result>>1) + (carry << 7);
 		CPU_mem_write(cpu, cpu->iy + offset, result);
@@ -305,7 +305,7 @@ void sll_ind(CPU_t *cpu, char offset) {
 		result = (result<<1) + 1;
 		CPU_mem_write(cpu, cpu->ix + offset, result);
 	} else {
-        result = CPU_mem_read(cpu, cpu->iy + offset);
+		result = CPU_mem_read(cpu, cpu->iy + offset);
 		carry = (result>>7)&1;
 		result = (result<<1) + 1;
 		CPU_mem_write(cpu, cpu->iy + offset, result);
@@ -351,7 +351,7 @@ void srl_ind(CPU_t *cpu, char offset) {
 		result = (result>>1);
 		CPU_mem_write(cpu, cpu->ix + offset, result);
 	} else {
-        result = CPU_mem_read(cpu, cpu->iy + offset);
+		result = CPU_mem_read(cpu, cpu->iy + offset);
 		carry = result & 1;
 		result = (result>>1);
 		CPU_mem_write(cpu, cpu->iy + offset, result);
@@ -397,7 +397,7 @@ void sla_ind(CPU_t *cpu, char offset) {
 		result*=2;
 		CPU_mem_write(cpu, cpu->ix + offset, result);
 	} else {
-        result = CPU_mem_read(cpu, cpu->iy + offset);
+		result = CPU_mem_read(cpu, cpu->iy + offset);
 		carry = (result>>7)&1;
 		result*=2;
 		CPU_mem_write(cpu, cpu->iy + offset, result);
@@ -443,7 +443,7 @@ void sra_ind(CPU_t *cpu, char offset) {
 		result = ((result>>1)+(result&0x80))&0xFF;
 		CPU_mem_write(cpu, cpu->ix + offset, result);
 	} else {
-        result = CPU_mem_read(cpu, cpu->iy + offset);
+		result = CPU_mem_read(cpu, cpu->iy + offset);
 		carry = result & 1;
 		result = ((result>>1)+(result&0x80))&0xFF;
 		CPU_mem_write(cpu, cpu->iy + offset, result);

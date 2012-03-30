@@ -6,10 +6,11 @@
 #include <stdint.h>
 
 #ifndef _WINDOWS
+#ifndef _LINUX
+typedef char TCHAR;
+#endif
 typedef void *LPVOID;
 typedef const char *LPCTSTR;
-typedef unsigned char u_char;
-typedef unsigned int u_int;
 typedef intptr_t INT_PTR;
 typedef uint8_t BYTE, *LPBYTE;
 typedef uint16_t WORD, *LPWORD;

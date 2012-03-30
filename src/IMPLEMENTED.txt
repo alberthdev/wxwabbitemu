@@ -1,1 +1,17 @@
-Nothing yet, but no worries - we'll get there! :D
+= Image based keypad support
+++++ Suggested by: alberthrocks
+++++ Rationale: meet the current featureset of Wabbitemu, is a MUST
+++++            (no one likes memorizing keys :P)
+++++ Implementor's notes: Still no button feedback
+
+= Emulation Adjustment (pausing, speed modifying, resetting)
+++++ Suggested by: alberthrocks
+++++ Rationale: meet the current featureset of Wabbitemu
+++++ Who's working on it: Nobody
+++++ Implementor's notes: Easy sauce
+
+= Send/Extract files to and from emulated calculator
+++++ Suggested by: alberthrocks
+++++ Rationale: meet the current featureset of Wabbitemu, is a MUST
+++++ Who's working on it: Nobody
+++++ Implementor's notes: N/A

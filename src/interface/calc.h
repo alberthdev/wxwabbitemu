@@ -4,10 +4,7 @@
 #include "stdafx.h"
 #include "coretypes.h"
 
-#ifdef WINVER
-#include "gui.h" // it would be nice to get this separated somehow
-#include "droptarget.h"
-#elif WXVER
+#ifdef WXVER
 #include <wx/frame.h>
 #include "wx/wx.h"
 #endif
@@ -24,8 +21,6 @@
 #endif
 
 #include "label.h"
-#include "savestate.h"
-
 
 typedef enum {
 	GDS_IDLE,
@@ -50,7 +45,8 @@ struct key_string {
 	TCHAR *text;
 	int group;
 	int bit;
-	key_string *next;
+	int repeat;
+	struct key_string *next;
 };
 
 typedef struct tagCALC {
@@ -59,7 +55,7 @@ typedef struct tagCALC {
 #elif MACVER
 	void (*breakpoint_callback)(struct tagCALC *, void *);
 	void *breakpoint_owner;
-#elif WXVER
+#else
 	void (*breakpoint_callback)(struct tagCALC *);
 #endif
 	int slot;
@@ -88,10 +84,11 @@ typedef struct tagCALC {
 	HWND hwndSmallClose;
 	HWND hwndSmallMinimize;
 	HWND hwndKeyListDialog;
+	HWND hwndTeacherView;
+	HWND hwndTeacherViewScreen[3];
 
 	BOOL SkinEnabled;
 	DWORD scale;
-	DWORD detached_scale;
 	BOOL bCutout;
 	HANDLE hdlThread;
 	
@@ -105,7 +102,7 @@ typedef struct tagCALC {
 	HDC hdcButtons;
 	HDC hdcKeymap;
 #elif WXVER
-	wxBitmap calcSkin;
+	wxImage calcSkin;
 	wxImage keymap;
 	int scale;
 	bool SkinEnabled;
@@ -116,11 +113,11 @@ typedef struct tagCALC {
 	bool bCustomSkin;
 	char skin_path[256];
 	char keymap_path[256];
-#else
-	pthread_t hdlThread;
+	BOOL bTIOSDebug;
 #endif
 
 	BOOL running;
+	BOOL auto_turn_on;
 	int speed;
 	BYTE breakpoints[0x10000];
 	label_struct labels[6000];
@@ -139,6 +136,7 @@ typedef struct tagCALC {
 	BOOL bCustomSkin;
 	BOOL bAlwaysOnTop;
 	BOOL bAlphaBlendLCD;
+	BOOL bTIOSDebug;
 	TCHAR skin_path[256];
 	TCHAR keymap_path[256];
 	IWabbitemu *pWabbitemu;
@@ -198,14 +196,14 @@ void calc_erase_certificate(unsigned char *, int);
 void port_debug_callback(void *, void *);
 void mem_debug_callback(void *);
 
-//#ifdef CALC_C
+#ifdef CALC_C
+#define GLOBAL
+#else
 #define GLOBAL extern
-//#else
-//#define GLOBAL extern
-//#endif
+#endif
 
 GLOBAL calc_t calcs[MAX_CALCS];
-GLOBAL LPCALC lpDebuggerCalc;
+//GLOBAL LPCALC lpDebuggerCalc;
 
 #ifdef WITH_BACKUPS
 #define MAX_BACKUPS 10
@@ -217,6 +215,8 @@ GLOBAL int num_backup_per_sec;
 
 #ifdef WITH_AVI
 #include "avi_utils.h"
+#include "avifile.h"
+GLOBAL CAviFile *currentAvi;
 GLOBAL HAVI recording_avi;
 GLOBAL BOOL is_recording;
 #endif
@@ -225,13 +225,15 @@ GLOBAL u_int frame_counter;
 GLOBAL int startX;
 GLOBAL int startY;
 GLOBAL BOOL exit_save_state;
+GLOBAL BOOL check_updates;
 GLOBAL BOOL new_calc_on_load_files;
 GLOBAL BOOL do_backups;
-GLOBAL BOOL show_wizard;
 GLOBAL BOOL break_on_exe_violation;
 GLOBAL BOOL break_on_invalid_flash;
 GLOBAL BOOL sync_cores;
 GLOBAL link_t *link_hub[MAX_CALCS + 1];
+GLOBAL int link_hub_count;
+GLOBAL int calc_waiting_link;
 
 
 GLOBAL const TCHAR *CalcModelTxt[]
