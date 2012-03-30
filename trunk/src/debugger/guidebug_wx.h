@@ -3,6 +3,8 @@
 #include "debuggerwindowclass.h"
 
 #include "panes/regpane.h"
+#include "panes/flagspane.h"
+#include "panes/cpupane.h"
 
 #include <wx/wx.h>
 #include <wx/splitter.h>
@@ -44,9 +46,9 @@ protected:
 	wxPanel* m_panel4;
 	wxScrolledWindow* m_scrolledWindow14;
 	wxToolBar* m_toolBar1;
-	RegPane* regPane;
-	wxCollapsiblePane* flagsPane;
-	wxCollapsiblePane* cpuPane;
+	RegPane *regPane;
+	FlagsPane *flagsPane;
+	CPUPane *cpuPane;
 	wxCollapsiblePane* interruptPane;
 	wxCollapsiblePane* keyboardPane;
 	wxCollapsiblePane* displayPane;
@@ -66,4 +68,6 @@ private:
 	
 	void OnDisasmGoto(wxCommandEvent & WXUNUSED(event));
 	void OnDisasmGotoEnter(wxCommandEvent & WXUNUSED(event));
+	
+	void OnCollapsiblePaneChanged(wxCollapsiblePaneEvent &event);
 };
