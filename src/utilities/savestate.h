@@ -56,9 +56,9 @@ typedef struct {
 #define NUM_RAM_BREAKS_tag		"NRBK"
 
 void WriteSave(const TCHAR *, SAVESTATE_t *, int);
-void LoadSlot(SAVESTATE_t* , void *);
-SAVESTATE_t* SaveSlot(void *);
-SAVESTATE_t* CreateSave(TCHAR *, TCHAR *, int);
+void LoadSlot(SAVESTATE_t* , void *lpInput);
+SAVESTATE_t* SaveSlot(void *lpInput);
+SAVESTATE_t* CreateSave(const TCHAR *, const TCHAR *, int);
 SAVESTATE_t* ReadSave(FILE *ifile);
 void FreeSave(SAVESTATE_t *);
 char* GetRomOnly(SAVESTATE_t *save, int *);

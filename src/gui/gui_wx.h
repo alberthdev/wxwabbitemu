@@ -8,57 +8,48 @@
 #include <wx/dnd.h>
 #include <wx/mstream.h>
 #include <wx/filename.h>
+#include <wx/config.h>
 #include <sys/time.h>
 #if (wxUSE_UNICODE)
 #include <wx/encconv.h> 
 #endif
 
-#if (wxUSE_UNICODE)
-#include <wx/encconv.h>
-#endif
-
 #include "guilcd_wx.h"
+#include "guivartree.h"
 #include "calc.h"
-#include "skins/ti83p.h"
 
-#define wxGetBitmapFromMemory(name) _wxGetBitmapFromMemory(name ## _png, sizeof(name ## _png))
+enum
+{
+	ID_LCD,
+};
 
-inline wxBitmap _wxGetBitmapFromMemory(const unsigned char *data, int length) {
-   wxMemoryInputStream is(data, length);
-   return wxBitmap(wxImage(is, wxBITMAP_TYPE_PNG, -1), -1);
-}
-
-char* wxStringToChar(wxString);
-int SetGIFName();
-class MyFrame: public wxFrame
+class WabbitemuFrame: public wxFrame
 {
 public:
-    MyFrame(LPCALC);
+    WabbitemuFrame(LPCALC);
    	wxWindow *wxLCD;
     
 	void OnKeyDown(wxKeyEvent& event);
 	void OnKeyUp(wxKeyEvent& event);
 	void SetSpeed(int speed);
-	void gui_draw();
+	int gui_draw();
 	void gui_frame_update();
-	int gui_debug();
 	void OnTimer(wxTimerEvent& event);
-	//void OnShow(wxShowEvent& event);
-	//DECLARE_EVENT_TABLE()
 protected:
-	
+	DECLARE_EVENT_TABLE()
 private:
+	bool is_resizing;
+	VarTree *varTree;
 	//menu items
 	void OnFileQuit(wxCommandEvent& event);
 	void OnFileClose(wxCommandEvent& event);
 	void OnFileSave(wxCommandEvent& event);
 	void OnFileNew(wxCommandEvent& event);
 	void OnFileOpen(wxCommandEvent& event);
-	void OnGIF(wxCommandEvent& event);
-	void OnHelpAbout(wxCommandEvent& event);
-	void OnHelpWebsite(wxCommandEvent& event);
+	void OnFileGIF(wxCommandEvent& event);
     
-	void OnCalcSkin(wxCommandEvent& event);
+	void OnViewSkin(wxCommandEvent& event);
+	void OnViewVariables(wxCommandEvent& event);
 	void OnPauseEmulation(wxCommandEvent& event);
 	void OnTurnCalcOn(wxCommandEvent& event);
 	
@@ -66,11 +57,13 @@ private:
 	void OnSetSpeedCustom(wxCommandEvent& event);
 	void OnSetSize(wxCommandEvent& event);
 	
-	#ifdef WXWABBITEMU_DEBUG_BENCHMARKING
-	void OnBenchmarking(wxCommandEvent& event);
-	void OnBenchToggleCalcEmu(wxCommandEvent& event);
-	void OnBenchToggleGUIUpdate(wxCommandEvent& event);
-	#endif
+	void OnDebugReset(wxCommandEvent& event);
+	void OnDebugOpen(wxCommandEvent& event);
+	void OnDebugOn(wxCommandEvent& event);
+	
+	void OnHelpSetup(wxCommandEvent& event);
+	void OnHelpWebsite(wxCommandEvent& event);
+	void OnHelpAbout(wxCommandEvent& event);
 	
 	void OnPaint(wxPaintEvent& event);
 	// Resize
@@ -81,6 +74,8 @@ private:
 	void OnQuit(wxCloseEvent& event);
 	void FinalizeButtons();
 };
-MyFrame* gui_frame(LPCALC lpCalc);
-
+char* wxStringToChar(wxString);
+int SetGIFName();
+void gui_debug(LPCALC lpCalc);
+WabbitemuFrame* gui_frame(LPCALC lpCalc);
 #endif

@@ -92,6 +92,7 @@ typedef struct USB {
 	BOOL ProtocolInterruptEnabled;
 	unsigned int DevAddress;		//Current USB device address
 	int version;
+	BOOL USBPowered;
 
 
 	unsigned char Port4A;
@@ -133,7 +134,5 @@ void port6_83pse(CPU_t *, device_t *);
 void port7_83pse(CPU_t *, device_t *);
 void port14_83pse(CPU_t *, device_t *);
 int GetCPUSpeed(CPU_t *);
-void flashwrite83pse(CPU_t *, unsigned short, unsigned char);
-void flashwrite84p(CPU_t *, unsigned short, unsigned char);
 
 #endif 

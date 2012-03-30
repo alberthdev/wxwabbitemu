@@ -13,12 +13,14 @@ void console_output(CPU_t *cpu, device_t *dev) {
 
 void ClearDevices(CPU_t* cpu) {
 	int i;
-	for (i = 0; i < 256; i++) {
+	for (i = 0; i < ARRAYSIZE(cpu->pio.interrupt); i++) {
 		cpu->pio.devices[i].active = FALSE;
-		cpu->pio.interrupt[i] = -1;
-		cpu->pio.skip_factor[i] = 1;
-		cpu->pio.skip_count[i] = 0;
+		interrupt_t *intVal = &cpu->pio.interrupt[i];
+		intVal->interrupt_val = -1;
+		intVal->skip_factor = 1;
+		intVal->skip_count = 0;
 	}
+	cpu->pio.num_interrupt = 0;
 }
 
 int device_output(CPU_t *cpu, unsigned char dev) {
@@ -33,11 +35,7 @@ int device_output(CPU_t *cpu, unsigned char dev) {
 			cpu->output = FALSE;
 			return 1;
 		}
-	}/* else if (dev == 0xFF) {
-//		if (isprint(cpu->bus) || cpu->bus=='\r' || cpu->bus=='\n' ) {
-			fputc(cpu->bus,stdout);
-//		}
-	}*/
+	}
 	return 0;
 }
 
@@ -55,30 +53,24 @@ int device_input(CPU_t *cpu, unsigned char dev) {
 		}
 	} else  {
 		cpu->bus = 0xFF;
-	//	printf("in port %02X not active\n",dev);
 		return 1;
 	}
 	return 0;
 }
 
 void Append_interrupt_device(CPU_t *cpu, int port, int skip) {
-	int i;
-	for(i = 0; i < 256; i++) {
-		if (cpu->pio.interrupt[i] == -1) {
-			cpu->pio.interrupt[i] = port;
-			cpu->pio.skip_factor[i] = skip;
-			break;
-		}
-	}
+	interrupt_t *intVal = &cpu->pio.interrupt[cpu->pio.num_interrupt];
+	intVal->interrupt_val = port;
+	intVal->skip_factor = skip;
+	cpu->pio.num_interrupt++;
 }
 
 void Modify_interrupt_device(CPU_t *cpu, int port, int skip) {
-	int i;
-	for(i = 0; i < 256; i++) {
-		if (cpu->pio.interrupt[i] == port) {
-			cpu->pio.skip_factor[i] = skip;
+	for(int i = 0; i < cpu->pio.num_interrupt; i++) {
+		if (cpu->pio.interrupt[i].interrupt_val == port) {
+			cpu->pio.interrupt[i].skip_factor = skip;
 			break;
-		} else if (cpu->pio.interrupt[i] == -1) break;
+		}
 	}
 }
 

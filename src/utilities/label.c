@@ -28,9 +28,8 @@ void VoidLabels(LPCALC lpCalc) {
 }
 
 TCHAR* FindAddressLabel(LPCALC lpCalc, waddr_t waddr) {
-	int i;
 	
-	for (i = 0; lpCalc->labels[i].name != NULL; i++) {
+	for (int i = 0; lpCalc->labels[i].name != NULL; i++) {
 		label_struct *label = &lpCalc->labels[i];
 		if (label->IsRAM == waddr.is_ram && label->page == waddr.page && label->addr == waddr.addr)
 			return label->name;
@@ -135,9 +134,7 @@ int labels_app_load(LPCALC lpCalc, LPCTSTR lpszFileName) {
 
 				label->addr = equate & 0xFFFF;
 
-				if ( (equate & 0x0000FFFF) >= 0x4000 && (equate & 0x0000FFFF) < 0x8000) {
-					int page_offset = (equate >> 16) & 0xFF;
-					
+				if ( (equate & 0x0000FFFF) >= 0x4000 && (equate & 0x0000FFFF) < 0x8000) {					
 					label->IsRAM = FALSE;
 					if (lpCalc->last_transferred_app == NULL) {
 						upages_t upage;
