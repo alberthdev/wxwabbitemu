@@ -27,7 +27,7 @@ wabbitemu: core.o alu.o control.o device.o indexcb.o calc.o state.o gif.o\
 			83phw.o 83psehw.o 86hw.o keys.o lcd.o link.o gui_wx.o guilcd_wx.o\
 			droptarget.o guidebug_wx.o disassemblyview.o disassemble.o romwizard.o\
 			wizardstart.o wizardcalctype.o wizardos.o fileutilities.o exportvar.o\
-			regpane.o guivartree.o
+			regpane.o flagspane.o guivartree.o cpupane.o
 	$(LD) $(LDFLAGS) *.o -o $(PROGRAM)
 
 core.o: ./core/core.c
@@ -134,6 +134,12 @@ disassemble.o: ./debugger/disassemble.c
 	
 regpane.o: ./debugger/panes/regpane.cpp ./debugger/panes/regpane.h
 	$(CXX) $(CXXFLAGS) ./debugger/panes/regpane.cpp
+
+flagspane.o: ./debugger/panes/flagspane.cpp ./debugger/panes/flagspane.h
+	$(CXX) $(CXXFLAGS) ./debugger/panes/flagspane.cpp
+	
+cpupane.o: ./debugger/panes/cpupane.cpp ./debugger/panes/cpupane.h
+	$(CXX) $(CXXFLAGS) ./debugger/panes/cpupane.cpp
 
 clean :
 	rm -f *.o $(PROGRAM)

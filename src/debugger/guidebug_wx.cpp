@@ -29,6 +29,8 @@ BEGIN_EVENT_TABLE(WabbitemuDebugger, wxFrame)
 	
 	EVT_BUTTON(ID_Disasm_GotoButton, WabbitemuDebugger::OnDisasmGoto)
 	EVT_TEXT_ENTER(ID_Disasm_GotoText, WabbitemuDebugger::OnDisasmGotoEnter)
+	
+	EVT_COLLAPSIBLEPANE_CHANGED(wxID_ANY, WabbitemuDebugger::OnCollapsiblePaneChanged)
 END_EVENT_TABLE()
 
 WabbitemuDebugger::WabbitemuDebugger(WabbitemuFrame *frame, LPCALC lpCalc) :
@@ -104,11 +106,14 @@ WabbitemuDebugger::WabbitemuDebugger(WabbitemuFrame *frame, LPCALC lpCalc) :
 	
 	//m_scrolledWindow14 = new wxScrolledWindow( m_panel4, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL|wxVSCROLL );
 	//m_scrolledWindow14->SetScrollRate( 5, 5 );
-	regPane = new RegPane(m_panel4, lpCalc);
+	regPane = new RegPane(m_panel4, (DebuggerWindowClass *)this, lpCalc);
 	bSizer11->Add( regPane, 0, wxEXPAND, 5 );
+	flagsPane = new FlagsPane(m_panel4, (DebuggerWindowClass *)this, lpCalc);
+	bSizer11->Add( flagsPane, 0, wxEXPAND, 5 );
+	cpuPane = new CPUPane(m_panel4, (DebuggerWindowClass *)this, lpCalc);
+	bSizer11->Add( cpuPane, 0, wxEXPAND, 5 );
 	
-	/*flagsPane = new wxCollapsiblePane(m_panel4, wxID_ANY, "Flags", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE);
-	cpuPane = new wxCollapsiblePane(m_panel4, wxID_ANY, "CPU Status", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE);
+	/*cpuPane = new wxCollapsiblePane(m_panel4, wxID_ANY, "CPU Status", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE);
 	interruptPane = new wxCollapsiblePane(m_panel4, wxID_ANY, "Interrupts", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE);
 	keyboardPane = new wxCollapsiblePane(m_panel4, wxID_ANY, "Keyboard", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE);
 	displayPane = new wxCollapsiblePane(m_panel4, wxID_ANY, "Display", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE);
@@ -139,7 +144,7 @@ WabbitemuDebugger::WabbitemuDebugger(WabbitemuFrame *frame, LPCALC lpCalc) :
 	
 	m_disasmGotoPanel->Hide();
 	m_disasmView->GotoAddress(addr_to_waddr(&lpCalc->mem_c, lpCalc->cpu.pc));
-	regPane->DebugUpdateWindow();
+	DebugUpdateWindow();
 }
 
 
@@ -228,6 +233,10 @@ void CPU_stepover(LPCALC lpCalc) {
 	}
 }
 
+void WabbitemuDebugger::OnCollapsiblePaneChanged(wxCollapsiblePaneEvent & WXUNUSED(event)) {
+	m_panel4->Layout();
+}
+
 void WabbitemuDebugger::OnClose(wxCloseEvent& event) {
 	calc_unpause_linked();
 	lpCalc->running =TRUE;
@@ -236,6 +245,8 @@ void WabbitemuDebugger::OnClose(wxCloseEvent& event) {
 
 void WabbitemuDebugger::DebugUpdateWindow() {
 	regPane->DebugUpdateWindow();
+	flagsPane->DebugUpdateWindow();
+	cpuPane->DebugUpdateWindow();
 }
 
 void WabbitemuDebugger::OnToolbarRun(wxCommandEvent & WXUNUSED(event)) {
@@ -290,8 +301,12 @@ void WabbitemuDebugger::OnToolbarStep(wxCommandEvent & WXUNUSED(event)) {
 }
 
 void WabbitemuDebugger::OnToolbarGoto(wxCommandEvent & WXUNUSED(event)) {
+	if (m_disasmGotoPanel->IsShown()) {
+		m_disasmGotoPanel->Hide();
+	} else {
+		m_disasmGotoPanel->Show();
+	}
 	bSizer3->Layout();
-	m_disasmGotoPanel->Show();
 }
 
 void WabbitemuDebugger::OnDisasmGoto(wxCommandEvent & WXUNUSED(event)) {
@@ -307,6 +322,7 @@ void WabbitemuDebugger::OnDisasmGoto(wxCommandEvent & WXUNUSED(event)) {
 	}
 	m_disasmView->GotoAddress(waddr);
 	m_disasmGotoPanel->Hide();
+	bSizer3->Layout();
 }
 
 void WabbitemuDebugger::OnDisasmGotoEnter(wxCommandEvent & event) {
