@@ -32,9 +32,11 @@ BEGIN_EVENT_TABLE(RegPane, wxCollapsiblePane)
 	EVT_TEXT_ENTER(ID_Text_PC, RegPane::OnTextEntered)
 END_EVENT_TABLE()
 
-RegPane::RegPane(wxWindow *parent, LPCALC lpCalc) : wxCollapsiblePane(parent, wxID_ANY, "Registers", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE)
+RegPane::RegPane(wxWindow *parent, DebuggerWindowClass *debugWindow, LPCALC lpCalc) :
+wxCollapsiblePane(parent, wxID_ANY, "Registers", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE)
 {
 	this->lpCalc = lpCalc;
+	this->debugWindow = debugWindow;
 	
 	wxGridSizer* regPaneSizer;
 	regPaneSizer = new wxGridSizer( 6, 2, 0, 0 );
@@ -151,7 +153,6 @@ RegPane::RegPane(wxWindow *parent, LPCALC lpCalc) : wxCollapsiblePane(parent, wx
 	
 	regPaneWindow->SetSizer(regPaneSizer);
 	regPaneWindow->Layout();
-	this->Expand();
 }
 
 void RegPane::OnTextEntered(wxCommandEvent &event)
@@ -207,6 +208,7 @@ void RegPane::OnTextEntered(wxCommandEvent &event)
 			ss >> lpCalc->cpu.sp;
 			break;
 	}
+	debugWindow->DebugUpdateWindow();
 }
 
 void RegPane::DebugUpdateWindow() {
