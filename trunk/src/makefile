@@ -1,9 +1,9 @@
 .SUFFIXES:
 .SUFFIXES: .o .c
 
-CFLAGS=-I. -I./core -I./debugger -I./gui -I./hardware -I./interface -I./utilities -x c++ -ggdb -O2 -c\
+CFLAGS=-I. -I./core -I./debugger -I./gui -I./hardware -I./interface -I./utilities -x c++ -ggdb -c\
 		-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER `wx-config --version=2.9 --unicode=yes --cflags` -Wall
-CXXFLAGS=-I. -I./core -I./debugger -I./gui -I./hardware -I./interface -I./utilities -x c++ -ggdb -O2 -c\
+CXXFLAGS=-I. -I./core -I./debugger -I./gui -I./hardware -I./interface -I./utilities -x c++ -ggdb -c\
 		-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER `wx-config --version=2.9 --unicode=yes --cppflags` -Wall
 LDFLAGS=`wx-config --version=2.9 --unicode=yes --libs` -lstdc++
 CC=clang
