@@ -418,7 +418,7 @@ void WabbitemuFrame::gui_frame_update() {
 		wxSize skinSize(350, 725);
 		this->SetClientSize(skinSize);
 	}
-	
+	wxLCD->Raise();
 	this->SendSizeEvent();
 }
 

@@ -1,4 +1,5 @@
 #include "guiskinwindow.h"
+#include "droptarget.h"
 
 BEGIN_EVENT_TABLE(SkinWindow, wxWindow)
 	EVT_PAINT(SkinWindow::OnPaint)
@@ -11,6 +12,7 @@ END_EVENT_TABLE()
 SkinWindow::SkinWindow(wxFrame *parent, LPCALC lpCalc) : wxWindow(parent, wxID_ANY)
 {
 	this->lpCalc = lpCalc;
+	this->SetDropTarget(new DnDFile(this, lpCalc));
 }
 
 void SkinWindow::OnPaint(wxPaintEvent &event) {
