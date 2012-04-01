@@ -1,9 +1,9 @@
 .SUFFIXES:
 .SUFFIXES: .o .c
 
-CFLAGS=-I. -I./core -I./debugger -I./gui -I./hardware -I./interface -I./utilities -x c++ -ggdb -c\
+CFLAGS=-I. -I./core -I./debugger -I./gui -I./hardware -I./interface -I./utilities -x c++ -ggdb -O2 -c\
 		-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER `wx-config --version=2.9 --unicode=yes --cflags` -Wall
-CXXFLAGS=-I. -I./core -I./debugger -I./gui -I./hardware -I./interface -I./utilities -x c++ -ggdb -c\
+CXXFLAGS=-I. -I./core -I./debugger -I./gui -I./hardware -I./interface -I./utilities -x c++ -ggdb -O2 -c\
 		-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER `wx-config --version=2.9 --unicode=yes --cppflags` -Wall
 LDFLAGS=`wx-config --version=2.9 --unicode=yes --libs` -lstdc++
 CC=clang
@@ -27,7 +27,7 @@ wabbitemu: core.o alu.o control.o device.o indexcb.o calc.o state.o gif.o\
 			83phw.o 83psehw.o 86hw.o keys.o lcd.o link.o gui_wx.o guilcd_wx.o\
 			droptarget.o guidebug_wx.o disassemblyview.o disassemble.o romwizard.o\
 			wizardstart.o wizardcalctype.o wizardos.o fileutilities.o exportvar.o\
-			regpane.o flagspane.o guivartree.o cpupane.o
+			regpane.o flagspane.o guivartree.o cpupane.o guiskinwindow.o
 	$(LD) $(LDFLAGS) *.o -o $(PROGRAM)
 
 core.o: ./core/core.c
@@ -101,6 +101,9 @@ link.o: ./hardware/link.c
 	
 gui_wx.o: ./gui/gui_wx.cpp ./gui/gui_wx.h
 	$(CXX) $(CXXFLAGS) ./gui/gui_wx.cpp
+	
+guiskinwindow.o: ./gui/guiskinwindow.cpp ./gui/guiskinwindow.h
+	$(CXX) $(CXXFLAGS) ./gui/guiskinwindow.cpp
 
 guilcd_wx.o: ./gui/guilcd_wx.cpp ./gui/guilcd_wx.h
 	$(CXX) $(CXXFLAGS) ./gui/guilcd_wx.cpp

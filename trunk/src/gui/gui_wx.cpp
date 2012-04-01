@@ -110,6 +110,9 @@ BEGIN_EVENT_TABLE(WabbitemuFrame, wxFrame)
 	EVT_KEY_DOWN(WabbitemuFrame::OnKeyDown)
 	EVT_KEY_UP(WabbitemuFrame::OnKeyUp)
 	EVT_CLOSE(WabbitemuFrame::OnQuit)
+	
+	EVT_LEFT_DOWN(WabbitemuFrame::OnLeftButtonDown)
+	EVT_LEFT_UP(WabbitemuFrame::OnLeftButtonUp)
 END_EVENT_TABLE()
 
 static WabbitemuFrame* frames[MAX_CALCS];
@@ -261,8 +264,6 @@ void gui_debug(LPCALC lpCalc) {
 int WabbitemuFrame::gui_draw() {
 	wxLCD->Refresh();
 	wxLCD->Update();
-	this->Refresh();
-	this->Update();
 
 	if (lpCalc->gif_disp_state != GDS_IDLE) {
 		static int skip = 0;
@@ -286,6 +287,12 @@ WabbitemuFrame * gui_frame(LPCALC lpCalc) {
 
 	mainFrame->wxLCD = new WabbitemuLCD(mainFrame, lpCalc);
 	mainFrame->wxLCD->Show(true);
+	if (lpCalc->SkinEnabled) {
+		mainFrame->wxLCD->Move((mainFrame->GetClientSize().GetWidth() - lpCalc->cpu.pio.lcd->width * lpCalc->scale) / 2, 0);
+	} else {
+		mainFrame->wxLCD->Move(lpCalc->LCDRect.GetX(), lpCalc->LCDRect.GetY());
+	}
+	
 	lpCalc->running = TRUE;
 	lpCalc->breakpoint_callback = gui_debug;
 	mainFrame->SetSpeed(100);
@@ -418,6 +425,7 @@ void WabbitemuFrame::gui_frame_update() {
 WabbitemuFrame::WabbitemuFrame(LPCALC lpCalc) : wxFrame(NULL, wxID_ANY, wxT("Wabbitemu"))
 {
 	this->lpCalc = lpCalc;
+	this->skinWindow = new SkinWindow(this, lpCalc);
 	
 	this->SetWindowStyleFlag(wxBORDER_RAISED);
 	wxSize skinSize(350, 725);
@@ -627,12 +635,18 @@ WabbitemuFrame::WabbitemuFrame(LPCALC lpCalc) : wxFrame(NULL, wxID_ANY, wxT("Wab
 
 void WabbitemuFrame::OnResize(wxSizeEvent& event) {
 	event.Skip(true);
-	if (lpCalc->SkinEnabled || is_resizing) {
+	if (lpCalc->SkinEnabled ) {
+		if (wxLCD) {
+			wxLCD->Move(lpCalc->LCDRect.GetX(), lpCalc->LCDRect.GetY());
+		}
+		return;
+	}
+	if (is_resizing) {
 		return;
 	}
 	
-	int width_scale = event.GetSize().GetWidth() / 128;
-	int height_scale = (event.GetSize().GetHeight()) / 64;
+	int width_scale = GetClientSize().GetWidth() / 128;
+	int height_scale = GetClientSize().GetHeight() / 64;
 	int scale = max(2, max(width_scale, height_scale));
 
 	lpCalc->scale = min(2, scale);
@@ -641,6 +655,9 @@ void WabbitemuFrame::OnResize(wxSizeEvent& event) {
 	this->SetClientSize(size);
 	this->Move(scale * (128 - lpCalc->cpu.pio.lcd->width), 0);
 	is_resizing = false;
+	if (!lpCalc->SkinEnabled && wxLCD) {
+		wxLCD->Move((GetClientSize().GetWidth() - lpCalc->cpu.pio.lcd->width * scale) / 2, 0);
+	}
 }
 
 void WabbitemuFrame::OnPaint(wxPaintEvent& event)
@@ -866,6 +883,69 @@ void WabbitemuFrame::OnKeyUp(wxKeyEvent& event)
 		keypad_key_release(&lpCalc->cpu, key);
 	}
 	FinalizeButtons();
+}
+
+void WabbitemuFrame::OnLeftButtonDown(wxMouseEvent& event)
+{
+	event.Skip(true);
+	static wxPoint pt;
+	keypad_t *kp = lpCalc->cpu.pio.keypad;
+
+	//CopySkinToButtons();
+	//CaptureMouse();
+	pt.x	= event.GetX();
+	pt.y	= event.GetY();
+	/*if (lpCalc->bCutout) {
+		pt.y += GetSystemMetrics(SM_CYCAPTION);
+		pt.x += GetSystemMetrics(SM_CXSIZEFRAME);
+	}*/
+	for(int group = 0; group < 7; group++) {
+		for(int bit = 0; bit < 8; bit++) {
+			kp->keys[group][bit] &= (~KEY_MOUSEPRESS);
+		}
+	}
+
+	lpCalc->cpu.pio.keypad->on_pressed &= ~KEY_MOUSEPRESS;
+
+	/*if (!event.LeftDown()) {
+		//FinalizeButtons(lpCalc);
+		return;
+	}*/
+
+	if (lpCalc->keymap.GetRed(pt.x, pt.y) == 0xFF) {
+		//FinalizeButtons(lpCalc);
+		return;
+	}
+
+	int green = lpCalc->keymap.GetGreen(pt.x, pt.y);
+	int blue = lpCalc->keymap.GetBlue(pt.x, pt.y);
+	if ((green >> 4) == 0x05 && (blue >> 4) == 0x00)
+	{
+		lpCalc->cpu.pio.keypad->on_pressed |= KEY_MOUSEPRESS;
+	} else {
+		kp->keys[green >> 4][blue >> 4] |= KEY_MOUSEPRESS;
+		if ((kp->keys[green >> 4][blue >> 4] & KEY_STATEDOWN) == 0) {
+			//DrawButtonState(lpCalc, lpCalc->hdcButtons, lpCalc->hdcKeymap, &pt, DBS_DOWN | DBS_PRESS);
+			kp->keys[green >> 4][blue >> 4] |= KEY_STATEDOWN;
+		}
+	}
+}
+
+void WabbitemuFrame::OnLeftButtonUp(wxMouseEvent& event)
+{
+	event.Skip(true);
+	static wxPoint pt;
+	keypad_t *kp = lpCalc->cpu.pio.keypad;
+
+	//ReleaseMouse();
+
+	for(int group = 0; group < 7; group++) {
+		for(int bit = 0; bit < 8; bit++) {
+			kp->keys[group][bit] &= ~(KEY_MOUSEPRESS | KEY_STATEDOWN);
+		}
+	}
+
+	lpCalc->cpu.pio.keypad->on_pressed &= ~KEY_MOUSEPRESS;
 }
 
 void WabbitemuFrame::OnFileQuit(wxCommandEvent& WXUNUSED(event))
