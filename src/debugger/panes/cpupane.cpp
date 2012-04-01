@@ -17,7 +17,8 @@ BEGIN_EVENT_TABLE(CPUPane, wxCollapsiblePane)
 	EVT_TEXT_ENTER(ID_Text_Bus, CPUPane::OnBusTextEnter)
 END_EVENT_TABLE()
 
-CPUPane::CPUPane(wxWindow *parent, DebuggerWindowClass *debugWindow, LPCALC lpCalc) : wxCollapsiblePane(parent, wxID_ANY, "CPU Status", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE)
+CPUPane::CPUPane(wxWindow *parent, DebuggerWindowClass *debugWindow, LPCALC lpCalc) :
+wxCollapsiblePane(parent, wxID_ANY, "CPU Status", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE)
 {
 	this->lpCalc = lpCalc;
 	this->debugWindow = debugWindow;
@@ -26,7 +27,7 @@ CPUPane::CPUPane(wxWindow *parent, DebuggerWindowClass *debugWindow, LPCALC lpCa
 	wxBoxSizer* bSizer27;
 	bSizer27 = new wxBoxSizer( wxVERTICAL );
 	
-	m_haltCheck = new wxCheckBox( cpuPaneWindow, wxID_ANY, wxT("Halt"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_haltCheck = new wxCheckBox( cpuPaneWindow, ID_Check_Halt, wxT("Halt"), wxDefaultPosition, wxDefaultSize, 0 );
 	bSizer27->Add( m_haltCheck, 0, wxALL, 5 );
 	
 	wxBoxSizer* bSizer28;

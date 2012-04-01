@@ -15,6 +15,7 @@
 #endif
 
 #include "guilcd_wx.h"
+#include "guiskinwindow.h"
 #include "guivartree.h"
 #include "calc.h"
 
@@ -38,6 +39,7 @@ public:
 protected:
 	DECLARE_EVENT_TABLE()
 private:
+	wxWindow *skinWindow;
 	bool is_resizing;
 	VarTree *varTree;
 	//menu items
@@ -70,6 +72,8 @@ private:
 	void OnResize(wxSizeEvent& event);
 	LPCALC lpCalc;
 	
+	void OnLeftButtonDown(wxMouseEvent& event);
+	void OnLeftButtonUp(wxMouseEvent& event);
 	void OnSize(wxSizeEvent& event);
 	void OnQuit(wxCloseEvent& event);
 	void FinalizeButtons();

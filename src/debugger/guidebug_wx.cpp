@@ -113,8 +113,7 @@ WabbitemuDebugger::WabbitemuDebugger(WabbitemuFrame *frame, LPCALC lpCalc) :
 	cpuPane = new CPUPane(m_panel4, (DebuggerWindowClass *)this, lpCalc);
 	bSizer11->Add( cpuPane, 0, wxEXPAND, 5 );
 	
-	/*cpuPane = new wxCollapsiblePane(m_panel4, wxID_ANY, "CPU Status", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE);
-	interruptPane = new wxCollapsiblePane(m_panel4, wxID_ANY, "Interrupts", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE);
+	/*interruptPane = new wxCollapsiblePane(m_panel4, wxID_ANY, "Interrupts", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE);
 	keyboardPane = new wxCollapsiblePane(m_panel4, wxID_ANY, "Keyboard", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE);
 	displayPane = new wxCollapsiblePane(m_panel4, wxID_ANY, "Display", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE);
 	
@@ -247,6 +246,7 @@ void WabbitemuDebugger::DebugUpdateWindow() {
 	regPane->DebugUpdateWindow();
 	flagsPane->DebugUpdateWindow();
 	cpuPane->DebugUpdateWindow();
+	m_disasmView->DebugUpdateWindow();
 }
 
 void WabbitemuDebugger::OnToolbarRun(wxCommandEvent & WXUNUSED(event)) {

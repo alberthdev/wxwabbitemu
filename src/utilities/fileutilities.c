@@ -76,7 +76,7 @@ int SaveFile(TCHAR *lpstrFile, const TCHAR *lpstrFilter, const TCHAR *lpstrTitle
 		return 1;
 	}
 #elif WXVER
-	flags |= wxFD_SAVE  | wxFD_FILE_MUST_EXIST | wxFD_OVERWRITE_PROMPT;
+	flags |= wxFD_SAVE  | wxFD_OVERWRITE_PROMPT;
 	wxFileDialog dialog(NULL, lpstrFile, wxEmptyString, lpstrFile, lpstrFilter, flags, wxDefaultPosition, wxDefaultSize, lpstrTitle);
 	dialog.SetFilterIndex(filterIndex);
 	if (dialog.ShowModal() == wxID_OK) {
