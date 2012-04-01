@@ -27,6 +27,7 @@ WabbitemuLCD::WabbitemuLCD(wxFrame *mainFrame, LPCALC lpCalc)
 		greenColors[i] = (0xAB*(256-(LCD_HIGH/MAX_SHADES)*i))/255;
 		blueColors[i] = (0x88*(256-(LCD_HIGH/MAX_SHADES)*i))/255;
 	}
+	hasDrawnLCD = false;
 }
 
 void WabbitemuLCD::OnLeftButtonDown(wxMouseEvent& event)
@@ -157,13 +158,8 @@ void WabbitemuLCD::OnPaint(wxPaintEvent& event)
 	if (this->mainFrame->IsIconized()) {
 		return;
 	}
-	wxPaintDC *dc = new wxPaintDC(this);
-	if (lpCalc->SkinEnabled) {
-		//this->Update();
-		wxBitmap skin = lpCalc->calcSkin;
-		dc->DrawBitmap(skin, 0, 0, true);
-	}
-	PaintLCD(this, dc);
+	wxPaintDC dc(this);
+	PaintLCD(this, &dc);
 	LCD_t *lcd = lpCalc->cpu.pio.lcd;
 	wxStatusBar *wxStatus = mainFrame->GetStatusBar();
 	if (wxStatus) {
@@ -178,7 +174,6 @@ void WabbitemuLCD::OnPaint(wxPaintEvent& event)
 			lpCalc->sb_refresh = clock();
 		}
 	}
-	delete dc;
 } 
 
 void WabbitemuLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
@@ -189,11 +184,11 @@ void WabbitemuLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 		int scale = lpCalc->scale;
 	int draw_width = lcd->width * scale;
 	int draw_height = 64 * scale;
-	wxPoint drawPoint((rc.GetWidth() - draw_width) / 2, 0);
-	if (lpCalc->SkinEnabled) {
+	wxPoint drawPoint(0, 0);
+	/*if (lpCalc->SkinEnabled) {
 		drawPoint.x = lpCalc->LCDRect.GetX();
 		drawPoint.y = lpCalc->LCDRect.GetY();
-	}
+	}*/
 	wxMemoryDC wxMemDC;
 	if (lcd->active == false) {
 		unsigned char lcd_data[128*64];
@@ -264,9 +259,9 @@ void WabbitemuLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 
 			DeleteDC(hdcOverlay);
 
-		}*/
+		}
 		//this alphablends the skin to the screen making it look nice
-		/*bf.SourceConstantAlpha = 108;
+		bf.SourceConstantAlpha = 108;
 
 		POINT pt;
 		pt.x = rc.left;

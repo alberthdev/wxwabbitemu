@@ -99,7 +99,7 @@ waddr_t& DisassemblyView::MapIndexToAddress(int index) {
 }
 
 void DisassemblyView::DebugUpdateWindow() {
-	
+	this->Refresh();
 }
 
 void DisassemblyView::GotoAddress(waddr_t waddr) {
