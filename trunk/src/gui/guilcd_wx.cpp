@@ -197,7 +197,7 @@ void WabbitemuLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 			rgb_data[j+2] = blueColors[lcd_data[i]];
 		}
 		wxImage screenImage(128, 64, rgb_data, true);
-		wxBitmap bmpBuf(screenImage.Scale(rc.GetWidth(), rc.GetHeight()).Size(wxSize(128 * scale, 64 * scale), wxPoint(0,0)));
+		wxBitmap bmpBuf(screenImage.Size(wxSize(lcd->width, 64), wxPoint(0, 0)).Scale(rc.GetWidth(), rc.GetHeight()));
 		wxMemDC.SelectObject(bmpBuf);
 		//draw drag panes
 		/*if (lpCalc->do_drag == TRUE) {
@@ -230,13 +230,14 @@ void WabbitemuLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 			rgb_data[j+2] = blueColors[screen[i]];
 		}
 
-		//this is for the 86, so it doesnt look like complete shit
-		/*if (lcd->width * lpCalc->scale != (rc.right - rc.left))
-			SetStretchBltMode(hdc, HALFTONE);
+		wxImageResizeQuality scalingMode = wxIMAGE_QUALITY_NORMAL;
+		//hiqh quality does bicubic sampling which looks terrible on our image
+		/*if (lcd->width * lpCalc->scale != rc.GetWidth())
+			scalingMode = wxIMAGE_QUALITY_HIGH;
 		else
-			SetStretchBltMode(hdc, BLACKONWHITE);*/
+			scalingMode = wxIMAGE_QUALITY_NORMAL;*/
 		wxImage screenImage(128, 64, rgb_data, true);
-		wxBitmap bmpBuf(screenImage.Scale(rc.GetWidth(), rc.GetHeight()).Size(wxSize(128 * scale, 64 * scale), wxPoint(0,0)));
+		wxBitmap bmpBuf(screenImage.Size(wxSize(lcd->width, 64), wxPoint(0, 0)).Scale(rc.GetWidth(), rc.GetHeight(), scalingMode));
 		wxMemDC.SelectObject(bmpBuf);
 		//if were dragging something we will draw these nice panes
 		/*BLENDFUNCTION bf;
@@ -259,8 +260,11 @@ void WabbitemuLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 		//finally copy up the screen image
 		wxDCDest->Blit(drawPoint.x, drawPoint.y, draw_width, draw_height, &wxMemDC, 0, 0);
 		//lets give it a texture to look nice
-		wxImage skinTexture("./res/skintexture.png");
-		//this wont work with the 86 for now. this should really be copying from underneath the skin
+		wxImage skinTexture = lpCalc->calcSkin.GetSubImage(lpCalc->LCDRect);
+		int textureSize = lpCalc->LCDRect.GetWidth() * lpCalc->LCDRect.GetHeight();
+		unsigned char *alpha = (unsigned char *) malloc(textureSize);
+		memset(alpha, 108, textureSize);
+		skinTexture.SetAlpha(alpha);
 		wxDCDest->DrawBitmap(skinTexture, drawPoint.x, drawPoint.y, true);
 		wxMemDC.SelectObject(wxNullBitmap);
 
