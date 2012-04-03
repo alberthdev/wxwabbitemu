@@ -2,6 +2,7 @@
 #include "gui_wx.h"
 #include "core.h"
 #include "droptarget.h"
+#include "skins/skintexture.h"
 
 BEGIN_EVENT_TABLE(WabbitemuLCD, wxWindow)
 	EVT_PAINT(WabbitemuLCD::OnPaint)
@@ -16,8 +17,7 @@ unsigned char redColors[MAX_SHADES+1];
 unsigned char greenColors[MAX_SHADES+1];
 unsigned char blueColors[MAX_SHADES+1];
 WabbitemuLCD::WabbitemuLCD(wxFrame *mainFrame, LPCALC lpCalc)
-	: wxWindow(mainFrame, ID_LCD, wxPoint(0,0),
-		wxSize(lpCalc->cpu.pio.lcd->width * lpCalc->scale, 64 * lpCalc->scale)) {
+	: wxWindow(mainFrame, ID_LCD, wxPoint(0,0), lpCalc->LCDRect.GetSize()) {
 	this->lpCalc = lpCalc;
 	this->mainFrame = mainFrame;
 	this->SetDropTarget(new DnDFile(this, lpCalc));
@@ -180,15 +180,11 @@ void WabbitemuLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 {
 	unsigned char *screen;
 	LCD_t *lcd = lpCalc->cpu.pio.lcd;
-	wxSize rc = this->mainFrame->GetClientSize();
-		int scale = lpCalc->scale;
-	int draw_width = lcd->width * scale;
-	int draw_height = 64 * scale;
+	wxSize rc = lpCalc->LCDRect.GetSize();
+	int scale = lpCalc->scale;
+	int draw_width = lpCalc->LCDRect.GetWidth();
+	int draw_height = lpCalc->LCDRect.GetHeight();
 	wxPoint drawPoint(0, 0);
-	/*if (lpCalc->SkinEnabled) {
-		drawPoint.x = lpCalc->LCDRect.GetX();
-		drawPoint.y = lpCalc->LCDRect.GetY();
-	}*/
 	wxMemoryDC wxMemDC;
 	if (lcd->active == false) {
 		unsigned char lcd_data[128*64];
@@ -201,7 +197,7 @@ void WabbitemuLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 			rgb_data[j+2] = blueColors[lcd_data[i]];
 		}
 		wxImage screenImage(128, 64, rgb_data, true);
-		wxBitmap bmpBuf(screenImage.Scale(128 * scale, 64 * scale).Size(rc, wxPoint(0,0)));
+		wxBitmap bmpBuf(screenImage.Scale(rc.GetWidth(), rc.GetHeight()).Size(wxSize(128 * scale, 64 * scale), wxPoint(0,0)));
 		wxMemDC.SelectObject(bmpBuf);
 		//draw drag panes
 		/*if (lpCalc->do_drag == TRUE) {
@@ -240,7 +236,7 @@ void WabbitemuLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 		else
 			SetStretchBltMode(hdc, BLACKONWHITE);*/
 		wxImage screenImage(128, 64, rgb_data, true);
-		wxBitmap bmpBuf(screenImage.Scale(128 * scale, 64 * scale).Size(rc, wxPoint(0,0)));
+		wxBitmap bmpBuf(screenImage.Scale(rc.GetWidth(), rc.GetHeight()).Size(wxSize(128 * scale, 64 * scale), wxPoint(0,0)));
 		wxMemDC.SelectObject(bmpBuf);
 		//if were dragging something we will draw these nice panes
 		/*BLENDFUNCTION bf;
@@ -259,58 +255,14 @@ void WabbitemuLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 
 			DeleteDC(hdcOverlay);
 
-		}
-		//this alphablends the skin to the screen making it look nice
-		bf.SourceConstantAlpha = 108;
-
-		POINT pt;
-		pt.x = rc.left;
-		pt.y = rc.top;
-		ClientToScreen(hwnd, &pt);
-		ScreenToClient(GetParent(hwnd), &pt);
-
-		if (alphablendfail<100 && lcd->width != 138) {
-			if (AlphaBlend(	hdc, rc.left, rc.top, rc.right,  rc.bottom,
-				lpCalc->hdcSkin, lpCalc->rectLCD.left, lpCalc->rectLCD.top,
-				(rc.right - rc.left), 128,
-					bf )  == FALSE){
-				//printf("alpha blend 2 failed\n");
-				alphablendfail++;
-			}
 		}*/
-
 		//finally copy up the screen image
 		wxDCDest->Blit(drawPoint.x, drawPoint.y, draw_width, draw_height, &wxMemDC, 0, 0);
+		//lets give it a texture to look nice
+		wxImage skinTexture("./res/skintexture.png");
+		//this wont work with the 86 for now. this should really be copying from underneath the skin
+		wxDCDest->DrawBitmap(skinTexture, drawPoint.x, drawPoint.y, true);
 		wxMemDC.SelectObject(wxNullBitmap);
-		/*if (BitBlt(	hdcDest, rc.left, rc.top, rc.right - rc.left,  rc.bottom - rc.top,
-			hdc, 0, 0, SRCCOPY ) == FALSE) printf("Bit blt failed\n");*/
 
 	}
-	//delete wxBitmap;				//DeleteObject(bmpBuf);
-	//delete &wxMemDC; 				//DeleteDC(hdc);
-}
-
-//TODO: BuckeyeDude: remove this and use fileutilities.c
-void SaveStateDialog(LPCALC lpCalc) {
-	char *FileName;
-	wxString lpstrFilter 	= wxT("\
-Known File types ( *.sav; *.rom; *.bin) |*.sav;*.rom;*.bin|\
-Save States  (*.sav)|*.sav|\
-ROMS  (*.rom; .bin)|*.rom;*.bin|\
-All Files (*.*)|*.*\0");
-	
-	wxFileDialog dialog(NULL, wxT("Wabbitemu Save State"),
-	wxT(""), wxT(""), lpstrFilter, wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
-	if (dialog.ShowModal() != wxID_OK)
-		return;
-	extern char * wxStringToChar(wxString);
-	FileName = wxStringToChar(dialog.GetPath());
-	
-	SAVESTATE_t* save = SaveSlot(lpCalc);
-
-	strcpy(save->author, "Default");
-	save->comment[0] = '\0';
-	WriteSave(FileName, save, false);
-	//gui_savestate(save, FileName);
-
 }

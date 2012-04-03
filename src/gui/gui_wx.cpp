@@ -20,6 +20,7 @@
 
 #include "gif.h"
 #include "gifhandle.h"
+#include "fileutilities.h"
 
 #define BIG_WINDOWS_ICON 0
 #ifndef max
@@ -378,13 +379,13 @@ void WabbitemuFrame::gui_frame_update() {
 		} while (lpCalc->keymap.GetBlue(foundX, foundY) == 0 &&
 				lpCalc->keymap.GetRed(foundX, foundY) == 255 &&
 				lpCalc->keymap.GetGreen(foundX, foundY) == 0);
-		lpCalc->LCDRect.SetRight(foundX--);
+		lpCalc->LCDRect.SetRight(--foundX);
 		do {
 			foundY++;
 		}while (lpCalc->keymap.GetBlue(foundX, foundY) == 0 &&
 				lpCalc->keymap.GetRed(foundX, foundY) == 255 &&
 				lpCalc->keymap.GetGreen(foundX, foundY) == 0);
-		lpCalc->LCDRect.SetBottom(foundY);
+		lpCalc->LCDRect.SetBottom(--foundY);
 	}
 	if (!foundScreen) {
 		wxMessageBox(wxT("Unable to find the screen box"), wxT("Error"), wxOK, NULL);
@@ -418,6 +419,7 @@ void WabbitemuFrame::gui_frame_update() {
 		wxSize skinSize(350, 725);
 		this->SetClientSize(skinSize);
 	}
+	wxLCD->SetClientSize(lpCalc->LCDRect.GetSize());
 	wxLCD->Raise();
 	this->SendSizeEvent();
 }
@@ -714,7 +716,20 @@ All Files (*.*)|*.*\0");
 }
 
 void WabbitemuFrame::OnFileSave(wxCommandEvent &event) {
-	SaveStateDialog(lpCalc);
+	char FileName[MAX_PATH];
+	const char *lpstrFilter = "\
+Known File types ( *.sav; *.rom; *.bin) |*.sav;*.rom;*.bin|\
+Save States  (*.sav)|*.sav|\
+ROMS  (*.rom; .bin)|*.rom;*.bin|\
+All Files (*.*)|*.*\0";
+	if (!SaveFile(FileName, lpstrFilter, "Wabbitemu Save State", ".sav")) {
+		return;
+	}	
+	SAVESTATE_t* save = SaveSlot(lpCalc);
+
+	strcpy(save->author, "Default");
+	save->comment[0] = '\0';
+	WriteSave(FileName, save, false);
 }
 
 void WabbitemuFrame::OnFileClose(wxCommandEvent &event) {
