@@ -1,10 +1,11 @@
+#include "stdafx.h"
+
 #ifndef GUI_WX_H
 #define GUI_WX_H
 
 #include <wx/statusbr.h>
 #include <wx/frame.h>
 #include <wx/numdlg.h>
-#include <wx/wx.h>
 #include <wx/dnd.h>
 #include <wx/mstream.h>
 #include <wx/filename.h>
@@ -14,7 +15,7 @@
 #include <wx/encconv.h> 
 #endif
 
-#include "guilcd_wx.h"
+#include "guilcd.h"
 #include "guiskinwindow.h"
 #include "guivartree.h"
 #include "calc.h"
@@ -78,7 +79,6 @@ private:
 	void OnQuit(wxCloseEvent& event);
 	void FinalizeButtons();
 };
-char* wxStringToChar(wxString);
 int SetGIFName();
 void gui_debug(LPCALC lpCalc);
 WabbitemuFrame* gui_frame(LPCALC lpCalc);

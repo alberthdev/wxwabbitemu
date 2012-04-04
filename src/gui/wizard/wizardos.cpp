@@ -1,5 +1,5 @@
 #include "wizardos.h"
-#include "gui_wx.h"
+#include "gui.h"
 
 BEGIN_EVENT_TABLE(WizardOSPage, wxWizardPage)
 	EVT_RADIOBUTTON(wxID_ANY, WizardOSPage::OnRadioSelected)
@@ -54,15 +54,13 @@ WizardOSPage::WizardOSPage( wxWizard *parent ) : wxWizardPage(parent)
 void WizardOSPage::OnRadioSelected(wxCommandEvent &event) {
 	wxWindow *win = FindWindowById(wxID_FORWARD, GetParent());
 	if (creatingROM) {
-		win->SetLabel("Finish");
+		win->SetLabel(wxT("Finish"));
 	} else {
-		win->SetLabel("Next >");
+		win->SetLabel(wxT("Next >"));
 	}
 	if (m_browseOS->GetValue()) {
 		wxString path = m_filePicker2->GetPath();
-		char *normalPath = wxStringToChar(path);
-		TIFILE_t *tifile =  newimportvar(normalPath, TRUE);
-		delete normalPath;
+		TIFILE_t *tifile =  newimportvar(path.c_str(), TRUE);
 		if (tifile == NULL || tifile->type != FLASH_TYPE) {
 			//technically this allows apps as well. dont care
 			win->Enable(false);

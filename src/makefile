@@ -2,10 +2,10 @@
 .SUFFIXES: .o .c
 
 CFLAGS=-I. -I./core -I./debugger -I./gui -I./hardware -I./interface -I./utilities -x c++ -ggdb -c\
-		-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER `wx-config --version=2.9 --unicode=yes --cflags` -Wall
+		-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER `wx-config --version=2.8 --unicode=yes --cflags` -Wall
 CXXFLAGS=-I. -I./core -I./debugger -I./gui -I./hardware -I./interface -I./utilities -x c++ -ggdb -c\
-		-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER `wx-config --version=2.9 --unicode=yes --cppflags` -Wall
-LDFLAGS=`wx-config --version=2.9 --unicode=yes --libs` -lstdc++
+		-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER `wx-config --version=2.8 --unicode=yes --cppflags` -Wall
+LDFLAGS=`wx-config --version=2.8 --unicode=yes --libs` -lstdc++
 CC=clang
 CXX=clang++
 LD=clang++
@@ -24,10 +24,10 @@ directory:
 
 wabbitemu: core.o alu.o control.o device.o indexcb.o calc.o state.o gif.o\
 			gifhandle.o label.o savestate.o sendfile.o var.o 81hw.o 83hw.o\
-			83phw.o 83psehw.o 86hw.o keys.o lcd.o link.o gui_wx.o guilcd_wx.o\
-			droptarget.o guidebug_wx.o disassemblyview.o disassemble.o romwizard.o\
+			83phw.o 83psehw.o 86hw.o keys.o lcd.o link.o gui.o guilcd.o\
+			droptarget.o guidebug.o disassemblyview.o disassemble.o romwizard.o\
 			wizardstart.o wizardcalctype.o wizardos.o fileutilities.o exportvar.o\
-			regpane.o flagspane.o guivartree.o cpupane.o guiskinwindow.o
+			regpane.o flagspane.o guivartree.o cpupane.o guiskinwindow.o guiapp.o
 	$(LD) $(LDFLAGS) *.o -o $(PROGRAM)
 
 core.o: ./core/core.c
@@ -99,14 +99,17 @@ lcd.o: ./hardware/lcd.c
 link.o: ./hardware/link.c
 	$(CXX) $(CXXFLAGS) ./hardware/link.c
 	
-gui_wx.o: ./gui/gui_wx.cpp ./gui/gui_wx.h
-	$(CXX) $(CXXFLAGS) ./gui/gui_wx.cpp
+gui.o: ./gui/gui.cpp ./gui/gui.h
+	$(CXX) $(CXXFLAGS) ./gui/gui.cpp
+
+guiapp.o: ./gui/guiapp.cpp ./gui/guiapp.h
+	$(CXX) $(CXXFLAGS) ./gui/guiapp.cpp
 	
 guiskinwindow.o: ./gui/guiskinwindow.cpp ./gui/guiskinwindow.h
 	$(CXX) $(CXXFLAGS) ./gui/guiskinwindow.cpp
 
-guilcd_wx.o: ./gui/guilcd_wx.cpp ./gui/guilcd_wx.h
-	$(CXX) $(CXXFLAGS) ./gui/guilcd_wx.cpp
+guilcd.o: ./gui/guilcd.cpp ./gui/guilcd.h
+	$(CXX) $(CXXFLAGS) ./gui/guilcd.cpp
 
 guivartree.o: ./gui/guivartree.cpp ./gui/guivartree.h
 	$(CXX) $(CXXFLAGS) ./gui/guivartree.cpp
@@ -126,8 +129,8 @@ wizardos.o: ./gui/wizard/wizardos.cpp ./gui/wizard/wizardos.h
 romwizard.o: ./gui/wizard/romwizard.cpp ./gui/wizard/romwizard.h
 	$(CXX) $(CXXFLAGS) ./gui/wizard/romwizard.cpp
 	
-guidebug_wx.o: ./debugger/guidebug_wx.cpp ./debugger/guidebug_wx.h
-	$(CXX) $(CXXFLAGS) ./debugger/guidebug_wx.cpp
+guidebug.o: ./debugger/guidebug.cpp ./debugger/guidebug.h
+	$(CXX) $(CXXFLAGS) ./debugger/guidebug.cpp
 	
 disassemblyview.o: ./debugger/disassemblyview.cpp ./debugger/disassemblyview.h
 	$(CXX) $(CXXFLAGS) ./debugger/disassemblyview.cpp

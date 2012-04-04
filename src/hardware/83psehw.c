@@ -1495,7 +1495,6 @@ int memory_init_83pse(memc *mc) {
 	mc->ram_upper = 0x00 * 0x400 + 0x3FF;
 	
 	if (!mc->flash || !mc->ram ) {
-		_tprintf_s(_T("Couldn't allocate memory in memory_init_83pse\n"));
 		return 1;
 	}
 
@@ -1544,7 +1543,6 @@ int memory_init_84p(memc *mc) {
 	mc->ram_break = (unsigned char *) calloc(mc->ram_pages, PAGE_SIZE);
 
 	if (!mc->flash || !mc->ram ) {
-		_tprintf_s(_T("Couldn't allocate memory in memory_init_84p\n"));
 		return 1;
 	}
 

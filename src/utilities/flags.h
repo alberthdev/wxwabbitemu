@@ -1,4 +1,5 @@
-#define _T(z) z
+#include "stdafx.h"
+
 typedef struct {
 	TCHAR name[32];
 	int bit;

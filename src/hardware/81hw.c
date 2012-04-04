@@ -6,6 +6,7 @@
 #include "device.h"
 #include "calc.h"
 
+static void port10(CPU_t *cpu, device_t *dev);
 static double timer_freq81[4] = { 1.0 / 800.0, 1.0 / 400.0, 3.0 / 800.0, 1.0 / 200.0 };
 
 // 81 screen offset
@@ -177,7 +178,6 @@ int memory_init_81(memc *mc) {
 	mc->ram_break = (unsigned char *) calloc(mc->ram_pages, PAGE_SIZE);
 
 	if (!mc->flash || !mc->ram) {
-		_tprintf_s(_T("Couldn't allocate memory in memory_init_83p\n"));
 		return 1;
 	}
 

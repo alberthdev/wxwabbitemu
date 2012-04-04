@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "disassemblyview.h"
 #include "calc.h"
 
@@ -109,6 +110,7 @@ void DisassemblyView::GotoAddress(waddr_t waddr) {
  
 wxString DisassemblyView::OnGetItemText(long item, long column) const{
 	TCHAR s[64];
+	memset(s, 0, sizeof(s));
 	switch (column) {
 		case 0:
 			sprint_addr(lpCalc, &zinf[item], s);
@@ -144,7 +146,7 @@ void DisassemblyView::sprint_addr(LPCALC lpCalc, const Z80_info_t *zinf, TCHAR *
 				break;
 		}
 	}
-	sprintf(s, "%02X %04X", page, zinf->waddr.addr);
+	_tprintf(s, _T("%02X %04X"), page, zinf->waddr.addr);
 }
 
 void DisassemblyView::sprint_data(LPCALC lpCalc, const Z80_info_t *zinf, TCHAR *s) const {
@@ -162,27 +164,27 @@ void DisassemblyView::sprint_data(LPCALC lpCalc, const Z80_info_t *zinf, TCHAR *
 			//we don't handle ram changes here because things should never cross pages
 			//therefore i don't really care
 		}
-		sprintf(s + (j*2), "%02x", wmem_read(lpCalc->cpu.mem_c, waddr));
+		_tprintf(s + (j*2), _T("%02x"), wmem_read(lpCalc->cpu.mem_c, waddr));
 	}
 }
 
 void DisassemblyView::sprint_command(LPCALC lpCalc, const Z80_info_t *zinf, TCHAR *s) const {
-	strcpy(s, zinf->expanded);
+	_tcscpy(s, zinf->expanded);
 }
 
 void DisassemblyView::sprint_size(LPCALC lpCalc, const Z80_info_t *zinf, TCHAR *s) const {
 	if (zinf->size == 0) {
 		return;
 	}
-	sprintf(s, "%d", zinf->size);
+	_tprintf(s, _T("%d"), zinf->size);
 }
 
 void DisassemblyView::sprint_clocks(LPCALC lpCalc, const Z80_info_t *zinf, TCHAR *s) const {
 	if (da_opcode[zinf->index].clocks != -1) {
 		if (da_opcode[zinf->index].clocks_cond) {
-			sprintf(s, "%d/%d", da_opcode[zinf->index].clocks, da_opcode[zinf->index].clocks_cond);
+			_tprintf(s, _T("%d/%d"), da_opcode[zinf->index].clocks, da_opcode[zinf->index].clocks_cond);
 		} else {
-			sprintf(s, "%d", da_opcode[zinf->index].clocks);
+			_tprintf(s, _T("%d"), da_opcode[zinf->index].clocks);
 		}
 	} else {
 		*s = '\0';

@@ -15,7 +15,8 @@ BEGIN_EVENT_TABLE(FlagsPane, wxCollapsiblePane)
 	EVT_CHECKBOX(wxID_ANY, FlagsPane::OnCheckChanged)
 END_EVENT_TABLE()
 
-FlagsPane::FlagsPane(wxWindow *parent, DebuggerWindowClass *debugWindow, LPCALC lpCalc) : wxCollapsiblePane(parent, wxID_ANY, "Flags", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE)
+FlagsPane::FlagsPane(wxWindow *parent, DebuggerWindowClass *debugWindow, LPCALC lpCalc) :
+wxCollapsiblePane(parent, wxID_ANY, wxT("Flags"), wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE)
 {
 	this->lpCalc = lpCalc;
 	

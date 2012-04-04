@@ -1,5 +1,6 @@
-#include "gui_wx.h"
-#include "guidebug_wx.h"
+#include "gui.h"
+#include "guidebug.h"
+#include "guiapp.h"
 #include "wizard/romwizard.h"
 #include "calc.h"
 #include "guiopenfile.h"
@@ -116,138 +117,11 @@ BEGIN_EVENT_TABLE(WabbitemuFrame, wxFrame)
 	EVT_LEFT_UP(WabbitemuFrame::OnLeftButtonUp)
 END_EVENT_TABLE()
 
-static WabbitemuFrame* frames[MAX_CALCS];
-static wxTimer *timer;
-class MyApp: public wxApp
-{
-private:
-	virtual bool OnInit();
-	virtual int OnExit();
-	void OnTimer(wxTimerEvent& event);
-	void getTimer(int slot);
-	void LoadSettings(LPCALC lpCalc);
-	void SaveSettings(LPCALC lpCalc);
-	wxConfigBase *settingsConfig;
-public:
-	static BOOL DoRomWizard();
-};
-
-IMPLEMENT_APP(MyApp)
-char* wxStringToChar(wxString input)
-{
-		size_t size = input.size() + 1;
-		char *buffer = new char[size];//No need to multiply by 4, converting to 1 byte char only.
-#if (wxUSE_UNICODE)
-		memset(buffer, 0, size); //Good Practice, Can use buffer[0] = '&#65533;' also.
-		wxEncodingConverter wxec;
-		wxec.Init(wxFONTENCODING_ISO8859_1, wxFONTENCODING_ISO8859_1, wxCONVERT_SUBSTITUTE);
-		wxec.Convert(input.mb_str(), buffer);
-		return buffer; //To free this buffer memory is user responsibility.
-#else
-		strcpy(buffer, input.c_str());
-		return buffer;
-#endif
-}
+IMPLEMENT_APP(WabbitemuApp)
 
 inline wxBitmap wxGetBitmapFromMemory(const unsigned char *data, int length) {
    wxMemoryInputStream is(data, length);
    return wxBitmap(wxImage(is, wxBITMAP_TYPE_PNG, -1), -1);
-}
-
-BOOL MyApp::DoRomWizard() {
-	RomWizard wizard;	
-	bool success = wizard.Begin();
-	return success;
-}
-
-void MyApp::LoadSettings(LPCALC lpCalc)
-{
-	settingsConfig = new wxConfig("Wabbitemu");
-	wxString tempString;
-	settingsConfig->Read("/rom_path", &tempString, wxEmptyString);
-	char *tempChar = wxStringToChar(tempString);
-	strcpy(lpCalc->rom_path, tempChar);
-	delete tempChar;
-	settingsConfig->Read("/SkinEnabled", &lpCalc->SkinEnabled, FALSE);
-}
-
-bool MyApp::OnInit()
-{
-	wxImage::AddHandler(new wxPNGHandler);
-
-	memset(frames, 0, sizeof(frames));
-	LPCALC lpCalc = calc_slot_new();
-	LoadSettings(lpCalc);
-	
-	WabbitemuFrame *frame;
-	int result = rom_load(lpCalc, lpCalc->rom_path);
-	if (result == TRUE) {
-		frame = gui_frame(lpCalc);
-	} else {
-		calc_slot_free(lpCalc);
-		bool success = DoRomWizard();
-		if (!success) {
-			return FALSE;
-		}
-	}
-	timer = new wxTimer();
-	timer->Connect(wxEVT_TIMER, (wxObjectEventFunction) &MyApp::OnTimer);
-	timer->Start(TPF, false);
-	return TRUE;
-}
-
-void MyApp::SaveSettings(LPCALC lpCalc) {
-	settingsConfig->Write("rom_path", wxString(lpCalc->rom_path));
-	settingsConfig->Write("SkinEnabled", lpCalc->SkinEnabled);
-	settingsConfig->Flush();
-}
-
-int MyApp::OnExit() {
-	SaveSettings(&calcs[0]);
-	return 0;
-}
-
-unsigned GetTickCount()
-{
-		struct timeval tv;
-		if(gettimeofday(&tv, NULL) != 0)
-			return 0;
-
-		return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
-}
-
-
-void MyApp::OnTimer(wxTimerEvent& event) {
-	static int difference;
-	static unsigned prevTimer;
-	unsigned dwTimer = GetTickCount();
-	
-	// How different the timer is from where it should be
-	// guard from erroneous timer calls with an upper bound
-	// that's the limit of time it will take before the
-	// calc gives up and claims it lost time
-	difference += ((dwTimer - prevTimer) & 0x003F) - TPF;
-	prevTimer = dwTimer;
-
-	// Are we greater than Ticks Per Frame that would call for
-	// a frame skip?
-	if (difference > -TPF) {
-		calc_run_all();
-		while (difference >= TPF) {
-			calc_run_all();
-			difference -= TPF;
-		}
-
-		int i;
-		for (i = 0; i < MAX_CALCS; i++) {
-			if (calcs[i].active) {
-				frames[i]->gui_draw();
-			}
-		}
-	// Frame skip if we're too far ahead.
-	} else {
-		difference += TPF;
-	}
 }
 
 void gui_debug(LPCALC lpCalc) {
@@ -277,6 +151,7 @@ int WabbitemuFrame::gui_draw() {
 	return 0;
 }
 
+extern WabbitemuFrame *frames[MAX_CALCS];
 WabbitemuFrame * gui_frame(LPCALC lpCalc) {
 	if (!lpCalc->scale) {
     	lpCalc->scale = 2; //Set original scale
@@ -672,8 +547,8 @@ void WabbitemuFrame::OnPaint(wxPaintEvent& event)
 }
 
 void WabbitemuFrame::OnFileNew(wxCommandEvent &event) {
-	char *newFilePath = (char *) malloc(PATH_MAX);
-	strcpy(newFilePath, lpCalc->rom_path);
+	TCHAR *newFilePath = (TCHAR *) malloc(PATH_MAX);
+	_tcscpy(newFilePath, lpCalc->rom_path);
 	lpCalc = calc_slot_new();
 	if (rom_load(lpCalc, newFilePath) == -1) {
 		wxMessageBox(wxT("Failed to create new calc"));
@@ -705,29 +580,27 @@ All Files (*.*)|*.*\0");
 	wxArrayString filePaths;
 	dialog.GetPaths(filePaths);
 	for (int i = 0; i < filePaths.GetCount(); i++) {
-		char *tempPath = wxStringToChar(filePaths[i]);
-		SendFile(lpCalc, tempPath, SEND_CUR);
-		if (!strcmp(tempPath, lpCalc->rom_path)) {
+		SendFile(lpCalc, filePaths[i].c_str(), SEND_CUR);
+		if (!_tcscmp(filePaths[i].c_str(), lpCalc->rom_path)) {
 			//we've had a rom change
 			gui_frame_update();
 		}
-		delete tempPath;
 	}
 }
 
 void WabbitemuFrame::OnFileSave(wxCommandEvent &event) {
-	char FileName[MAX_PATH];
-	const char *lpstrFilter = "\
+	TCHAR FileName[MAX_PATH];
+	const TCHAR lpstrFilter[] = _T("\
 Known File types ( *.sav; *.rom; *.bin) |*.sav;*.rom;*.bin|\
 Save States  (*.sav)|*.sav|\
 ROMS  (*.rom; .bin)|*.rom;*.bin|\
-All Files (*.*)|*.*\0";
-	if (!SaveFile(FileName, lpstrFilter, "Wabbitemu Save State", ".sav")) {
+All Files (*.*)|*.*\0");
+	if (!SaveFile(FileName, lpstrFilter, _T("Wabbitemu Save State"), _T(".sav"))) {
 		return;
 	}	
 	SAVESTATE_t* save = SaveSlot(lpCalc);
 
-	strcpy(save->author, "Default");
+	_tcscpy(save->author, _T("Default"));
 	save->comment[0] = '\0';
 	WriteSave(FileName, save, false);
 }
@@ -864,10 +737,11 @@ void WabbitemuFrame::OnKeyDown(wxKeyEvent& event)
 {
 	int keycode = event.GetKeyCode();
 	if (keycode == WXK_F8) {
-		if (lpCalc->speed == 100)
+		if (lpCalc->speed == 100) {
 			SetSpeed(400);
-		else
+		} else {
 			SetSpeed(100);
+		}
 	}
 	if (keycode == WXK_SHIFT) {
 		wxUint32 raw = event.GetRawKeyCode();
@@ -882,6 +756,7 @@ void WabbitemuFrame::OnKeyDown(wxKeyEvent& event)
 	if (kp) {
 		if ((lpCalc->cpu.pio.keypad->keys[kp->group][kp->bit] & KEY_STATEDOWN) == 0) {
 			lpCalc->cpu.pio.keypad->keys[kp->group][kp->bit] |= KEY_STATEDOWN;
+			//for when we finally do button feedback
 			this->Update();
 			FinalizeButtons();
 		}
@@ -948,19 +823,37 @@ void WabbitemuFrame::OnLeftButtonDown(wxMouseEvent& event)
 
 void WabbitemuFrame::OnLeftButtonUp(wxMouseEvent& event)
 {
+	int group, bit;
 	event.Skip(true);
 	static wxPoint pt;
+	bool repostMessage = FALSE;
 	keypad_t *kp = lpCalc->cpu.pio.keypad;
 
-	//ReleaseMouse();
+#define KEY_TIMER 1
+	//KillTimer(hwnd, KEY_TIMER);
 
-	for(int group = 0; group < 7; group++) {
-		for(int bit = 0; bit < 8; bit++) {
-			kp->keys[group][bit] &= ~(KEY_MOUSEPRESS | KEY_STATEDOWN);
+	for (group = 0; group < 7; group++) {
+		for (bit = 0; bit < 8; bit++) {
+#define MIN_KEY_DELAY 400
+			if (kp->last_pressed[group][bit] - lpCalc->cpu.timer_c->tstates >= MIN_KEY_DELAY || !lpCalc->running) {
+				kp->keys[group][bit] &= (~KEY_MOUSEPRESS);
+			} else {
+				repostMessage = TRUE;
+			}
 		}
 	}
 
-	lpCalc->cpu.pio.keypad->on_pressed &= ~KEY_MOUSEPRESS;
+	if (kp->on_last_pressed - lpCalc->cpu.timer_c->tstates >= MIN_KEY_DELAY || !lpCalc->running) {
+		lpCalc->cpu.pio.keypad->on_pressed &= ~KEY_MOUSEPRESS;
+	} else {
+		repostMessage = TRUE;
+	}
+
+	if (repostMessage) {
+		//SetTimer(hwnd, KEY_TIMER, 50, NULL);
+	}
+
+	FinalizeButtons();
 }
 
 void WabbitemuFrame::OnFileQuit(wxCommandEvent& WXUNUSED(event))
@@ -996,7 +889,7 @@ void WabbitemuFrame::OnViewSkin(wxCommandEvent& event)
 
 void WabbitemuFrame::OnViewVariables(wxCommandEvent & WXUNUSED(event))
 {
-	wxWindow *foundWindow = wxWindow::FindWindowByName("Calculator Variables", this);
+	wxWindow *foundWindow = wxWindow::FindWindowByName(_T("Calculator Variables"), this);
 	if (foundWindow && foundWindow == varTree) {
 		varTree->Show();
 		varTree->SetFocus();
@@ -1024,7 +917,7 @@ void WabbitemuFrame::OnDebugOn(wxCommandEvent& WXUNUSED(event))
 void WabbitemuFrame::OnHelpSetup(wxCommandEvent& WXUNUSED(event))
 {
 	int count = calc_count();
-	bool success = MyApp::DoRomWizard();
+	bool success = WabbitemuApp::DoRomWizard();
 	if (!success) {
 		return;
 	}
@@ -1054,7 +947,7 @@ All Files (*.*)|*.*\0"),wxFD_SAVE|wxFD_OVERWRITE_PROMPT, wxDefaultPosition);
 	path.append( saveGIFDialog->GetDirectory() );
 	path.append( wxFileName::GetPathSeparator() );
 	path.append( saveGIFDialog->GetFilename() );
-	strcpy(gif_file_name, (const char*)path.mb_str());
+	_tcscpy(gif_file_name, path.c_str());
 	// Now to actually do something!
 	if (gif_write_state == GIF_IDLE) {
 		gif_write_state = GIF_START;
@@ -1101,6 +994,6 @@ All Files (*.*)|*.*\0"),wxFD_SAVE|wxFD_OVERWRITE_PROMPT, wxDefaultPosition);
 	path.append( saveGIFDialog->GetDirectory() );
 	path.append( wxFileName::GetPathSeparator() );
 	path.append( saveGIFDialog->GetFilename() );
-	strcpy(gif_file_name, (const char*)path.mb_str());
+	_tcscpy(gif_file_name, path.c_str());
 	return true;
 }

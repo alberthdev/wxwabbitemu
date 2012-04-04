@@ -1,5 +1,5 @@
 #include "romwizard.h"
-#include "gui_wx.h"
+#include "gui.h"
 #include "fileutilities.h"
 #include "exportvar.h"
 
@@ -41,20 +41,20 @@ void RomWizard::OnPageChanged(wxWizardEvent &event) {
 		osPage->m_choice1->Clear();
 		switch (calcTypePage->GetModel()) {
 			case TI_73:
-				osPage->m_choice1->Append("OS 1.91");
+				osPage->m_choice1->Append(_T("OS 1.91"));
 				osPage->m_choice1->Enable(true);
 				osPage->m_choice1->SetSelection(0);
 				break;
 			case TI_83P:
 			case TI_83PSE:
-				osPage->m_choice1->Append("OS 1.19");
+				osPage->m_choice1->Append(_T("OS 1.19"));
 				osPage->m_choice1->Enable(true);
 				osPage->m_choice1->SetSelection(0);
 				break;
 			case TI_84P:
 			case TI_84PSE:
-				osPage->m_choice1->Append("OS 2.43");
-				osPage->m_choice1->Append("OS 2.55 MP");
+				osPage->m_choice1->Append(_T("OS 2.43"));
+				osPage->m_choice1->Append(_T("OS 2.55 MP"));
 				osPage->m_choice1->Enable(true);
 				osPage->m_choice1->SetSelection(0);
 				break;
@@ -64,9 +64,9 @@ void RomWizard::OnPageChanged(wxWizardEvent &event) {
 		}
 		wxWindow *win = FindWindowById(wxID_FORWARD, startPage->GetParent());
 		if (osPage->creatingROM) {
-			win->SetLabel("Finish");
+			win->SetLabel(_T("Finish"));
 		} else {
-			win->SetLabel("Next >");
+			win->SetLabel(_T("Next >"));
 		}
 	}
 }
@@ -94,10 +94,9 @@ void RomWizard::ModelInit(LPCALC lpCalc, int model)
 
 BOOL RomWizard::ExtractBootFree(wxString &bootfreePath, int model) {
 	wxString tempFile = wxFileName::GetTempDir();
-	tempFile.Append("/bootfree.hex");
+	tempFile.Append(_T("/bootfree.hex"));
 	bootfreePath = tempFile;
-	char *filePath = wxStringToChar(tempFile);
-	FILE *file = fopen(filePath, "wb");
+	FILE *file = fopen(tempFile.mb_str(), "wb");
 	const unsigned char *output;
 	size_t size;
 	switch(model) {
@@ -126,36 +125,35 @@ BOOL RomWizard::ExtractBootFree(wxString &bootfreePath, int model) {
 		fputc(output[i], file);
 	}
 	fclose(file);
-	delete filePath;
 	return TRUE;
 }
 
 BOOL RomWizard::DownloadOS(wxString &osFilePath, int model, BOOL version)
 {
 	wxString tempFile = wxFileName::GetTempDir();
-	tempFile.Append("/os.8xu");
+	tempFile.Append(_T("/os.8xu"));
 	osFilePath = tempFile;
-	const char *url;
+	const TCHAR *url;
 	switch (model) {
 		case TI_73:
-			url = "http://education.ti.com/downloads/files/73/TI73_OS.73u";
+			url = _T("http://education.ti.com/downloads/files/73/TI73_OS.73u");
 			break;
 		case TI_83P:
 		case TI_83PSE:
-			url = "http://education.ti.com/downloads/files/83plus/TI83Plus_OS.8Xu";
+			url = _T("http://education.ti.com/downloads/files/83plus/TI83Plus_OS.8Xu");
 			break;
 		case TI_84P:
 		case TI_84PSE:
 			if (version)
-				url = "http://education.ti.com/downloads/files/83plus/TI84Plus_OS243.8Xu";
+				url = _T("http://education.ti.com/downloads/files/83plus/TI84Plus_OS243.8Xu");
 			else
-				url = "http://education.ti.com/downloads/files/83plus/TI84Plus_OS.8Xu";
+				url = _T("http://education.ti.com/downloads/files/83plus/TI84Plus_OS.8Xu");
 			break;
 	}
 	wxURL wxURL(url);
 	if (wxURL.GetError() == wxURL_NOERR){
 		wxInputStream *input = wxURL.GetInputStream();
-		FILE *file = fopen(tempFile, "wb");
+		FILE *file = fopen(tempFile.mb_str(), "wb");
 		while (!input->Eof()){
 			fputc(input->GetC(), file);
 		}
@@ -169,23 +167,21 @@ BOOL RomWizard::DownloadOS(wxString &osFilePath, int model, BOOL version)
 void RomWizard::OnFinish(wxWizardEvent &event) {
 	if (startPage->m_browseRadio->GetValue()) {
 		wxString path = startPage->m_filePicker1->GetPath();
-		char *normalPath = wxStringToChar(path);
 		LPCALC lpCalc = calc_slot_new();
-		BOOL success = rom_load(lpCalc, normalPath);
+		BOOL success = rom_load(lpCalc, path.c_str());
 		if (!success) {
 			//should never get here
 			event.Veto();
 			return;
 		}
 		gui_frame(lpCalc);
-		delete normalPath;
 		return;
 	}
 	if (startPage->m_createRadio->GetValue()) {
 		TCHAR buffer[255];
 		wxString osPath;
-		SaveFile(buffer, "ROMs  (*.rom)\0*.rom\0Bins  (*.bin)\0*.bin\0All Files (*.*)\0*.*\0\0",
-					"Wabbitemu Export Rom", "rom");
+		SaveFile(buffer, _T("ROMs  (*.rom)\0*.rom\0Bins  (*.bin)\0*.bin\0All Files (*.*)\0*.*\0\0"),
+					_T("Wabbitemu Export Rom"), _T("rom"));
 		int model = calcTypePage->GetModel();
 		if (osPage->m_downloadOS->GetValue()) {
 			bool succeeded = DownloadOS(osPath, model, osPage->m_choice1->GetSelection() == 0);
@@ -203,17 +199,15 @@ void RomWizard::OnFinish(wxWizardEvent &event) {
 		ModelInit(lpCalc, model);
 		//slot stuff
 		//LoadRegistrySettings(lpCalc);
-		char *path = wxStringToChar(osPath);
-		strcpy(lpCalc->rom_path, path);
-		delete path;
+		_tcscpy(lpCalc->rom_path, osPath.c_str());
 		
 		lpCalc->active = TRUE;
 		lpCalc->model = model;
 		lpCalc->cpu.pio.model = model;
-		FILE *file = fopen(hexFile, "rb");
+		FILE *file = fopen(hexFile.fn_str(), "rb");
 		writeboot(file, &lpCalc->mem_c, -1);
 		fclose(file);
-		remove(hexFile);
+		remove(hexFile.fn_str());
 		//if you don't want to load an OS, fine...
 		if (osPath.length() > 0) {
 			TIFILE_t *tifile = newimportvar(osPath);
@@ -222,7 +216,7 @@ void RomWizard::OnFinish(wxWizardEvent &event) {
 			} else {
 				forceload_os(&lpCalc->cpu, tifile);
 				if (osPage->m_downloadOS->GetValue()) {
-					remove(osPath);
+					remove(osPath.fn_str());
 				}
 			}
 		}
