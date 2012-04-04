@@ -1,9 +1,9 @@
 #ifndef GUILCD_WX_H
 #define GUILCD_WX_H
 
+#include <wx/wx.h>
 #include <wx/image.h>
 #include <wx/frame.h>
-#include <wx/wx.h>
 #include <wx/palette.h>
 #include "calc.h"
 #include "lcd.h"

@@ -33,7 +33,7 @@ BEGIN_EVENT_TABLE(RegPane, wxCollapsiblePane)
 END_EVENT_TABLE()
 
 RegPane::RegPane(wxWindow *parent, DebuggerWindowClass *debugWindow, LPCALC lpCalc) :
-wxCollapsiblePane(parent, wxID_ANY, "Registers", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE)
+wxCollapsiblePane(parent, wxID_ANY, wxT("Registers"), wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE)
 {
 	this->lpCalc = lpCalc;
 	this->debugWindow = debugWindow;
@@ -212,16 +212,16 @@ void RegPane::OnTextEntered(wxCommandEvent &event)
 }
 
 void RegPane::DebugUpdateWindow() {
-	m_afText->SetValue(wxString::Format("%04X", lpCalc->cpu.af));
-	m_afpText->SetValue(wxString::Format("%04X", lpCalc->cpu.afp));
-	m_bcText->SetValue(wxString::Format("%04X", lpCalc->cpu.bc));
-	m_bcpText->SetValue(wxString::Format("%04X", lpCalc->cpu.bcp));
-	m_deText->SetValue(wxString::Format("%04X", lpCalc->cpu.de));
-	m_depText->SetValue(wxString::Format("%04X", lpCalc->cpu.dep));
-	m_hlText->SetValue(wxString::Format("%04X", lpCalc->cpu.hl));
-	m_hlpText->SetValue(wxString::Format("%04X", lpCalc->cpu.hlp));
-	m_ixText->SetValue(wxString::Format("%04X", lpCalc->cpu.ix));
-	m_iyText->SetValue(wxString::Format("%04X", lpCalc->cpu.iy));
-	m_spText->SetValue(wxString::Format("%04X", lpCalc->cpu.sp));
-	m_pcText->SetValue(wxString::Format("%04X", lpCalc->cpu.pc));
+	m_afText->SetValue(wxString::Format(wxT("%04X"), lpCalc->cpu.af));
+	m_afpText->SetValue(wxString::Format(wxT("%04X"), lpCalc->cpu.afp));
+	m_bcText->SetValue(wxString::Format(wxT("%04X"), lpCalc->cpu.bc));
+	m_bcpText->SetValue(wxString::Format(wxT("%04X"), lpCalc->cpu.bcp));
+	m_deText->SetValue(wxString::Format(wxT("%04X"), lpCalc->cpu.de));
+	m_depText->SetValue(wxString::Format(wxT("%04X"), lpCalc->cpu.dep));
+	m_hlText->SetValue(wxString::Format(wxT("%04X"), lpCalc->cpu.hl));
+	m_hlpText->SetValue(wxString::Format(wxT("%04X"), lpCalc->cpu.hlp));
+	m_ixText->SetValue(wxString::Format(wxT("%04X"), lpCalc->cpu.ix));
+	m_iyText->SetValue(wxString::Format(wxT("%04X"), lpCalc->cpu.iy));
+	m_spText->SetValue(wxString::Format(wxT("%04X"), lpCalc->cpu.sp));
+	m_pcText->SetValue(wxString::Format(wxT("%04X"), lpCalc->cpu.pc));
 }

@@ -35,7 +35,6 @@ int FindRomVersion(int calc, char *string, unsigned char *rom, int size) {
 		else if ((size >= (1016 * 1024)) && (size<= (1030 * 1024))) calc = TI_84P;
 		else if ((size >= (2044 * 1024)) && (size<= (2260 * 1024))) calc = TI_83PSE;
 		else {
-			_putts(_T("not a known rom"));
 			return -1;
 		}
 	}
@@ -328,7 +327,6 @@ TIFILE_t* ImportROMFile(FILE *infile, TIFILE_t *tifile) {
 	else if ((size >= 1016 * 1024) && (size <= (1030 * 1024))) calc = TI_84P;
 	else if ((size >= 2044 * 1024) && (size <= (2260 * 1024))) calc = TI_83PSE;
 	else {
-		puts("not a known rom");
 		return FreeTiFile(tifile);
 	}
 
@@ -465,7 +463,6 @@ void ReadTiFileHeader(FILE *infile, TIFILE_t *tifile) {
 		for(i = 0; i < TI_FLASH_HEADER_SIZE && !feof(infile); i++) {
 			tmp = fgetc(infile);
 			if (tmp == EOF) {
-				_tprintf_s(_T("failed to get the whole header\n"));
 				fclose(infile);
 				FreeTiFile(tifile);
 				return;
@@ -649,14 +646,14 @@ TIFILE_t* newimportvar(LPCTSTR filePath, BOOL only_check_header) {
 	FILE *infile = NULL;
 	TIFILE_t *tifile;
 	
-	TCHAR extension[5] = "";
-	const TCHAR *pext = strrchr(filePath, '.');
+	TCHAR extension[5] = _T("");
+	const TCHAR *pext = _tcsrchr(filePath, '.');
 	if (pext != NULL)
 	{
 #ifdef _WINDOWS
 		StringCbCopy(extension, sizeof(extension), pext);
 #else
-		strcpy(extension, pext);
+		_tcscpy(extension, pext);
 #endif
 	}
 
@@ -686,7 +683,7 @@ TIFILE_t* newimportvar(LPCTSTR filePath, BOOL only_check_header) {
 #ifdef WINVER
 	_tfopen_s(&infile, filePath, _T("rb"));
 #else
-	infile = fopen(filePath, "rb");
+	infile = fopen(wxFNCONV(filePath), "rb");
 #endif
 	if (infile == NULL) 
 		return FreeTiFile(tifile);

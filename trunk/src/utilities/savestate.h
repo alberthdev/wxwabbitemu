@@ -17,8 +17,8 @@ typedef struct {
 	int version_build;
 	int model;
 	int chunk_count;
-	char author[32];
-	char comment[64];	
+	TCHAR author[32];
+	TCHAR comment[64];	
 	CHUNK_t* chunks[512];
 } SAVESTATE_t;
 

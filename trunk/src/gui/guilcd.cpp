@@ -1,8 +1,7 @@
-#include "guilcd_wx.h"
-#include "gui_wx.h"
+#include "guilcd.h"
+#include "gui.h"
 #include "core.h"
 #include "droptarget.h"
-#include "skins/skintexture.h"
 
 BEGIN_EVENT_TABLE(WabbitemuLCD, wxWindow)
 	EVT_PAINT(WabbitemuLCD::OnPaint)
@@ -230,14 +229,14 @@ void WabbitemuLCD::PaintLCD(wxWindow *window, wxPaintDC *wxDCDest)
 			rgb_data[j+2] = blueColors[screen[i]];
 		}
 
-		wxImageResizeQuality scalingMode = wxIMAGE_QUALITY_NORMAL;
+		/*wxImageResizeQuality scalingMode = wxIMAGE_QUALITY_NORMAL;
 		//hiqh quality does bicubic sampling which looks terrible on our image
-		/*if (lcd->width * lpCalc->scale != rc.GetWidth())
+		if (lcd->width * lpCalc->scale != rc.GetWidth())
 			scalingMode = wxIMAGE_QUALITY_HIGH;
 		else
 			scalingMode = wxIMAGE_QUALITY_NORMAL;*/
 		wxImage screenImage(128, 64, rgb_data, true);
-		wxBitmap bmpBuf(screenImage.Size(wxSize(lcd->width, 64), wxPoint(0, 0)).Scale(rc.GetWidth(), rc.GetHeight(), scalingMode));
+		wxBitmap bmpBuf(screenImage.Size(wxSize(lcd->width, 64), wxPoint(0, 0)).Scale(rc.GetWidth(), rc.GetHeight()));
 		wxMemDC.SelectObject(bmpBuf);
 		//if were dragging something we will draw these nice panes
 		/*BLENDFUNCTION bf;

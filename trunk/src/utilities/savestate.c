@@ -61,8 +61,8 @@ SAVESTATE_t* CreateSave(const TCHAR *author, const TCHAR *comment , int model) {
 	StringCbCopy(save->comment, sizeof(save->comment), comment);
 #endif
 #else
-	strncpy(save->author, author, sizeof(save->author));
-	strncpy(save->comment, comment, sizeof(save->comment));
+	_tcsncpy(save->author, author, sizeof(save->author));
+	_tcsncpy(save->comment, comment, sizeof(save->comment));
 #endif
 	
 	save->model = model;
@@ -168,7 +168,6 @@ BOOL WriteChar(CHUNK_t* chunk, char value) {
 	unsigned char * tmppnt;
 	tmppnt = (unsigned char *) realloc(chunk->data, chunk->size + sizeof(char));
 	if (tmppnt == NULL) {
-		_putts(_T("Error could not realloc data"));
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -184,7 +183,6 @@ BOOL WriteShort(CHUNK_t* chunk, uint16_t value) {
 	unsigned char  *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
-		_putts(_T("Error could not realloc data"));
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -204,7 +202,6 @@ BOOL WriteInt(CHUNK_t* chunk, uint32_t value) {
 	unsigned char *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
-		_putts(_T("Error could not realloc data"));
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -225,7 +222,6 @@ BOOL WriteLong(CHUNK_t* chunk, uint64_t value) {
 	unsigned char *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char  *) realloc(chunk->data, chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
-		_putts(_T("Error could not realloc data"));
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -246,7 +242,6 @@ BOOL WriteFloat(CHUNK_t* chunk, float value) {
 	unsigned char *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
-		_putts(_T("Error could not realloc data"));
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -266,7 +261,6 @@ BOOL WriteDouble(CHUNK_t* chunk, double value) {
 	unsigned char *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
-		_putts(_T("Error could not realloc data"));
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -286,7 +280,6 @@ BOOL WriteBlock(CHUNK_t* chunk, unsigned char *pnt, int length) {
 	unsigned char *tmppnt;
 	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size+length);
 	if (tmppnt == NULL) {
-		_putts(_T("Error could not realloc data"));
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -674,7 +667,7 @@ SAVESTATE_t* SaveSlot(void *lpInput) {
 	runsave = lpCalc->running;
 	lpCalc->running = FALSE;
 	
-	save = CreateSave("Revsoft", "Test save", lpCalc->model);
+	save = CreateSave(_T("Revsoft"), _T("Test save"), lpCalc->model);
 
 	SaveCPU(save, &lpCalc->cpu);
 	SaveMEM(save, &lpCalc->mem_c);
@@ -1065,18 +1058,22 @@ void WriteSave(const TCHAR *fn, SAVESTATE_t* save, int compress) {
 	int i;
 	FILE* ofile;
 	FILE* cfile;
+#ifdef _WINDOWS
 	TCHAR tmpfn[L_tmpnam];
 	TCHAR temp_save[MAX_PATH];
+#else
+	char tmpfn[L_tmpnam];
+	char temp_save[MAX_PATH];
+#endif
 	
 	if (!save) {
-		_putts(_T("Save was null for write"));
 		return;
 	}
 	if (compress == 0) {
 #ifdef WINVER
 		_tfopen_s(&ofile, fn, _T("wb"));
 #else
-		ofile = fopen(fn,"wb");
+		ofile = _tfopen_s(fn, "wb");
 #endif
 	} else {
 #ifdef WINVER
@@ -1093,7 +1090,6 @@ void WriteSave(const TCHAR *fn, SAVESTATE_t* save, int compress) {
 	}
 		
 	if (!ofile) {
-		_putts(_T("Could not open save file for write"));
 		return;
 	}
 
@@ -1123,10 +1119,9 @@ void WriteSave(const TCHAR *fn, SAVESTATE_t* save, int compress) {
 #ifdef WINVER
 		_tfopen_s(&cfile, fn, _T("wb"));
 #else
-		cfile = fopen(fn,"wb");
+		cfile = _tfopen_s(fn, "wb");
 #endif
 		if (!cfile) {
-			_putts(_T("Could not open compress file for write"));
 			return;
 		}
 #ifdef WINVER
@@ -1135,7 +1130,6 @@ void WriteSave(const TCHAR *fn, SAVESTATE_t* save, int compress) {
 		ofile = fopen(temp_save,"rb");
 #endif
 		if (!ofile) {
-			_putts(_T("Could not open temp file for read"));
 			return;
 		}
 		//int error;
@@ -1151,7 +1145,6 @@ void WriteSave(const TCHAR *fn, SAVESTATE_t* save, int compress) {
 				}
 #endif
 			default:
-				_putts(_T("Error bad compression format selected."));
 				break;
 		}
 		fclose(ofile);
@@ -1169,8 +1162,13 @@ SAVESTATE_t* ReadSave(FILE *ifile) {
 	int compressed = FALSE;
 	int chunk_offset,chunk_count;
 	char string[128];
+#ifdef _WINDOWS
 	TCHAR tmpfn[L_tmpnam];
 	TCHAR temp_save[MAX_PATH];
+#else
+	char tmpfn[L_tmpnam];
+	char temp_save[MAX_PATH];
+#endif
 	SAVESTATE_t *save;
 	CHUNK_t *chunk;
 	FILE *tmpfile;
@@ -1221,7 +1219,6 @@ SAVESTATE_t* ReadSave(FILE *ifile) {
 										// outside of this routine.
 #endif
 		if (!ifile) {
-			_putts(_T("Could not open temp file for read"));
 			return NULL;
 		}
 		compressed = TRUE;
@@ -1230,14 +1227,12 @@ SAVESTATE_t* ReadSave(FILE *ifile) {
 		
 	if (strncmp(DETECT_STR, string, 8) != 0){
 
-		_putts(_T("Readsave detect string failed."));
 		if (compressed == TRUE) fclose(ifile);
 		return NULL;
 	}		
 	
 	save = (SAVESTATE_t *) malloc(sizeof(SAVESTATE_t));
 	if (!save) {
-		_putts(_T("Save could not be allocated"));
 		if (compressed == TRUE) fclose(ifile);
 		return NULL;
 	}
@@ -1251,7 +1246,6 @@ SAVESTATE_t* ReadSave(FILE *ifile) {
 
 	if (save->version_major != CUR_MAJOR) {
 		fclose(ifile);
-		_putts(_T("Save not compatible at all, sorry\n"));
 		free(save);
 		return NULL;
 	}

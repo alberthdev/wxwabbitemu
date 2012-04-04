@@ -24,7 +24,7 @@ TCHAR *generate_gif_name(TCHAR *fn, int num, TCHAR *dest) {
 #ifdef WINVER
 	StringCbPrintf(dest, _tcslen(dest) + 4, _T("%s%d.gif"), fn, num);
 #else
-	sprintf(dest, "%s%d.gif", fn, num);
+	_tprintf_s(dest, _T("%s%d.gif"), fn, num);
 #endif
 	
 	if (i)  {
@@ -43,7 +43,7 @@ BOOL get_gif_filename() {
 #ifdef _WINDOWS
 	StringCbCopy(gif_fn_backup, sizeof(gif_fn_backup), gif_file_name);
 #else
-	strcpy(gif_fn_backup, gif_file_name);
+	_tcscpy_s(gif_fn_backup, gif_file_name);
 #endif
 	if (gif_autosave) {
 		/* do file save */
@@ -57,7 +57,7 @@ BOOL get_gif_filename() {
 #ifdef _WINDOWS
 				_tfopen_s(&test, gif_file_name, _T("r"));
 #else
-				test = fopen(gif_file_name, "r");
+				test = _tfopen_s(gif_file_name, "r");
 #endif
 				i++;
 				if (test) {
@@ -259,7 +259,7 @@ void handle_screenshot() {
 #ifdef _WINDOWS
 			StringCbCopy(gif_file_name, sizeof(gif_file_name), gif_fn_backup);
 #else
-			strcpy(gif_file_name, gif_fn_backup);
+			_tcscpy_s(gif_file_name, gif_fn_backup);
 #endif
 			break;
 		}
