@@ -72,15 +72,15 @@ private:
 	
 	apphdr_t *GetAppVariable(wxTreeItemId &hTreeItem, int &slot);
 	symbol83P_t *GetSymbolVariable(wxTreeItemId &hTreeItem, int &slot);
-	int FillDesc(wxTreeItemId &hSelect, char *filePath);
+	int FillDesc(wxTreeItemId &hSelect, TCHAR *filePath);
 	void *FillFileBuffer(wxTreeItemId &hSelect, void *buf);
-	int SetVarName(char *filePath);
+	int SetVarName(TCHAR *filePath);
 	void OnTreeSelChanged(wxTreeEvent &event);
 	void OnRefresh(wxCommandEvent &event);
 	void OnExport(wxCommandEvent &event);
 	
 	VARTREEVIEW_t Tree[MAX_CALCS];
-	char export_file_name[512];
+	TCHAR export_file_name[512];
 	bool Tree_init;
 protected:
 	DECLARE_EVENT_TABLE()

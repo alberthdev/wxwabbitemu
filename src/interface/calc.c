@@ -308,7 +308,7 @@ BOOL rom_load(LPCALC lpCalc, LPCTSTR FileName) {
 #ifdef WINVER
 		StringCbCopy(lpCalc->rom_path, sizeof(lpCalc->rom_path), FileName);
 #else
-		strcpy(lpCalc->rom_path, FileName);
+		_tcscpy_s(lpCalc->rom_path, FileName);
 #endif
 		FindRomVersion(tifile->model, lpCalc->rom_version, lpCalc->mem_c.flash, lpCalc->mem_c.flash_size);
 	} else if (tifile->type == ROM_TYPE) {
@@ -367,7 +367,7 @@ BOOL rom_load(LPCALC lpCalc, LPCTSTR FileName) {
 #ifdef WINVER
 		StringCbCopy(lpCalc->rom_path, sizeof(lpCalc->rom_path), FileName);
 #else
-		strcpy(lpCalc->rom_path, FileName);
+		_tcscpy_s(lpCalc->rom_path, FileName);
 #endif
 		
 
@@ -688,7 +688,7 @@ BOOL calc_start_screenshot(calc_t *calc, const TCHAR *filename)
 #ifdef _WINDOWS
 		StringCbCopy(gif_file_name, MAX_PATH, filename);
 #else
-		strcpy(gif_file_name, filename);
+		_tcscpy_s(gif_file_name, filename);
 #endif
 		return TRUE;
 	}

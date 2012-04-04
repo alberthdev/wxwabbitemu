@@ -1,5 +1,5 @@
 #include "wizardstart.h"
-#include "gui_wx.h"
+#include "gui.h"
 #include "var.h"
 
 BEGIN_EVENT_TABLE(WizardStartPage, wxWizardPage)
@@ -19,7 +19,7 @@ WizardStartPage::WizardStartPage( wxWizard* parent) : wxWizardPage( parent )
 	m_browseRadio = new wxRadioButton( this, wxID_ANY, wxT("Browse for a ROM image on my computer"), wxDefaultPosition, wxDefaultSize, wxRB_GROUP );
 	bSizer18->Add( m_browseRadio, 0, wxALL, 5 );
 	
-	m_filePicker1 = new wxFilePickerCtrl( this, wxID_ANY, ".", wxT("Browse for a ROM image"), wxT("All known files|*.rom;*.sav|ROM images|*.rom|Savestate images|*.sav"), wxDefaultPosition, wxSize( 300,-1 ), wxFLP_DEFAULT_STYLE );
+	m_filePicker1 = new wxFilePickerCtrl( this, wxID_ANY, wxT("."), wxT("Browse for a ROM image"), wxT("All known files|*.rom;*.sav|ROM images|*.rom|Savestate images|*.sav"), wxDefaultPosition, wxSize( 300,-1 ), wxFLP_DEFAULT_STYLE );
 	m_filePicker1->SetMinSize( wxSize( 300,30 ) );
 	
 	bSizer18->Add( m_filePicker1, 0, wxALL, 5 );
@@ -34,16 +34,14 @@ WizardStartPage::WizardStartPage( wxWizard* parent) : wxWizardPage( parent )
 	this->Layout();
 
 	wxWindow *win = FindWindowById(wxID_FORWARD, GetParent());
-	win->SetLabel("Finish");
+	win->SetLabel(wxT("Finish"));
 	win->Enable(false);
 }
 
 void WizardStartPage::OnFileChanged(wxFileDirPickerEvent &event) {
 	wxWindow *win = FindWindowById(wxID_FORWARD, GetParent());
 	wxString path = m_filePicker1->GetPath();
-	char *normalPath = wxStringToChar(path);
-	TIFILE_t *tifile =  newimportvar(normalPath, TRUE);
-	delete normalPath;
+	TIFILE_t *tifile =  newimportvar(path.c_str(), TRUE);
 	if (tifile == NULL) {
 		win->Enable(false);
 	} else {
@@ -55,11 +53,9 @@ void WizardStartPage::OnFileChanged(wxFileDirPickerEvent &event) {
 void WizardStartPage::OnRadioSelected(wxCommandEvent &event) {
 	wxWindow *win = FindWindowById(wxID_FORWARD, GetParent());
 	if (m_browseRadio->GetValue()) {
-		win->SetLabel("Finish");
+		win->SetLabel(wxT("Finish"));
 		wxString path = m_filePicker1->GetPath();
-		char *normalPath = wxStringToChar(path);
-		TIFILE_t *tifile =  newimportvar(normalPath, TRUE);
-		delete normalPath;
+		TIFILE_t *tifile =  newimportvar(path.c_str(), TRUE);
 		if (tifile == NULL) {
 			win->Enable(false);
 		}
@@ -67,7 +63,7 @@ void WizardStartPage::OnRadioSelected(wxCommandEvent &event) {
 		m_filePicker1->Enable(true);
 		return;
 	}
-	win->SetLabel("Next >");
+	win->SetLabel(wxT("Next >"));
 	win->Enable(true);
 	m_filePicker1->Enable(false);
 }

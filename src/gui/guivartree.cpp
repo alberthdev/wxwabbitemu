@@ -82,7 +82,7 @@ VarTree::~VarTree()
 
 void VarTree::OnTreeSelChanged(wxTreeEvent &event)
 {
-	char string[MAX_PATH];
+	TCHAR varString[MAX_PATH];
 	apphdr_t *app;
 	symbol83P_t *symbol;
 	int slot;
@@ -92,20 +92,20 @@ void VarTree::OnTreeSelChanged(wxTreeEvent &event)
 		symbol = GetSymbolVariable(item, slot);
 	}
 	if (app) {
-		if (App_Name_to_String(app, string)) {
-			m_staticNameText->SetLabel(string);
-			sprintf(string, "Page: %02X", app->page);
-			m_staticPageText->SetLabel(string);
+		if (App_Name_to_String(app, varString)) {
+			m_staticNameText->SetLabel(varString);
+			_tprintf(varString, wxT("Page: %02X"), app->page);
+			m_staticPageText->SetLabel(varString);
 		}
 	} else if (symbol) {
-		if (Symbol_Name_to_String(Tree[slot].model, symbol, string)) {
-			m_staticNameText->SetLabel(string);
-			sprintf(string, "Address: %04X", symbol->address);
-			m_staticAddressText->SetLabel(string);
-			sprintf(string, "Page: %02X", symbol->page);
-			m_staticPageText->SetLabel(string);
+		if (Symbol_Name_to_String(Tree[slot].model, symbol, varString)) {
+			m_staticNameText->SetLabel(varString);
+			_tprintf(varString, wxT("Address: %04X"), symbol->address);
+			m_staticAddressText->SetLabel(varString);
+			_tprintf(varString, wxT("Page: %02X"), symbol->page);
+			m_staticPageText->SetLabel(varString);
 			m_staticRamText->SetLabel(symbol->page == 0 || Tree[slot].model == TI_86 ?
-											"In RAM: True" : "In RAM: False");
+											wxT("In RAM: True") : wxT("In RAM: False"));
 		}
 	}
 }
@@ -120,7 +120,7 @@ void VarTree::OnExport(wxCommandEvent &event)
 	wxTreeItemId item = m_treeVariables->GetSelection();
 	FILE *file;
 	char *buf;
-	char filePath[MAX_PATH];
+	TCHAR filePath[MAX_PATH];
 	int size = FillDesc(item, filePath);
 	if (size == -1) {
 		return;
@@ -130,24 +130,24 @@ void VarTree::OnExport(wxCommandEvent &event)
 	if (SetVarName(filePath) == -1) {
 		return;
 	}
-	file = fopen(export_file_name, "wb");
+	file = _tfopen_s(export_file_name, wxT("wb"));
 	fwrite(buf, 1, size, file);
 	fclose(file);
 	free(buf);
 }
 
-int VarTree::FillDesc(wxTreeItemId &hSelect, char *filePath) {
+int VarTree::FillDesc(wxTreeItemId &hSelect, TCHAR *filePath) {
 	int slot;
 	u_int i;
-	char string[MAX_PATH];
-	memset(string, 0, sizeof(string));
+	TCHAR varString[MAX_PATH];
+	memset(varString, 0, sizeof(varString));
 	for(slot = 0; slot < MAX_CALCS; slot++) {
 		if (Tree[slot].model) {
 			for(i = 0; i < Tree[slot].applist.count; i++) {
 				if (Tree[slot].hApps[i] && *Tree[slot].hApps[i] == hSelect) {
-					if (App_Name_to_String(&Tree[slot].applist.apps[i], string)) {
-						strcat(string, ".8xk");
-						strcpy(filePath, string);
+					if (App_Name_to_String(&Tree[slot].applist.apps[i], varString)) {
+						_tcscat(varString, _T(".8xk"));
+						_tcscpy(filePath, varString);
 						MFILE *outfile = ExportApp(&calcs[slot], NULL, &Tree[slot].applist.apps[i]);
 						int size = msize(outfile);
 						mclose(outfile);
@@ -161,10 +161,10 @@ int VarTree::FillDesc(wxTreeItemId &hSelect, char *filePath) {
 			}
 			for(i = 0; i < (u_int) (Tree[slot].sym.last - Tree[slot].sym.symbols + 1); i++) {
 				if (Tree[slot].hVars[i] && *Tree[slot].hVars[i] == hSelect) {
-					if (Symbol_Name_to_String(Tree[slot].model, &Tree[slot].sym.symbols[i], string)) {
-						strcat(string, ".");
-						strcat(string, (const char *) type_ext[Tree[slot].sym.symbols[i].type_ID]);
-						strcpy(filePath, string);
+					if (Symbol_Name_to_String(Tree[slot].model, &Tree[slot].sym.symbols[i], varString)) {
+						_tcscat(varString, wxT("."));
+						_tcscat(varString, (const TCHAR *) type_ext[Tree[slot].sym.symbols[i].type_ID]);
+						_tcscpy(filePath, varString);
 						MFILE *outfile = ExportVar(&calcs[slot], NULL, &Tree[slot].sym.symbols[i]);
 						int size = msize(outfile);
 						mclose(outfile);
@@ -180,8 +180,8 @@ int VarTree::FillDesc(wxTreeItemId &hSelect, char *filePath) {
 void *VarTree::FillFileBuffer(wxTreeItemId &hSelect, void *buf) {
 	u_int slot, i, b;
 	unsigned char *buffer = (unsigned char *) buf;
-	char string[64];
-	memset(string, 0, sizeof(string));
+	TCHAR varString[64];
+	memset(varString, 0, sizeof(varString));
 	for(slot = 0; slot < MAX_CALCS; slot++) {
 		if (Tree[slot].model) {
 			for(i = 0; i < Tree[slot].applist.count; i++) {
@@ -199,7 +199,7 @@ void *VarTree::FillFileBuffer(wxTreeItemId &hSelect, void *buf) {
 			}
 			for(i = 0; i < (u_int) (Tree[slot].sym.last - Tree[slot].sym.symbols + 1); i++) {
 				if (Tree[slot].hVars[i] && *Tree[slot].hVars[i] == hSelect) {
-					if (Symbol_Name_to_String(Tree[slot].model, &Tree[slot].sym.symbols[i], string)) {
+					if (Symbol_Name_to_String(Tree[slot].model, &Tree[slot].sym.symbols[i], varString)) {
 						MFILE *outfile = ExportVar(&calcs[slot], NULL, &Tree[slot].sym.symbols[i]);
 						if(!outfile) {
 							return NULL;
@@ -255,19 +255,20 @@ symbol83P_t *VarTree::GetSymbolVariable(wxTreeItemId &hTreeItem, int &slot) {
 	return NULL;
 }
 
-int VarTree::SetVarName(char *filePath) {
-	char *defExt;
+int VarTree::SetVarName(TCHAR *filePath) {
+	TCHAR *defExt;
 	int filterIndex;
-	const char lpstrFilter[] = "Programs  (*.8xp)|*.8xp|Applications (*.8xk)|*.8xk|App Vars (*.8xv)|*.8xv|Lists  (*.8xl)|*.8xl|Real/Complex Variables  (*.8xn)|*.8xn|\
-Pictures  (*.8xi)|*.8xi|GDBs  (*.8xd)|*.8xd|Matrices  (*.8xm)|*.8xm|Strings  (*.8xs)|*.8xs|Groups  (*.8xg)|*.8xg|All Files (*.*)|*.*";
-	const char lpstrTitle[] = "Wabbitemu Export";
-	char lpstrFile[MAX_PATH];
-	strcpy(lpstrFile, filePath);
+	const TCHAR lpstrFilter[] = wxT("Programs  (*.8xp)|*.8xp|Applications (*.8xk)|*.8xk|App Vars (*.8xv)|*.8xv|Lists  (*.8xl)|*.8xl|Real/Complex Variables  (*.8xn)|*.8xn|\
+Pictures  (*.8xi)|*.8xi|GDBs  (*.8xd)|*.8xd|Matrices  (*.8xm)|*.8xm|Strings  (*.8xs)|*.8xs|Groups  (*.8xg)|*.8xg|All Files (*.*)|*.*");
+	const TCHAR lpstrTitle[] = wxT("Wabbitemu Export");
+	TCHAR lpstrFile[MAX_PATH];
+	_tcscpy(lpstrFile, filePath);
 	size_t i = _tcslen(lpstrFile);
 	lpstrFile[i] = '\0';
 	defExt = &lpstrFile[i];
-	while (*defExt != '.')
+	while (*defExt != '.') {
 		defExt--;
+	}
 	switch (defExt[3]) {
 		case 'p':
 			filterIndex = 0;
@@ -307,7 +308,7 @@ Pictures  (*.8xi)|*.8xi|GDBs  (*.8xd)|*.8xd|Matrices  (*.8xm)|*.8xm|Strings  (*.
 	if (SaveFile(lpstrFile, lpstrFilter, lpstrTitle, defExt, wxFD_FILE_MUST_EXIST , filterIndex)) {
 		return -1;
 	}
-	strcpy(export_file_name, lpstrFile);
+	_tcscpy(export_file_name, lpstrFile);
 	return 0;
 }
 

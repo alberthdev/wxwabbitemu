@@ -438,7 +438,6 @@ int memory_init_83p(memc *mc) {
 	mc->ram_break = (unsigned char *) calloc(mc->ram_pages, PAGE_SIZE);
 
 	if (!mc->flash || !mc->ram) {
-		_tprintf_s(_T("Couldn't allocate memory in memory_init_83p\n"));
 		return 1;
 	}
 

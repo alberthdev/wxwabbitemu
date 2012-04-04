@@ -63,7 +63,7 @@ MFILE *mopen(const TCHAR *filename, const TCHAR * mode) {
 #ifdef WINVER
 		fopen_s(&mf->stream, filename, mode);
 #else
-		mf->stream = fopen(filename, mode);
+		mf->stream = _tfopen_s(filename, mode);
 #endif
 		if (!mf->stream) {
 			free(mf);
@@ -125,24 +125,24 @@ int mputc(int c, MFILE* mf) {
 	}
 }
 
-int mprintf(MFILE* mf, const char *format, ...) {
+int mprintf(MFILE* mf, const TCHAR *format, ...) {
 	unsigned char *temp;
 	if (!mf) return EOF;
 	va_list list;
 	va_start(list, format);
 	if (mf->stream) {
-		int temp = vfprintf(mf->stream,format,list);
+		int temp = _vftprintf(mf->stream, format, list);
 		va_end(list);
 		return temp;
 	} else {
-		char buffer[1024];
+		TCHAR buffer[1024];
 		int i;
 #ifdef WINVER
 		vsprintf_s(buffer, format, list);
 #else
-		vsprintf(buffer, format, list);
+		_vstprintf(buffer, format, list);
 #endif
-		size_t sz_length = strlen(buffer);
+		size_t sz_length = _tcslen(buffer);
 		if (mf->pnt >= mf->size) {
 			temp = (unsigned char *) realloc(mf->data, mf->size+sz_length);
 			if (!temp) return EOF;
@@ -211,7 +211,7 @@ MFILE *ExportApp(LPCALC lpCalc, TCHAR *fn, apphdr_t *app) {
 		memcpy(temp_point, &dest[tempnum], PAGE_SIZE);
 		temp_point += PAGE_SIZE;
 	}
-	outfile = mopen(fn, "wb");
+	outfile = mopen(fn, _T("wb"));
 	// Lots of pointless header crap 
 	for(i = 0; i < 8; i++) mputc(flashheader[i], outfile);
 	//version, major.minor
@@ -248,7 +248,7 @@ MFILE *ExportApp(LPCALC lpCalc, TCHAR *fn, apphdr_t *app) {
 	mputc(tempnum >> 24, outfile);
 	//data
 	intelhex(outfile, buffer, data_size);
-	mprintf(outfile,":00000001FF");
+	mprintf(outfile, _T(":00000001FF"));
 	//checksum
 	//TODO: this is the best checksum code I've ever seen...
 
@@ -332,7 +332,7 @@ MFILE * ExportRom(TCHAR *lpszFile, LPCALC lpCalc) {
  * stolen from spasm's export.c  to make my 1/2 hour deadline
  */
 void intelhex (MFILE* outfile, const unsigned char* buffer, int size, int page, int start_address) {
-	const char hexstr[] = "0123456789ABCDEF";
+	const TCHAR hexstr[] = _T("0123456789ABCDEF");
 	int bpnt = 0;
 	unsigned int address, ci, temp, i;
 	unsigned char chksum;
@@ -341,7 +341,7 @@ void intelhex (MFILE* outfile, const unsigned char* buffer, int size, int page, 
 	//We are in binary mode, we must handle carriage return ourselves.
    
 	while (bpnt < size) {
-		mprintf(outfile, ":02000002%04X%02X\r\n", page & 0x1F, (unsigned char) ((~(0x04 + page)) + 1));
+		mprintf(outfile, _T(":02000002%04X%02X\r\n"), page & 0x1F, (unsigned char) ((~(0x04 + page)) + 1));
 		page++;
 		address = start_address;   
 		for (i = 0; bpnt < size && i < 512; i++) {
@@ -354,7 +354,7 @@ void intelhex (MFILE* outfile, const unsigned char* buffer, int size, int page, 
 			}
 			outbuf[ci] = 0;
 			ci >>= 1;
-			mprintf(outfile,":%02X%04X00%s%02X\r\n", ci, address, outbuf, (unsigned char)(~(chksum + ci) + 1));
+			mprintf(outfile, _T(":%02X%04X00%s%02X\r\n"), ci, address, outbuf, (unsigned char)(~(chksum + ci) + 1));
 			address += 0x20;
 		}         
 	}
@@ -424,11 +424,10 @@ MFILE *ExportVar(LPCALC lpCalc, TCHAR* fn, symbol83P_t* sym) {
 			break;
 		default:
 			size = mem[a] + (mem[a + 1] << 8) + 2;
-			printf("Unknown obj: %02X\n", sym->type_ID);
 			break;
 	}
 		
-	outfile = mopen(fn,"wb");
+	outfile = mopen(fn, _T("wb"));
 
 	// Lots of pointless header crap 
 	for(i = 0; i < 11; i++) mputc(fileheader[i],outfile);

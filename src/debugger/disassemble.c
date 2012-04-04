@@ -740,11 +740,13 @@ int disassemble(LPCALC lpCalc, ViewType type, waddr_t waddr, int count, Z80_info
 		TCHAR szFormat[32] = {0};
 		TCHAR *in = da_opcode[result->index].format;
 		TCHAR *out = szFormat;
-		while (*in != '\0')
+		int inOffset = 0;
+		int outOffset = 0;
+		while (in[inOffset] != _T('\0'))
 		{
-			if (*in == '%')
+			if (in[inOffset] == _T('%'))
 			{
-				switch (*(in + 1))
+				switch (in[inOffset + 1])
 				{
 				case _T('g'):
 					{
@@ -758,50 +760,52 @@ int disassemble(LPCALC lpCalc, ViewType type, waddr_t waddr, int count, Z80_info
 				case _T('a'):
 					{
 						LPCTSTR sz = _T("$%04X");
-						strcat(out, sz);
-						out += strlen(sz);
-						in += 2;
+						_tcscat(out, sz);
+						outOffset += _tcslen(sz);
+						inOffset += 2;
 						break;
 					}
 				case _T('h'):
 					{
 						LPCTSTR sz = _T("%+d");
-						strcat(out, sz);
-						out += strlen(sz);
-						in += 2;
+						_tcscat(out, sz);
+						outOffset += _tcslen(sz);
+						inOffset += 2;
 						break;
 					}
 				case _T('r'):
 				case _T('c'):
 				case _T('l'):
 					{
-						*out++ = *in++;
-						*out++ = 's';
-						in++;
+						out[outOffset++]  = in[inOffset++];
+						out[outOffset] = _T('s');
+						outOffset++;
+						inOffset++;
 						break;
 					}
 				case _T('x'):
 					{
 						LPCTSTR sz = _T("$%02X");
-						strcat(out, sz);
-						out += strlen(sz);
-						in += 2;
+						_tcscat(out, sz);
+						outOffset += _tcslen(sz) ;
+						inOffset += 2;
 						break;
 					}
 				default:
 					{
-						*out++ = *in++;
-						*out++ = *in++;
+						
+						out[outOffset++] = in[inOffset++];
+						out[outOffset++] = in[inOffset++];
 						break;
 					}
 				}
 			}
 			else
 			{
-				*(out++) = *(in++);
+				out[outOffset++] = in[inOffset++];
 			}
 		}
-		sprintf(result->expanded, szFormat, mod_a1,mod_a2,result->a3,result->a4);
+		_tprintf(result->expanded, szFormat, mod_a1, mod_a2, result->a3,result->a4);
 #endif
 	}
 	

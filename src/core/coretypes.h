@@ -8,9 +8,9 @@
 #ifndef _WINDOWS
 #ifndef _LINUX
 typedef char TCHAR;
+typedef const char *LPCTSTR;
 #endif
 typedef void *LPVOID;
-typedef const char *LPCTSTR;
 typedef intptr_t INT_PTR;
 typedef uint8_t BYTE, *LPBYTE;
 typedef uint16_t WORD, *LPWORD;

@@ -39,9 +39,7 @@ int BrowseFile(TCHAR* lpstrFile, const TCHAR *lpstrFilter, const TCHAR *lpstrTit
 	flags |= wxFD_OPEN | wxFD_FILE_MUST_EXIST;
 	wxFileDialog dialog(NULL, lpstrFile, wxEmptyString, lpstrFile, lpstrFilter, flags, wxDefaultPosition, wxDefaultSize, lpstrTitle);
 	if (dialog.ShowModal() == wxID_OK) {
-		char *path = wxStringToChar(dialog.GetPath());
-		strcpy(lpstrFile, path);
-		delete path;
+		_tcscpy(lpstrFile, dialog.GetPath().c_str());
 	}
 #endif
 	return 0;
@@ -80,9 +78,7 @@ int SaveFile(TCHAR *lpstrFile, const TCHAR *lpstrFilter, const TCHAR *lpstrTitle
 	wxFileDialog dialog(NULL, lpstrFile, wxEmptyString, lpstrFile, lpstrFilter, flags, wxDefaultPosition, wxDefaultSize, lpstrTitle);
 	dialog.SetFilterIndex(filterIndex);
 	if (dialog.ShowModal() == wxID_OK) {
-		char *path = wxStringToChar(dialog.GetPath());
-		strcpy(lpstrFile, path);
-		delete path;
+		_tcscpy(lpstrFile, dialog.GetPath().c_str());
 	}
 #endif
 	return 0;
@@ -96,7 +92,7 @@ BOOL ValidPath(TCHAR *lpstrFile) {
 		fclose(file);
 	return error == 0;
 #else
-	file = fopen(lpstrFile, "r");
+	file = _tfopen_s(lpstrFile, "r");
 	BOOL error = file == NULL;
 	fclose(file);
 	return error;
@@ -115,7 +111,12 @@ void GetAppDataString(TCHAR *buffer, int len) {
 	StringCbCat(buffer, len, _T("\\Wabbitemu\\"));
 	free(env);
 #else
-	strcpy(buffer, getenv("appdata"));
-	strcat(buffer, "/wabbitemu/");
+#ifdef _UNICODE
+	wxString envString(getenv("appdata"), wxConvUTF8);
+	_tcscpy(buffer, envString.c_str());
+#else
+	_tcscpy(buffer, getenv("appdata"));
+#endif
+	_tcscat(buffer, _T("/wabbitemu/"));
 #endif
 }

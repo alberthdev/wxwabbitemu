@@ -5,7 +5,7 @@
 #include "var.h"		// TIFILE
 
 typedef struct apphdr {
-	char name[12];
+	TCHAR name[12];
 	u_int page, page_count;
 } apphdr_t;
 

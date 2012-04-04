@@ -1,6 +1,6 @@
 #include "cpupane.h"
 #include "alu.h"
-#include "gui_wx.h"
+#include "gui.h"
 #include <sstream>
 
 enum
@@ -18,7 +18,7 @@ BEGIN_EVENT_TABLE(CPUPane, wxCollapsiblePane)
 END_EVENT_TABLE()
 
 CPUPane::CPUPane(wxWindow *parent, DebuggerWindowClass *debugWindow, LPCALC lpCalc) :
-wxCollapsiblePane(parent, wxID_ANY, "CPU Status", wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE)
+wxCollapsiblePane(parent, wxID_ANY, wxT("CPU Status"), wxDefaultPosition, wxDefaultSize, wxCP_NO_TLW_RESIZE | wxCP_DEFAULT_STYLE)
 {
 	this->lpCalc = lpCalc;
 	this->debugWindow = debugWindow;
@@ -62,7 +62,7 @@ wxCollapsiblePane(parent, wxID_ANY, "CPU Status", wxDefaultPosition, wxDefaultSi
 void CPUPane::DebugUpdateWindow() {
 	m_haltCheck->SetValue(lpCalc->cpu.halt);
 	m_freqText->SetValue(wxString::Format(_T("%.2f"), lpCalc->timer_c.freq / 1000000.0));
-	m_busText->SetValue(wxString::Format(_T("%02X"), lpCalc->cpu.bus));
+	m_busText->SetValue(wxString::Format(wxT("%02X"), lpCalc->cpu.bus));
 }
 
 void CPUPane::OnFreqTextEnter(wxCommandEvent &event) {

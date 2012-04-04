@@ -6,7 +6,6 @@
 
 #ifdef WXVER
 #include <wx/frame.h>
-#include "wx/wx.h"
 #endif
 #include "core.h"
 #include "lcd.h"
@@ -234,7 +233,6 @@ GLOBAL BOOL sync_cores;
 GLOBAL link_t *link_hub[MAX_CALCS + 1];
 GLOBAL int link_hub_count;
 GLOBAL int calc_waiting_link;
-
 
 GLOBAL const TCHAR *CalcModelTxt[]
 #ifdef CALC_C
