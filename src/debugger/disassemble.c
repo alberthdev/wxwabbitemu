@@ -778,7 +778,11 @@ int disassemble(LPCALC lpCalc, ViewType type, waddr_t waddr, int count, Z80_info
 				case _T('l'):
 					{
 						out[outOffset++]  = in[inOffset++];
+#ifdef _UNICODE
+						out[outOffset] = _T('S');
+#else
 						out[outOffset] = _T('s');
+#endif
 						outOffset++;
 						inOffset++;
 						break;
@@ -789,6 +793,17 @@ int disassemble(LPCALC lpCalc, ViewType type, waddr_t waddr, int count, Z80_info
 						_tcscat(out, sz);
 						outOffset += _tcslen(sz) ;
 						inOffset += 2;
+						break;
+					}
+				case _T('s'):
+					{
+						out[outOffset++] = in[inOffset++];
+#ifdef _UNICODE
+						out[outOffset++] = _T('S');
+						inOffset++;
+#else
+						out[outOffset++] = in[inOffset++];
+#endif
 						break;
 					}
 				default:

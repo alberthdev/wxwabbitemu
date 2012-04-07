@@ -86,6 +86,7 @@ typedef void *LPVOID;
 #define _T(z) L ## z
 #define TCHAR wchar_t
 typedef const wchar_t *LPCTSTR;
+typedef wchar_t *LPTSTR;
 
 #define _tcscpy _tcscpy_s
 #define _tcscpy_s std::wcscpy
@@ -109,6 +110,7 @@ typedef const wchar_t *LPCTSTR;
 #define _T(z) z
 #define TCHAR char
 typedef const char *LPCTSTR;
+typedef char *LPCTSTR;
 
 #define _tprintf_s _tprintf
 #define _tprintf sprintf
