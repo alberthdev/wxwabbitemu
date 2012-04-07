@@ -53,7 +53,7 @@ bool WabbitemuApp::OnInit()
 			}
 		}
 	}
-	//LoadCommandlineFiles((INT_PTR) lpCalc, LoadToLPCALC);
+	LoadCommandlineFiles((INT_PTR) lpCalc, LoadToLPCALC);
 	timer = new wxTimer();
 	timer->Connect(wxEVT_TIMER, (wxObjectEventFunction) &WabbitemuApp::OnTimer);
 	timer->Start(TPF, false);
