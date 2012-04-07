@@ -92,7 +92,6 @@ int labels_app_load(LPCALC lpCalc, LPCTSTR lpszFileName) {
 	labelFile = _tfopen_s(lpszFileName, "r");
 #endif
 	if (labelFile == NULL) {
-		puts("Error opening label files.");
 		return 1;
 	}
 	
