@@ -2,13 +2,14 @@
 .SUFFIXES: .o .c
 
 CFLAGS=-I. -I./core -I./debugger -I./gui -I./hardware -I./interface -I./utilities -x c++ -ggdb -c\
-		-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER `wx-config --version=2.9 --unicode=yes --cflags` -Wall
+		-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER `wx-config --version=$(WXVERSION) --unicode=yes --cflags` -Wall
 CXXFLAGS=-I. -I./core -I./debugger -I./gui -I./hardware -I./interface -I./utilities -x c++ -ggdb -c\
-		-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER `wx-config --version=2.9 --unicode=yes --cppflags` -Wall
-LDFLAGS=`wx-config --version=2.9 --unicode=yes --libs` -lstdc++
-CC=clang
-CXX=clang++
-LD=clang++
+		-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER `wx-config --version=$(WXVERSION) --unicode=yes --cppflags` -Wall
+WXVERSION=2.8
+LDFLAGS=`wx-config --version=$(WXVERSION) --unicode=yes --libs` -lstdc++
+CC=gcc
+CXX=g++
+LD=g++
 PROGRAM=wxwabbitemu
 
 .SUFFIXES: .o .cpp .c
@@ -28,7 +29,10 @@ wabbitemu: core.o alu.o control.o device.o indexcb.o calc.o state.o gif.o\
 			droptarget.o guidebug.o disassemblyview.o disassemble.o romwizard.o\
 			wizardstart.o wizardcalctype.o wizardos.o fileutilities.o exportvar.o\
 			regpane.o flagspane.o guivartree.o cpupane.o guiskinwindow.o guiapp.o
-	$(LD) $(LDFLAGS) *.o -o $(PROGRAM)
+	# Apparently some versions of GCC (like 4.7.020120324) don't like the order
+	# $(LD) $(LDFLAGS) *.o -o $(PROGRAM), and will want to commit suicide instead.
+	# This fixes this issue.
+	$(LD) *.o $(LDFLAGS) -o $(PROGRAM)
 
 core.o: ./core/core.c
 	$(CXX) $(CXXFLAGS) ./core/core.c
