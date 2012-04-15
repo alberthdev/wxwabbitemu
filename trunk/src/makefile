@@ -1,11 +1,11 @@
 .SUFFIXES:
 .SUFFIXES: .o .c
 
+WXVERSION=2.8
 CFLAGS=-I. -I./core -I./debugger -I./gui -I./hardware -I./interface -I./utilities -x c++ -ggdb -c\
 		-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER `wx-config --version=$(WXVERSION) --unicode=yes --cflags` -Wall
 CXXFLAGS=-I. -I./core -I./debugger -I./gui -I./hardware -I./interface -I./utilities -x c++ -ggdb -c\
 		-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER `wx-config --version=$(WXVERSION) --unicode=yes --cppflags` -Wall
-WXVERSION=2.8
 LDFLAGS=`wx-config --version=$(WXVERSION) --unicode=yes --libs` -lstdc++
 CC=gcc
 CXX=g++
