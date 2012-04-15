@@ -23,15 +23,15 @@ all: directory wabbitemu
 directory:
 	mkdir -p ./obj
 
+# Apparently some versions of GCC (like 4.7.020120324) don't like the order
+# $(LD) $(LDFLAGS) *.o -o $(PROGRAM), and will want to commit suicide instead.
+# This fixes this issue.
 wabbitemu: core.o alu.o control.o device.o indexcb.o calc.o state.o gif.o\
 			gifhandle.o label.o savestate.o sendfile.o var.o 81hw.o 83hw.o\
 			83phw.o 83psehw.o 86hw.o keys.o lcd.o link.o gui.o guilcd.o\
 			droptarget.o guidebug.o disassemblyview.o disassemble.o romwizard.o\
 			wizardstart.o wizardcalctype.o wizardos.o fileutilities.o exportvar.o\
 			regpane.o flagspane.o guivartree.o cpupane.o guiskinwindow.o guiapp.o
-	# Apparently some versions of GCC (like 4.7.020120324) don't like the order
-	# $(LD) $(LDFLAGS) *.o -o $(PROGRAM), and will want to commit suicide instead.
-	# This fixes this issue.
 	$(LD) *.o $(LDFLAGS) -o $(PROGRAM)
 
 core.o: ./core/core.c
