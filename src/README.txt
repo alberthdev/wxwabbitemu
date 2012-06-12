@@ -90,6 +90,10 @@ In the premake directory, run the premake program (with the
 options you want) to create files that can build wxWabbitemu!
 (If you're running Linux x86, we've included the premake4 binary.)
 
+For more information and/or building instructions, visit the
+Building page on our website:
+http://code.google.com/p/wxwabbitemu/wiki/Building
+
 That's it! We hope you enjoy wxWabbitemu! Should it fail to do
 something, or crash, please help us by reporting bugs in our 
 issue tracker, located at http://code.google.com/p/wxwabbitemu/issues/list.
