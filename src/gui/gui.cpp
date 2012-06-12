@@ -33,7 +33,6 @@
 
 bool gif_anim_advance;
 bool silent_mode = false;
-bool DEBUG = true;
 int prevCalcScale;
 enum
 {
