@@ -1,5 +1,8 @@
 TODO
 =====
+Updated: 06/13/2012
+Update this date whenever changes are made!
+
 This is a non-exculsive TODO list for wxWabbitemu.
 This is a "take and work on it" kind of thing, so don't worry
 about time constraints for implementing these features! ;)
@@ -21,47 +24,27 @@ with spaces to the end of the colon+space.
 
 That said, here are the things to be done:
 
-= GIF recording
-++++ Suggested by: alberthrocks
-++++ Rationale: meet the current featureset of Wabbitemu
-++++ Who's working on it: Nobody
-++++ Implementor's notes: N/A
-
 = Debugger
-++++ Suggested by: alberthrocks
+++++ Suggested by: alberthdev
 ++++ Rationale: meet the current featureset of Wabbitemu
 ++++ Who's working on it: Buckeye, but may need support of other people to
                           finish the port
 ++++ Implementor's notes: N/A
 
 = Sound
-++++ Suggested by: alberthrocks
+++++ Suggested by: alberthdev
 ++++ Rationale: meet the current featureset of Wabbitemu
 ++++ Who's working on it: Nobody
 ++++ Implementor's notes: N/A
 
 = Linking
-++++ Suggested by: alberthrocks
+++++ Suggested by: alberthdev
 ++++ Rationale: meet the current featureset of Wabbitemu
 ++++ Who's working on it: Nobody
 ++++ Implementor's notes: N/A
 
-= CLI interface for wxWabbitEmu
-++++ Suggested by: alberthrocks
-++++ Rationale: offer an alternative interface - basically, this should be
-++++            either a client to daemon call, or a socket/stdin/stdout
-++++            interface, or both! :) This offers anyone more flexible
-++++            with CLI an intuitive interface, or (more likely) an
-++++            opportunity for applications to connect and interact
-++++            with wxWabbitemu. Note that CLI shouldn't need X unless
-++++            explicitly requested. Loading/extracting files, GIF recording,
-++++            keypresses, etc. are things that are available in the CLI 
-++++            interface.
-++++ Who's working on it: Nobody                                
-++++ Implementor's notes: N/A
-
 = Wabbitemu shared library
-++++ Suggested by: alberthrocks
+++++ Suggested by: alberthdev
 ++++ Rationale: Allow developers to include Wabbitemu in a library for
 ++++            their own use in their app. Code from here will probably
 ++++            be copied back to the original Wabbitemu project, since
@@ -70,7 +53,7 @@ That said, here are the things to be done:
 ++++ Implementor's notes: N/A
 
 = Control emulated calculator with real calculator
-++++ Suggested by: alberthrocks
+++++ Suggested by: alberthdev
 ++++ Rationale: Allow users to use their real calculator to control
 ++++            instead of using a mouse or keyboard. This will need
 ++++            a LOT of help from ASM devs, TiLP devs. and others.
