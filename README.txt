@@ -18,7 +18,7 @@ much more!
 
 Who wrote wxWabbitemu?
 -----------------------
-This project was originally started by Albert H (alberthrocks)
+This project was originally started by Albert Huang (alberthdev)
 as an attempt to port a good TI-8x emulator to Linux. (At the
 time, there was TilEm, a GTK+ TI-8X emulator, but it was
 buggy, slow, and rarely updated.**) Thankfully, a Wabbitemu
@@ -92,8 +92,8 @@ options you want) to create files that can build wxWabbitemu!
 
 For more information and/or building instructions, visit the
 Building page on our website:
-http://code.google.com/p/wxwabbitemu/wiki/Building
+https://github.com/alberthdev/wxwabbitemu/wiki/Building
 
 That's it! We hope you enjoy wxWabbitemu! Should it fail to do
 something, or crash, please help us by reporting bugs in our 
-issue tracker, located at http://code.google.com/p/wxwabbitemu/issues/list.
+issue tracker, located at https://github.com/alberthdev/wxwabbitemu/issues.
