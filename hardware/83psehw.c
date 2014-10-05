@@ -1414,9 +1414,9 @@ int device_init_83pse(CPU_t *cpu) {
 	cpu->pio.devices[0x4D].aux = &se_aux->usb;
 	cpu->pio.devices[0x4D].code = (devp) &port4D_83pse;
 
-	cpu->pio.devices[0x55].active = TRUE;
-	cpu->pio.devices[0x55].aux = &se_aux->usb;
-	cpu->pio.devices[0x55].code = (devp) &port54_83pse;
+	cpu->pio.devices[0x54].active = TRUE;
+	cpu->pio.devices[0x54].aux = &se_aux->usb;
+	cpu->pio.devices[0x54].code = (devp) &port54_83pse;
 
 	cpu->pio.devices[0x55].active = TRUE;
 	cpu->pio.devices[0x55].aux = &se_aux->usb;
