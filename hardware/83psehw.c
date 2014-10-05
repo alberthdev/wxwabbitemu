@@ -1018,6 +1018,8 @@ void port55_83pse(CPU_t *cpu, device_t *dev) {
 			cpu->bus += USB_LINE_INTERRUPT_MASK;
 		if (!usb->ProtocolInterrupt)
 			cpu->bus += USB_PROTOCOL_INTERRUPT_MASK;
+		
+		cpu->input = FALSE;
 	} else if (cpu->output) {
 		cpu->output = FALSE;
 	}
