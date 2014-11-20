@@ -71,6 +71,12 @@ private:
 	void OnPaint(wxPaintEvent& event);
 	// Resize
 	void OnResize(wxSizeEvent& event);
+	void OnShow(wxShowEvent& event);
+	
+	// We use "isShownVar" instead of "isShown" because "isShown" is
+	// an existing wxWidgets method
+	int isShownVar = 0;
+	
 	LPCALC lpCalc;
 	
 	void OnLeftButtonDown(wxMouseEvent& event);
