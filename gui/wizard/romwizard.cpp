@@ -53,7 +53,8 @@ void RomWizard::OnPageChanged(wxWizardEvent &event) {
 				break;
 			case TI_84P:
 			case TI_84PSE:
-				osPage->m_choice1->Append(_T("OS 2.43"));
+				// No longer available!
+				//osPage->m_choice1->Append(_T("OS 2.43"));
 				osPage->m_choice1->Append(_T("OS 2.55 MP"));
 				osPage->m_choice1->Enable(true);
 				osPage->m_choice1->SetSelection(0);
@@ -136,18 +137,15 @@ BOOL RomWizard::DownloadOS(wxString &osFilePath, int model, BOOL version)
 	const TCHAR *url;
 	switch (model) {
 		case TI_73:
-			url = _T("http://education.ti.com/downloads/files/73/TI73_OS.73u");
+			url = _T("https://education.ti.com/download/en/US/956CE30854A74767893104FCDF195B76/32E99F6FAEB2424D8313B0DEE7B70791/TI73_OS.73u");
 			break;
 		case TI_83P:
 		case TI_83PSE:
-			url = _T("http://education.ti.com/downloads/files/83plus/TI83Plus_OS.8Xu");
+			url = _T("https://education.ti.com/download/en/US/377ABD4715984D858019EAFDC75FFD05/EEB252CDF6A748309894C1790408D0E7/TI83Plus_OS119.8Xu");
 			break;
 		case TI_84P:
 		case TI_84PSE:
-			if (version)
-				url = _T("http://education.ti.com/downloads/files/83plus/TI84Plus_OS243.8Xu");
-			else
-				url = _T("http://education.ti.com/downloads/files/83plus/TI84Plus_OS.8Xu");
+			url = _T("https://education.ti.com/download/en/US/B7DADA7FD4AA40CE9D7911B004B8C460/A943680938CC460E8CB04554E99D665B/TI84Plus_OS255.8Xu");
 			break;
 	}
 	wxURL wxURL(url);
