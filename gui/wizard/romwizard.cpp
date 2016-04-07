@@ -153,6 +153,13 @@ BOOL RomWizard::DownloadOS(wxString &osFilePath, int model, BOOL version)
 	wxURL wxURL(url);
 	if (wxURL.GetError() == wxURL_NOERR){
 		wxInputStream *input = wxURL.GetInputStream();
+		
+		// Ensure that we have an input stream in the first place!
+		// If download fails, this will be NULL.
+		if (input == NULL) {
+			return FALSE;
+		}
+		
 		FILE *file = fopen(tempFile.mb_str(), "wb");
 		while (!input->Eof()){
 			fputc(input->GetC(), file);
