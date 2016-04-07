@@ -193,7 +193,7 @@ void RomWizard::OnFinish(wxWizardEvent &event) {
 		if (osPage->m_downloadOS->GetValue()) {
 			bool succeeded = DownloadOS(osPath, model, osPage->m_choice1->GetSelection() == 0);
 			if (!succeeded) {
-				wxMessageBox(_T("Unable to download file"), _T("Download failed"), wxOK);
+				wxMessageBox(_T("Error: Unable to download file!"), _T("Download failed"), wxOK | wxICON_ERROR);
 				return;
 			}
 		} else {
@@ -220,7 +220,7 @@ void RomWizard::OnFinish(wxWizardEvent &event) {
 		if (osPath.length() > 0) {
 			TIFILE_t *tifile = newimportvar(osPath);
 			if (tifile == NULL || tifile->type != FLASH_TYPE) {
-				wxMessageBox(_T("Error: OS file is corrupt"), _T("Error"), wxOK);
+				wxMessageBox(_T("Error: OS file is corrupt!"), _T("Error"), wxOK | wxICON_ERROR);
 			} else {
 				forceload_os(&lpCalc->cpu, tifile);
 				if (osPage->m_downloadOS->GetValue()) {
