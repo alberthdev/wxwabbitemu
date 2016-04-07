@@ -16,7 +16,7 @@ newoption  {
 --          Root    : path to wx root folder. Can be left empty if WXWIN is defined
 --                      or if wx-config is accessible.
 --          Debug   : "yes" use debug version of wxwidgets. Default to "no"
---          Version : one of '2.4', '2.5', '2.6', '2.7', '2.8', '2.9'. Default to '2.9'
+--          Version : one of '2.4', '2.5', '2.6', '2.7', '2.8', '2.9', '3.0'. Default to '3.0'
 --          Static  : indicates how wx is to be linked. Values are
 --                      either "yes" for static linking or "no" for shared linking, Default to "no"
 --          Unicode : use "yes" for unicode or "no" for ansi version.
@@ -43,7 +43,7 @@ function wx_config(options)
     wx_config_Private( options.Root or "",
                 options.Debug or "",
                 options.Host or "",
-                options.Version or "2.9",
+                options.Version or "3.0",
                 options.Static or "",
                 options.Unicode or "yes",
                 options.Universal or "",
@@ -55,7 +55,7 @@ end
 function wx_config_Private(wxRoot, wxDebug, wxHost, wxVersion, wxStatic, wxUnicode, wxUniversal, wxLibs, wxWindowsCompiler)
     -- some options are not allowed for newer version of wxWidgets
     if wxVersion > "2.8" then -- alphabetical comparison may fail...
-    --    wxDebug = "" -- 2.9 still make debug libraries
+    --    wxDebug = "" -- 3.0 still make debug libraries
         wxUnicode = "yes"
     end
  
