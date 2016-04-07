@@ -194,6 +194,7 @@ void RomWizard::OnFinish(wxWizardEvent &event) {
 			bool succeeded = DownloadOS(osPath, model, osPage->m_choice1->GetSelection() == 0);
 			if (!succeeded) {
 				wxMessageBox(_T("Unable to download file"), _T("Download failed"), wxOK);
+				return;
 			}
 		} else {
 			osPath = osPage->m_filePicker2->GetPath();
