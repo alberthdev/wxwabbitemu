@@ -53,7 +53,7 @@ int WizardCalcTypePage::GetModel() const {
 	} else if (m_calc82->GetValue()) {
 		return TI_82;
 	} else if (m_calc83p->GetValue()) {
-		return TI_83;
+		return TI_83P;
 	} else if (m_calc83pse->GetValue()) {
 		return TI_83PSE;
 	} else if (m_calc84p->GetValue()) {
