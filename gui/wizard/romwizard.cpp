@@ -149,9 +149,8 @@ BOOL RomWizard::DownloadOS(wxString &osFilePath, int model, BOOL version)
 			break;
 	}
 	wxURL wxURL(url);
-	if (wxURL.GetError() == wxURL_NOERR){
+	if (wxURL.GetError() == wxURL_NOERR) {
 		wxInputStream *input = wxURL.GetInputStream();
-		
 		// Ensure that we have an input stream in the first place!
 		// If download fails, this will be NULL.
 		if (input == NULL) {
@@ -197,41 +196,45 @@ void RomWizard::OnFinish(wxWizardEvent &event) {
 		} else {
 			osPath = osPage->m_filePicker2->GetPath();
 		}
-		LPCALC lpCalc = calc_slot_new();
-		//ok yes i know this is retarded...but this way we can use Load_8xu
-		//outside this function...
-		wxString hexFile;
-		ExtractBootFree(hexFile, model);
-		ModelInit(lpCalc, model);
-		//slot stuff
-		//LoadRegistrySettings(lpCalc);
-		_tcscpy(lpCalc->rom_path, osPath.c_str());
 		
-		lpCalc->active = TRUE;
-		lpCalc->model = model;
-		lpCalc->cpu.pio.model = model;
-		FILE *file = fopen(hexFile.fn_str(), "rb");
-		writeboot(file, &lpCalc->mem_c, -1);
-		fclose(file);
-		remove(hexFile.fn_str());
 		//if you don't want to load an OS, fine...
 		if (osPath.length() > 0) {
 			TIFILE_t *tifile = newimportvar(osPath);
 			if (tifile == NULL || tifile->type != FLASH_TYPE) {
 				wxMessageBox(_T("Error: OS file is corrupt!"), _T("Error"), wxOK | wxICON_ERROR);
+				return;
 			} else {
+				LPCALC lpCalc = calc_slot_new();
+				//ok yes i know this is retarded...but this way we can use Load_8xu
+				//outside this function...
+				wxString hexFile;
+				ExtractBootFree(hexFile, model);
+				ModelInit(lpCalc, model);
+				//slot stuff
+				//LoadRegistrySettings(lpCalc);
+				_tcscpy(lpCalc->rom_path, osPath.c_str());
+				
+				lpCalc->active = TRUE;
+				lpCalc->model = model;
+				lpCalc->cpu.pio.model = model;
+				FILE *file = fopen(hexFile.fn_str(), "rb");
+				writeboot(file, &lpCalc->mem_c, -1);
+				fclose(file);
+				remove(hexFile.fn_str());
+				
+				calc_erase_certificate(lpCalc->mem_c.flash,lpCalc->mem_c.flash_size);
+				calc_reset(lpCalc);
+				//calc_turn_on(lpCalc);
+				gui_frame(lpCalc);
+				//write the output from file
+				MFILE *romfile = ExportRom(buffer, lpCalc);
+				mclose(romfile);
+				
 				forceload_os(&lpCalc->cpu, tifile);
 				if (osPage->m_downloadOS->GetValue()) {
 					remove(osPath.fn_str());
 				}
 			}
 		}
-		calc_erase_certificate(lpCalc->mem_c.flash,lpCalc->mem_c.flash_size);
-		calc_reset(lpCalc);
-		//calc_turn_on(lpCalc);
-		gui_frame(lpCalc);
-		//write the output from file
-		MFILE *romfile = ExportRom(buffer, lpCalc);
-		mclose(romfile);
 	}
 }
