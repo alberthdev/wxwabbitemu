@@ -1,5 +1,5 @@
-wxWabbitemu README
-===================
+wxWabbitemu
+============
 
 What is wxWabbitemu?
 ---------------------
@@ -7,34 +7,41 @@ wxWabbitemu is a TI-8x emulator that uses the wxWidgets toolkit.
 It is based on a decent TI-8x emulator, Wabbitemu.
 Hence the name: wxWabbitemu!
 
-It is designed to mainly run on Linux, but it can be run on
-other platforms as well.
+It is designed to mainly run on Linux, but it can be run on other
+platforms as well.
 
-wxWabbitemu supports loading any TI-8x variables, programs,
-apps, etc. It also supports loading and saving calculator
-states, capturing screenshots, debugging programs, and
-much more!
+wxWabbitemu supports loading any TI-8x variables, programs, apps, etc.
+It also supports loading and saving calculator states, capturing
+screenshots, debugging programs, and much more!
 
-Who wrote wxWabbitemu?
------------------------
-This project was originally started by Albert Huang (alberthdev)
-as an attempt to port a good TI-8x emulator to Linux. (At the
-time, there was TilEm, a GTK+ TI-8X emulator, but it was
-buggy, slow, and rarely updated.**) Thankfully, a Wabbitemu
-developer, "Buckeye", joined in to do most of the porting.
-Later, David Gomes (Scout/ephan) joined development and
-helped develop the GUI. (He later left to work on the
-prestigous Experience desktop. We wish him good luck!)
-Nowadays, Jon "Jonimus" Storm has joined the project as
-a "cleanup" guy to ensure code and build system quality.
+wxWabbitemu History
+--------------------
+This project was originally started by [Albert Huang (alberthdev)][albert]
+as an attempt to port a good TI-8x emulator to Linux.
 
-** At the time of writing, TilEm2, written by new developers
+(At the time, there was TilEm, a GTK+ TI-8X emulator, but it was buggy,
+slow, and rarely updated.**)
+
+Thankfully, a Wabbitemu developer, [Chris Shappel (Buckeye)][buckeye],
+joined in to do most of the porting. Later, [David Gomes][dgomes] joined
+development and helped develop the GUI.
+
+Nowadays, these contributers are part of the project:
+
+ * [Jon "Jonimus" Storm][jonimus]
+ * [geekboy][geekboy]
+
+** TilEm2:
+
+At the time of writing, TilEm2, written by new developers
 Thibault "contra-sh" Duponchelle and Benjamin "FloppusMaximus" Moody,
-was released. This version sports a new emulation code, skinning
-support, and many, many improvements. If you find that
-wxWabbitemu is causing you too many problems,
-development/bug fixes are too slow, and/or you want to play
+was released.
+
+This version sports new emulation code, skinning support, and many
+improvements. If you find that wxWabbitemu is causing you too many
+problems, development/bug fixes are too slow, and/or you want to play
 with something new, give their emulator a try!
+
 http://lpg.ticalc.org/prj_tilem/
 
 Building wxWabbitemu
@@ -44,12 +51,12 @@ You need the following:
   * A working C compiler. This includes, but is not limited to,
     GCC and Clang.
 
-  * The wxWidgets development files. Basically, the headers and
-    linking libraries for wxWidgets. And of course, the wxWidgets
-    library itself.
+  * The wxWidgets development files. Basically, the headers and linking
+    libraries for wxWidgets. And of course, the wxWidgets library
+    itself.
 
-  * The GNU Make program. This program will build wxWabbitemu
-    for you. BSD make might work as well, but no guarantees.
+  * The GNU Make program. This program will build wxWabbitemu for you.
+    BSD make might work as well, but no guarantees.
 
 In all of the commands that you are instructed to type in, you should
 follow each command with pressing the return key.
@@ -96,8 +103,8 @@ To run it, type:
 
     ../bin/wxwabbitemu
 
-Note, though, that wxwabbitemu is a portable file and it can
-be copied to anywhere in your computer and ran from any location.
+Note, though, that wxwabbitemu is a portable file and it can be copied
+to anywhere in your computer and ran from any location.
 
 **Install wxWabbitemu:**
 
@@ -109,10 +116,11 @@ Make sure you do this as root.
 
 **Notes:**
 
-If you want to build on another platform, or use a different
-build system, you can use premake to generate a different file!
-In the premake directory, run the premake program (with the
-options you want) to create files that can build wxWabbitemu!
+If you want to build on another platform, or use a different build
+system, you can use premake to generate a different file! In the premake
+directory, run the premake program (with the options you want) to create
+files that can build wxWabbitemu!
+
 (If you're running Linux x86, we've included the premake4 binary.)
 
 For more information and/or building instructions, visit the
@@ -146,3 +154,9 @@ License
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+[albert]: https://github.com/alberthdev
+[buckeye]: https://github.com/BuckeyeDude
+[dgomes]: https://github.com/davidgomes
+[jonimus]: https://github.com/Jonimoose
+[geekboy]: https://github.com/geekbozu
