@@ -34,7 +34,7 @@ WizardOSPage::WizardOSPage( wxWizard *parent ) : wxWizardPage(parent)
 	this->Layout();
 }
 
-bool WizardOSPage::UpdateWizard() {
+bool WizardOSPage::UpdateWizard(bool error) {
 	TIFILE_t *tifile;
 	bool ready = false;
 	wxWindow *win = FindWindowById(wxID_FORWARD, GetParent());
@@ -44,10 +44,12 @@ bool WizardOSPage::UpdateWizard() {
 	if (!path.IsEmpty()) {
 		tifile = newimportvar(path.c_str(), TRUE);
 		if (tifile == NULL || !((tifile->type == FLASH_TYPE) && (tifile->flash) && (tifile->flash->type == FLASH_TYPE_OS))) {
-			dial = new wxMessageDialog(NULL, wxT("Invalid OS file specified! Please select a valid OS file, and try again."),
-				wxT("Error loading OS file"),
-				wxOK | wxICON_ERROR);
-			dial->ShowModal();
+			if (error) {
+				dial = new wxMessageDialog(NULL, wxT("Invalid OS file specified! Please select a valid OS file, and try again."),
+					wxT("Error loading OS file"),
+					wxOK | wxICON_ERROR);
+				dial->ShowModal();
+			}
 			ready = false;
 		} else {
 			ready = true;
@@ -62,7 +64,7 @@ bool WizardOSPage::UpdateWizard() {
 }
 
 void WizardOSPage::OnFilePickerChanged(wxFileDirPickerEvent &event) {
-	this->UpdateWizard();
+	this->UpdateWizard(true);
 }
 
 wxWizardPage * WizardOSPage::GetPrev() const {
