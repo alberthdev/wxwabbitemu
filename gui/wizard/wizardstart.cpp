@@ -32,10 +32,9 @@ WizardStartPage::WizardStartPage( wxWizard* parent) : wxWizardPage( parent )
 	
 	this->SetSizer( bSizer18 );
 	this->Layout();
-
-	wxWindow *win = FindWindowById(wxID_FORWARD, GetParent());
-	win->SetLabel(wxT("Finish"));
-	win->Enable(false);
+	
+	// Disable ROM copy (we don't have that implemented yet)
+	m_copyRadio->Enable(false);
 }
 
 void WizardStartPage::OnFileChanged(wxFileDirPickerEvent &event) {

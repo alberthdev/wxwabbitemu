@@ -14,9 +14,9 @@ private:
 	WizardOSPage *osPage;
 	void OnFinish(wxWizardEvent &);
 	void OnPageChanged(wxWizardEvent &);
+	void OnPageChanging(wxWizardEvent &);
 	void ModelInit(LPCALC lpCalc, int model);
 	BOOL ExtractBootFree(wxString &bootfreePath, int model);
-	BOOL DownloadOS(wxString &osFilePath, int model, BOOL version);
 protected:
 	DECLARE_EVENT_TABLE()
 public:
