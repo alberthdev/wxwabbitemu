@@ -37,28 +37,45 @@ WizardStartPage::WizardStartPage( wxWizard* parent) : wxWizardPage( parent )
 	m_copyRadio->Enable(false);
 }
 
-void WizardStartPage::OnFileChanged(wxFileDirPickerEvent &event) {
+bool WizardStartPage::UpdatePathState(bool error) {
+	TIFILE_t *tifile;
+	bool ready = false;
 	wxWindow *win = FindWindowById(wxID_FORWARD, GetParent());
+	wxMessageDialog *dial;
 	wxString path = m_filePicker1->GetPath();
-	TIFILE_t *tifile =  newimportvar(path.c_str(), TRUE);
-	if (tifile == NULL) {
-		win->Enable(false);
+	
+	if (!path.IsEmpty()) {
+		tifile = newimportvar(path.c_str(), TRUE);
+		if (tifile == NULL || !((tifile->type == ROM_TYPE) || (tifile->type == SAV_TYPE))) {
+			if (error) {
+				dial = new wxMessageDialog(NULL, wxT("Invalid ROM image specified! Please select a valid ROM image, and try again."),
+					wxT("Error loading ROM image"),
+					wxOK | wxICON_ERROR);
+				dial->ShowModal();
+			}
+			ready = false;
+		} else {
+			ready = true;
+		}
+		FreeTiFile(tifile);
 	} else {
-		win->Enable(true);
+		ready = false;
 	}
-	FreeTiFile(tifile);
+	
+	win->Enable(ready);
+	return ready;
+}
+
+void WizardStartPage::OnFileChanged(wxFileDirPickerEvent &event) {
+	this->UpdatePathState(true);
 }
 
 void WizardStartPage::OnRadioSelected(wxCommandEvent &event) {
 	wxWindow *win = FindWindowById(wxID_FORWARD, GetParent());
+	wxMessageDialog *dial;
 	if (m_browseRadio->GetValue()) {
 		win->SetLabel(wxT("Finish"));
-		wxString path = m_filePicker1->GetPath();
-		TIFILE_t *tifile =  newimportvar(path.c_str(), TRUE);
-		if (tifile == NULL) {
-			win->Enable(false);
-		}
-		FreeTiFile(tifile);
+		this->UpdatePathState();
 		m_filePicker1->Enable(true);
 		return;
 	}

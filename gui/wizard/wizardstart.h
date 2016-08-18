@@ -19,6 +19,7 @@ public:
 	WizardStartPage( wxWizard* parent );
 	virtual wxWizardPage *GetNext() const;
 	virtual wxWizardPage *GetPrev() const;
+	bool UpdatePathState(bool error = false);
 	//TODO: make getters and setters
 	wxRadioButton* m_browseRadio;	
 	wxRadioButton* m_createRadio;
