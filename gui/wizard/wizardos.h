@@ -20,7 +20,7 @@ public:
 	WizardOSPage( wxWizard* parent );
 	virtual wxWizardPage *GetNext() const;
 	virtual wxWizardPage *GetPrev() const;
-	bool UpdateWizard(bool error = false);
+	bool UpdateOSPathState(bool error = false);
 	//TOOD: make getters and setters
 	wxWizardPage *prev;
 	wxWizardPage *next;

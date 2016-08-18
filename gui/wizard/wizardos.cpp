@@ -34,7 +34,7 @@ WizardOSPage::WizardOSPage( wxWizard *parent ) : wxWizardPage(parent)
 	this->Layout();
 }
 
-bool WizardOSPage::UpdateWizard(bool error) {
+bool WizardOSPage::UpdateOSPathState(bool error) {
 	TIFILE_t *tifile;
 	bool ready = false;
 	wxWindow *win = FindWindowById(wxID_FORWARD, GetParent());
@@ -64,7 +64,7 @@ bool WizardOSPage::UpdateWizard(bool error) {
 }
 
 void WizardOSPage::OnFilePickerChanged(wxFileDirPickerEvent &event) {
-	this->UpdateWizard(true);
+	this->UpdateOSPathState(true);
 }
 
 wxWizardPage * WizardOSPage::GetPrev() const {

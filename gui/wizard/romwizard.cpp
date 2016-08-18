@@ -70,7 +70,7 @@ void RomWizard::OnPageChanged(wxWizardEvent &event) {
 		} else {
 			win->SetLabel(_T("Next >"));
 		}
-		osPage->UpdateWizard();
+		osPage->UpdateOSPathState();
 	}
 }
 

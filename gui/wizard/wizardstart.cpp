@@ -37,7 +37,7 @@ WizardStartPage::WizardStartPage( wxWizard* parent) : wxWizardPage( parent )
 	m_copyRadio->Enable(false);
 }
 
-bool WizardStartPage::UpdatePathState(bool error) {
+bool WizardStartPage::UpdateROMPathState(bool error) {
 	TIFILE_t *tifile;
 	bool ready = false;
 	wxWindow *win = FindWindowById(wxID_FORWARD, GetParent());
@@ -67,7 +67,7 @@ bool WizardStartPage::UpdatePathState(bool error) {
 }
 
 void WizardStartPage::OnFileChanged(wxFileDirPickerEvent &event) {
-	this->UpdatePathState(true);
+	this->UpdateROMPathState(true);
 }
 
 void WizardStartPage::OnRadioSelected(wxCommandEvent &event) {
@@ -75,7 +75,7 @@ void WizardStartPage::OnRadioSelected(wxCommandEvent &event) {
 	wxMessageDialog *dial;
 	if (m_browseRadio->GetValue()) {
 		win->SetLabel(wxT("Finish"));
-		this->UpdatePathState();
+		this->UpdateROMPathState();
 		m_filePicker1->Enable(true);
 		return;
 	}
