@@ -73,7 +73,10 @@ follow each command with pressing the return key.
     
     Then open a terminal again (if you rebooted), and type:
     
-        sudo apt-get install build-essential libwxgtk2.8-dev
+        # If libwxgtk3.0-dev isn't available, try libwxgtk2.8-dev.
+        # 2.8 is available on older distros, while 3.0 is available
+        # on more recent releases.
+        sudo apt-get install build-essential libwxgtk3.0-dev
 
   * Fedora, RHEL, and friends:
     
