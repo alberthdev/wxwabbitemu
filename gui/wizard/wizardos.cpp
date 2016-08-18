@@ -36,15 +36,14 @@ WizardOSPage::WizardOSPage( wxWizard *parent ) : wxWizardPage(parent)
 
 bool WizardOSPage::UpdateWizard() {
 	TIFILE_t *tifile;
-	BOOL ready = false;
+	bool ready = false;
 	wxWindow *win = FindWindowById(wxID_FORWARD, GetParent());
 	wxMessageDialog *dial;
 	wxString path = m_filePicker2->GetPath();
 	
 	if (!path.IsEmpty()) {
 		tifile = newimportvar(path.c_str(), TRUE);
-		if (tifile == NULL || tifile->type != FLASH_TYPE) {
-			//technically this allows apps as well. dont care
+		if (tifile == NULL || !((tifile->type == FLASH_TYPE) && (tifile->flash) && (tifile->flash->type == FLASH_TYPE_OS))) {
 			dial = new wxMessageDialog(NULL, wxT("Invalid OS file specified! Please select a valid OS file, and try again."),
 				wxT("Error loading OS file"),
 				wxOK | wxICON_ERROR);
