@@ -10,8 +10,8 @@ WizardOSPage::WizardOSPage( wxWizard *parent ) : wxWizardPage(parent)
 	wxBoxSizer* bSizer20;
 	bSizer20 = new wxBoxSizer( wxVERTICAL );
 	
-	m_staticText4 = new wxStaticText( this, wxID_ANY, wxT("A calculator OS file is required in addition to a ROM image to emulate TI calculators."), wxDefaultPosition, wxDefaultSize, 0 );
-	m_staticText4->Wrap( 400 );
+	m_staticText4 = new wxStaticText( this, wxID_ANY, wxT("A calculator OS file is required to emulate TI calculators."), wxDefaultPosition, wxDefaultSize, 0 );
+	m_staticText4->Wrap( 350 );
 	bSizer20->Add( m_staticText4, 0, wxALL, 5 );
 	
 	m_staticText5 = new wxStaticText( this, wxID_ANY, wxT("Note that TI has discontinued the ability to automatically download OS updates. If you need a calculator OS file, please download it from their website:"), wxDefaultPosition, wxDefaultSize, 0 );
