@@ -40,6 +40,8 @@ int BrowseFile(TCHAR* lpstrFile, const TCHAR *lpstrFilter, const TCHAR *lpstrTit
 	wxFileDialog dialog(NULL, lpstrFile, wxEmptyString, lpstrFile, lpstrFilter, flags, wxDefaultPosition, wxDefaultSize, lpstrTitle);
 	if (dialog.ShowModal() == wxID_OK) {
 		_tcscpy(lpstrFile, dialog.GetPath().c_str());
+	} else {
+		return 1;
 	}
 #endif
 	return 0;
@@ -79,6 +81,8 @@ int SaveFile(TCHAR *lpstrFile, const TCHAR *lpstrFilter, const TCHAR *lpstrTitle
 	dialog.SetFilterIndex(filterIndex);
 	if (dialog.ShowModal() == wxID_OK) {
 		_tcscpy(lpstrFile, dialog.GetPath().c_str());
+	} else {
+		return 1;
 	}
 #endif
 	return 0;
