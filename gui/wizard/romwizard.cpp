@@ -55,11 +55,13 @@ void RomWizard::OnPageChanging(wxWizardEvent &event) {
 
 void RomWizard::OnPageChanged(wxWizardEvent &event) {
 	if (calcTypePage == event.GetPage()) {
+		wxWindow *win = FindWindowById(wxID_FORWARD, this);
 		if (startPage->m_copyRadio->GetValue()) {
 			calcTypePage->EnableRadios(true);
 		} else {
 			calcTypePage->EnableRadios(false);
 		}
+		win->Enable(true);
 	} else if (osPage == event.GetPage()) {
 		osPage->creatingROM = startPage->m_createRadio->GetValue();
 		wxWindow *win = FindWindowById(wxID_FORWARD, this);
