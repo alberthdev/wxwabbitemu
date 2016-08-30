@@ -97,14 +97,13 @@ build wxWabbitemu!
 
 In a terminal type:
 
-    cd build
     make
 
 **Run wxWabbitemu:**
 
 To run it, type:
 
-    ../bin/wxwabbitemu
+    bin/wxwabbitemu
 
 Note, though, that wxwabbitemu is a portable file and it can be copied
 to anywhere in your computer and ran from any location.
