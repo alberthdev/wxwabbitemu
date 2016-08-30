@@ -2,7 +2,10 @@
 # @ silences the line
 # - ignores errors on the line
 
-.PHONY: all install uninstall distclean distclean-real
+PREFIX = $(DESTDIR)/usr/local
+BINDIR = $(PREFIX)/bin
+
+.PHONY: all help install uninstall distclean distclean-real
 
 # Wildcard rule
 .DEFAULT:
@@ -14,11 +17,21 @@ all: bin/wxWabbitemu
 bin/wxWabbitemu:
 	@$(MAKE) wxWabbitemu
 
+help:
+	@$(MAKE) -s -C build help
+	@echo ""
+	@echo "ADDITIONAL TARGETS:"
+	@echo "   install"
+	@echo "   uninstall"
+	@echo "   distclean"
+
 install: bin/wxWabbitemu
-	install bin/wxWabbitemu /usr/bin
+	@echo "Installing wxWabbitemu to: $(BINDIR)"
+	install bin/wxWabbitemu $(BINDIR)
 
 uninstall:
-	rm -f /usr/bin/wxWabbitemu
+	@echo "Uninstalling wxWabbitemu from: $(BINDIR)"
+	rm -f $(BINDIR)/wxWabbitemu
 
 clean:
 	$(MAKE) -C build clean
