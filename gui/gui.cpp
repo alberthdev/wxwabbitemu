@@ -506,7 +506,13 @@ WabbitemuFrame::WabbitemuFrame(LPCALC lpCalc) : wxFrame(NULL, wxID_ANY, wxT("Wab
 	
 	this->SetIcon(icon);
 	
+	this->Connect(wxEVT_SHOW, (wxObjectEventFunction) &WabbitemuFrame::OnShow);
+	
 	this->SetSize(windowSize);
+}
+
+void WabbitemuFrame::OnShow(wxShowEvent& event) {
+	this->isShownVar = 1;
 }
 
 void WabbitemuFrame::OnResize(wxSizeEvent& event) {
@@ -532,7 +538,15 @@ void WabbitemuFrame::OnResize(wxSizeEvent& event) {
 	this->Move(scale * (128 - lpCalc->cpu.pio.lcd->width), 0);
 	is_resizing = false;
 	if (!lpCalc->SkinEnabled && wxLCD) {
-		wxLCD->Move((GetClientSize().GetWidth() - lpCalc->cpu.pio.lcd->width * scale) / 2, 0);
+		if (this->isShownVar == 1) {
+			if (wxLCD->IsShown()) {
+				wxLCD->Move((GetClientSize().GetWidth() - lpCalc->cpu.pio.lcd->width * scale) / 2, 0);
+			} else {
+				printf("WARNING: wxLCD->IsShown() returned false - NOT moving.\n");
+			}
+		} else {
+			printf("WARNING: this->isShownVar == 1 returned false - NOT moving.\n");
+		}
 	}
 }
 
