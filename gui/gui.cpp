@@ -498,7 +498,7 @@ WabbitemuFrame::WabbitemuFrame(LPCALC lpCalc) : wxFrame(NULL, wxID_ANY, wxT("Wab
 	}
 	
 	#if (defined(__WXMSW__) && BIG_WINDOWS_ICON == 1)
-	wxBitmap bitmap(wxT(“wabbiticon.png”), wxBITMAP_TYPE_PNG);
+	wxBitmap bitmap(wxT("wabbiticon.png"), wxBITMAP_TYPE_PNG);
 	icon.CopyFromBitmap(bitmap);
 	#else
 	wxIcon icon = wxIcon(wxICON(wabbiticon));
