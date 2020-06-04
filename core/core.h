@@ -323,8 +323,8 @@ int tc_init(timerc*, int);
 int CPU_init(CPU_t*, memc*, timerc*);
 int CPU_step(CPU_t*);
 int CPU_connected_step(CPU_t *cpu);
-inline unsigned char CPU_mem_read(CPU_t *cpu, unsigned short addr);
-inline unsigned char CPU_mem_write(CPU_t *cpu, unsigned short addr, unsigned char data);
+unsigned char CPU_mem_read(CPU_t *cpu, unsigned short addr);
+unsigned char CPU_mem_write(CPU_t *cpu, unsigned short addr, unsigned char data);
 CPU_t* CPU_clone(CPU_t *cpu);
 #define HALT_SCALE	3
 
