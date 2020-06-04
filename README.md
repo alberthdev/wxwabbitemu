@@ -44,6 +44,10 @@ with something new, give their emulator a try!
 
 http://lpg.ticalc.org/prj_tilem/
 
+Installing wxWabbitemu
+----------------------
+wxWabbitemu can be found in the [eeems-linux](https://repo.eeems.codes/) pacman repository for arch based systems. Otherwise you will need to build it from source.
+
 Building wxWabbitemu
 ---------------------
 You need the following:
