@@ -110,3 +110,5 @@ if( UNIX AND NOT APPLE )
     include( CPack )
 
 endif()
+
+install(TARGETS wxWabbitemu DESTINATION bin)
