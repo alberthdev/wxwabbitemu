@@ -98,12 +98,14 @@ target_link_libraries(wxWabbitemu ${wxWidgets_LIBRARIES})
 
 add_definitions(-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER -D_UNICODE)
 
-check_type_size("wchar_t" SIZEOF_WCHAR_T)
+include(CheckTypeSize)
+check_type_size(wchar_t SIZEOF_WCHAR_T)
 
-if(not ${SIZEOF_WCHAR_T} equal "")
+if(NOT ${SIZEOF_WCHAR_T} EQUAL "")
 	set(HAVE_WCHAR_T 1)
 endif()
 
+include(CheckFunctionExists)
 CHECK_FUNCTION_EXISTS(mbstowcs_s HAVE_MBSTOWCS_S)
 CHECK_FUNCTION_EXISTS(wcsncpy_s HAVE_WCSNCPY_S)
 CHECK_FUNCTION_EXISTS(strcpy_s HAVE_STRCPY_S)

@@ -23,3 +23,5 @@
 
 /* The size of `long', as computed by sizeof. */
 #define SIZEOF_INT @SIZEOF_INT@
+
+#endif
