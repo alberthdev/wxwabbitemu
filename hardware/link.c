@@ -2,13 +2,13 @@
 
 #include "var.h"
 #include "link.h"
-#include "calc.h"
 #include "lcd.h"	//lcd->active
+#include "colorlcd.h"
 #include "keys.h"	//key_press
 
 //#define DEBUG
 #define vlink(zlink) ((((zlink)->vout & 0x03)|(*((zlink)->vin) & 0x03))^3)	// Virtual Link status
-static jmp_buf exc_pkt, exc_byte; // Exceptions
+jmp_buf exc_pkt, exc_byte; // Exceptions
 /*
  * Byte Exception
  *  Thrown when individual bytes fail to get sent or received over the
@@ -17,17 +17,6 @@ static jmp_buf exc_pkt, exc_byte; // Exceptions
  * Packet Exception
  *  Thrown when a packet is of an unexpected or incorrect type */
 
-/* Macro to wrap 16-bit values so they will send
- * correctly on big-endian systems */
-#ifdef __BIG_ENDIAN__
-#define link_endian(z) ((((z) & 0xFF)<<8) | ((z) >> 8))
-#else
-#define link_endian(z) (z)
-#endif
-
-/* Prototypes of static functions*/
-static LINK_ERR forceload_app(CPU_t *, TIFILE_t *);
-static LINK_ERR link_send_app(CPU_t *, TIFILE_t *);
 #ifdef _DEBUG
 static void print_command_ID(uint8_t);
 #endif
@@ -45,17 +34,6 @@ int link_init(CPU_t *cpu) {
 	link->vin = &link->host;
 
 	return 0;
-}
-
-int link_connect_hub(int slot, CPU_t *cpu) {
-	link_hub[slot] = cpu->pio.link;
-	cpu->pio.link->client = &link_hub[MAX_CALCS]->host;
-	link_hub_count++;
-	return 0;
-}
-
-BOOL link_connected_hub(int slot) {
-	return link_hub[slot] != NULL;
 }
 
 int link_connect(CPU_t *cpu1, CPU_t *cpu2) {
@@ -77,10 +55,10 @@ int link_disconnect(CPU_t *cpu) {
 }
 
 /* Run a number of tstates */
-static void link_wait(CPU_t *cpu, time_t tstates) {
-	long long time_end = tc_tstates(cpu->timer_c) + tstates;
+void link_wait(CPU_t *cpu, time_t tstates) {
+	uint64_t time_end = cpu->timer_c->tstates + tstates;
 
-	while (tc_tstates(cpu->timer_c) < time_end) {
+	while (cpu->timer_c->tstates < time_end) {
 		CPU_step(cpu);
 	}
 }
@@ -89,19 +67,20 @@ static void link_wait(CPU_t *cpu, time_t tstates) {
  * On error: Throws a Byte Exception */
 static void link_send(CPU_t *cpu, u_char byte) {
 	link_t *link = cpu->pio.link;
+	u_int i;
 
 	for (u_int bit = 0; bit < 8; bit++, byte >>= 1) {
 		link->vout = (byte & 1) + 1;
 
-		for (u_int i = 0; i < LINK_TIMEOUT && vlink(link) != 0; i += LINK_STEP)
+		for (i = 0; i < LINK_TIMEOUT && vlink(link) != 0; i += LINK_STEP)
 			link_wait(cpu, LINK_STEP);
-		if (vlink(link) != 0)
+		if (i >= LINK_TIMEOUT)
 			longjmp(exc_byte, LERR_TIMEOUT);
 
 		link->vout = 0;
-		for (u_int i = 0; i < LINK_TIMEOUT && vlink(link) != 3; i += LINK_STEP)
+		for (i = 0; i < LINK_TIMEOUT && vlink(link) != 3; i += LINK_STEP)
 			link_wait(cpu, LINK_STEP);
-		if (vlink(link) != 3)
+		if (i >= LINK_TIMEOUT)
 			longjmp(exc_byte, LERR_TIMEOUT);
 	}
 
@@ -109,29 +88,30 @@ static void link_send(CPU_t *cpu, u_char byte) {
 }
 
 /* Receive a byte through the virtual link
- * On error: Throws a Byte Exception */
+* On error: Throws a Byte Exception */
 static u_char link_recv(CPU_t *cpu) {
 	link_t *link = cpu->pio.link;
 	u_char byte = 0;
+	u_int i;
 
 	for (u_int bit = 0; bit < 8; bit++) {
 		byte >>= 1;
 
-		for (u_int i = 0; i < LINK_TIMEOUT && vlink(link) == 3; i += LINK_STEP)
+		for (i = 0; i < LINK_TIMEOUT && vlink(link) == 3; i += LINK_STEP)
 			link_wait(cpu, LINK_STEP);
 
 		if (vlink(link) == 0)
 			longjmp(exc_byte, LERR_LINK);
-		if (vlink(link) == 3)
+		if (i >= LINK_TIMEOUT)
 			longjmp(exc_byte, LERR_TIMEOUT);
 
 		link->vout = vlink(link);
 		if (link->vout == 1)
 			byte |= 0x80;
 
-		for (u_int i = 0; i < LINK_TIMEOUT && vlink(link) == 0; i += LINK_STEP)
+		for (i = 0; i < LINK_TIMEOUT && vlink(link) == 0; i += LINK_STEP)
 			link_wait(cpu, LINK_STEP);
-		if (vlink(link) == 0)
+		if (i >= LINK_TIMEOUT)
 			longjmp(exc_byte, LERR_TIMEOUT);
 		link->vout = 0;
 	}
@@ -170,15 +150,16 @@ static u_char link_target_ID(const CPU_t *cpu) {
 	case TI_83PSE:
 	case TI_84P:
 	case TI_84PSE:
+	case TI_84PCSE:
 		return 0x23;
 	default:
-		return ~0;
+		return 0xFF;
 	}
 }
 
 /* Send a sequence of bytes over the virtual link
  * On error: Throws a Byte Exception */
-static void link_send_bytes(CPU_t *cpu, void *data, size_t length) {
+void link_send_bytes(CPU_t *cpu, void *data, size_t length) {
 	size_t i;
 	for (i = 0; i < length; i++)
 		link_send(cpu, ((u_char*) data)[i]);
@@ -188,7 +169,7 @@ static void link_send_bytes(CPU_t *cpu, void *data, size_t length) {
  * Receive a sequence of bytes over the virtual link
  * On error: Throws a Byte Exception
  */
-static void link_recv_bytes(CPU_t *cpu, void *data, size_t length) {
+void link_recv_bytes(CPU_t *cpu, void *data, size_t length) {
 	size_t i;
 	for (i = 0; i < length; i++)
 		((u_char*) data)[i] = link_recv(cpu);
@@ -196,7 +177,7 @@ static void link_recv_bytes(CPU_t *cpu, void *data, size_t length) {
 
 /* Send a TI packet over the virtual link
  * On error: Throws a Packet Exception */
-static void link_send_pkt(CPU_t *cpu, u_char command_ID, void *data) {
+void link_send_pkt(CPU_t *cpu, u_char command_ID, void *data) {
 	TI_PKTHDR hdr;
 	uint16_t data_len;
 
@@ -282,7 +263,7 @@ static void link_send_pkt(CPU_t *cpu, u_char command_ID, void *data) {
 
 /* Receive a TI packet over the virtual link (blocking)
  * On error: Throws a Packet Exception */
-static void link_recv_pkt(CPU_t *cpu, TI_PKTHDR *hdr, u_char *data) {
+void link_recv_pkt(CPU_t *cpu, TI_PKTHDR *hdr, u_char *data) {
 	int err;
 	switch (err = setjmp(exc_byte)) {
 	case 0:
@@ -330,568 +311,6 @@ static void link_recv_pkt(CPU_t *cpu, TI_PKTHDR *hdr, u_char *data) {
 
 	if (chksum != link_chksum(data, hdr->data_len))
 		longjmp(exc_pkt, LERR_CHKSUM);
-}
-
-/* Send a Request To Send packet
- * On error: Throws Packet Exception */
-static void link_RTS(CPU_t *cpu, TIVAR_t *var, int dest) {
-	TI_VARHDR var_hdr;
-
-	if (cpu->pio.model == TI_85 || cpu->pio.model == TI_86) {
-		memset(&var_hdr, ' ', sizeof(TI_VARHDR));
-		memset(var_hdr.name86, 0, sizeof(var_hdr.name86));
-		strncpy(var_hdr.name86, (char *) var->name, 8);
-		var_hdr.name_length = var->name_length;
-	} else {
-		memset(var_hdr.name, 0, sizeof(var_hdr.name));
-		strncpy(var_hdr.name, (char *) var->name, 8);
-		var_hdr.version = var->version;
-
-		if (dest == SEND_RAM) {
-			var_hdr.type_ID2 = 0x00;
-		} else if (dest == SEND_ARC) {
-			var_hdr.type_ID2 = 0x80;
-		} else {
-			var_hdr.type_ID2 = var->flag;
-		}
-	}
-
-	var_hdr.length = link_endian(var->length);
-	var_hdr.type_ID = var->vartype;
-
-	//printf("Model: %d, length: %d\n", cpu->pio.model, link_endian(tifile->var->length));
-	if (cpu->pio.model == TI_82 || cpu->pio.model == TI_85)
-		link_send_pkt(cpu, CID_VAR, &var_hdr);
-	else
-		link_send_pkt(cpu, CID_RTS, &var_hdr);
-}
-
-LINK_ERR link_send_backup(CPU_t *cpu, TIFILE_t *tifile, SEND_FLAG dest) {
-	if (link_init(cpu))
-		return LERR_NOTINIT;
-
-	// If the calculator's LCD is off, it likely is not in
-	// the correct software state to receive link data.
-	// Turn it on by simulating pressing the 'ON' button
-	if (!cpu->pio.lcd->active) {
-		link_wait(cpu, MHZ_6);
-		cpu->pio.keypad->on_pressed |= KEY_FALSEPRESS;
-		link_wait(cpu, MHZ_6 / 2);
-		cpu->pio.keypad->on_pressed &= ~KEY_FALSEPRESS;
-		link_wait(cpu, MHZ_6);
-
-		if (!cpu->pio.lcd->active)
-			return LERR_LINK;
-	}
-
-	if (tifile->backup == NULL)
-		return LERR_FILE;
-	TIBACKUP_t *backup = tifile->backup;
-	cpu->pio.link->vlink_size = backup->length1 + backup->length2 + backup->length3;
-
-	int err;
-	switch (err = setjmp(exc_pkt)) {
-	case 0: {
-		TI_BACKUPHDR bkhdr;
-		TI_PKTHDR rpkt;
-		u_char data[64];
-
-		bkhdr.flags_size = backup->length1;
-		bkhdr.type_ID = backup->vartype;
-		bkhdr.data_size = backup->length2;
-		bkhdr.symbol_size = backup->length3;
-		bkhdr.user_addr = backup->address;
-
-		// Send the VAR with Backup style header
-		link_send_pkt(cpu, CID_VAR, &bkhdr);
-
-		int group = cpu->pio.model == TI_85 ? 6 : 1;
-		int bit = cpu->pio.model == TI_85 ? 4 : 0;
-		keypad_press(cpu, group, bit);
-
-		// Receive the ACK
-		link_recv_pkt(cpu, &rpkt, data);
-		if (rpkt.command_ID != CID_ACK) {
-			keypad_release(cpu, group, bit);
-			return LERR_LINK;
-		}
-
-		// Receive Clear To Send
-		link_recv_pkt(cpu, &rpkt, data);
-		if (rpkt.command_ID != CID_CTS) {
-			keypad_release(cpu, group, bit);
-			if (rpkt.command_ID == CID_EXIT) {
-				link_send_pkt(cpu, CID_ACK, NULL);
-				return LERR_MEM;
-			} else
-				return LERR_LINK;
-		}
-
-		// Send the ACK
-		link_send_pkt(cpu, CID_ACK, NULL);
-
-		// Send the single data packet containing the first data section
-		TI_DATA s_data = { backup->length1, backup->data1 };
-		link_send_pkt(cpu, CID_DATA, &s_data);
-
-		// Receive the ACK
-		link_recv_pkt(cpu, &rpkt, data);
-		if (rpkt.command_ID != CID_ACK) {
-			keypad_release(cpu, group, bit);
-			return LERR_LINK;
-		}
-
-		// Send the single data packet containing the second data section
-		s_data.length = backup->length2;
-		s_data.data = backup->data2;
-		link_send_pkt(cpu, CID_DATA, &s_data);
-
-		// Receive the ACK
-		link_recv_pkt(cpu, &rpkt, data);
-		if (rpkt.command_ID != CID_ACK) {
-			keypad_release(cpu, group, bit);
-			return LERR_LINK;
-		}
-
-		// Send the single data packet containing the final data section
-		s_data.length = backup->length3;
-		s_data.data = backup->data3;
-		link_send_pkt(cpu, CID_DATA, &s_data);
-
-		// Receive the ACK
-		link_recv_pkt(cpu, &rpkt, data);
-		if (rpkt.command_ID != CID_ACK) {
-			keypad_release(cpu, group, bit);
-			return LERR_LINK;
-		}
-
-		// Send the End of Transmission
-		if (cpu->pio.model != TI_82)
-			link_send_pkt(cpu, CID_EOT, NULL);
-		keypad_release(cpu, group, bit);
-		break;
-	}
-	default:
-			return LERR_SYSTEM;
-	}
-	return LERR_SUCCESS;
-}
-
-// Order that VTI uses:
-// Packet 1
-//	8	ID =
-//	8	CID_VAR
-//	16	var header size
-//	- var hdr
-
-// Send ACK
-// Send CTS
-
-// GetDATA
-
-
-/*
- * Send a variable over the virtual link
- * On error: Returns an error code
- */
-LINK_ERR link_send_var(CPU_t *cpu, TIFILE_t *tifile, SEND_FLAG dest) {
-	if (link_init(cpu))
-		return LERR_NOTINIT;
-
-	// If the calculator's LCD is off, it likely is not in
-	// the correct software state to receive link data.
-	// Turn it on by simulating pressing the 'ON' button
-	if (!cpu->pio.lcd->active) {
-		link_wait(cpu, MHZ_6);
-		cpu->pio.keypad->on_pressed |= KEY_FALSEPRESS;
-		link_wait(cpu, MHZ_6/2);
-		cpu->pio.keypad->on_pressed &= ~KEY_FALSEPRESS;
-		link_wait(cpu, MHZ_6);
-
-		if (!cpu->pio.lcd->active)
-			return LERR_LINK;
-	}
-
-	// Here's some code to temporarily pass off the apps
-	// to a send app function
-	if (tifile->type == FLASH_TYPE) {
-		switch (tifile->flash->type) {
-			case FLASH_TYPE_OS:
-				return forceload_os(cpu, tifile);
-			case FLASH_TYPE_APP:
-				return forceload_app(cpu, tifile);
-		}
-	}
-
-	// Make sure the TIFILE is well formed
-	if (tifile->var == NULL)
-		return LERR_FILE;
-
-	int i = 0;
-	TIVAR_t *var = tifile->vars[i];
-	while (var != NULL) {
-		cpu->pio.link->vlink_size = var->length;
-
-		int err;
-		switch (err = setjmp(exc_pkt)) {
-		case 0: {
-			TI_PKTHDR rpkt;
-			u_char data[64];
-
-			// Request to send
-			link_RTS(cpu, var, dest);
-
-			// Receive the ACK
-			link_recv_pkt(cpu, &rpkt, data);
-			if (rpkt.command_ID != CID_ACK)
-				return LERR_LINK;
-
-			// Receive Clear To Send
-			link_recv_pkt(cpu, &rpkt, data);
-			if (rpkt.command_ID != CID_CTS) {
-				if (rpkt.command_ID == CID_EXIT) {
-					link_send_pkt(cpu, CID_ACK, NULL);
-					return LERR_MEM;
-				} else
-					return LERR_LINK;
-			}
-
-			// Send the ACK
-			link_send_pkt(cpu, CID_ACK, NULL);
-
-			// Send the single data packet containing the whole file
-			TI_DATA s_data = { var->length, var->data };
-			link_send_pkt(cpu, CID_DATA, &s_data);
-
-			// Receive the ACK
-			link_recv_pkt(cpu, &rpkt, data);
-			if (rpkt.command_ID != CID_ACK)
-				return LERR_LINK;
-
-			// Send the End of Transmission
-			if (cpu->pio.model != TI_82 && cpu->pio.model != TI_85)
-				link_send_pkt(cpu, CID_EOT, NULL);
-			break;
-		}
-		default:
-				return LERR_SYSTEM;
-		}
-		var = tifile->vars[++i];
-	}
-	if (cpu->pio.model == TI_85) {
-		TI_PKTHDR rpkt;
-		u_char data[64];
-		link_send_pkt(cpu, CID_EOT, NULL);
-
-		// Receive the ACK
-		link_recv_pkt(cpu, &rpkt, data);
-		if (rpkt.command_ID != CID_ACK)
-			return LERR_LINK;
-	}
-	return LERR_SUCCESS;
-}
-
-/* Send a flash application over the virtual link
- * On error: Returns an error code */
-LINK_ERR link_send_app(CPU_t *cpu, TIFILE_t *tifile) {
-	if (link_init(cpu) != 0)
-		return LERR_NOTINIT;
-
-	if (tifile->flash == NULL)
-		return LERR_FILE;
-
-	// Get the size of the whole APP
-	size_t i;
-	for (i = 0, cpu->pio.link->vlink_size = 0; i < tifile->flash->pages; i++)
-		cpu->pio.link->vlink_size += tifile->flash->pagesize[i];
-
-	//printf("App total size: %d\n", cpu->pio.link->vlink_size);
-	int err;
-	switch (err = setjmp(exc_pkt)) {
-	case 0: {
-		TI_PKTHDR rpkt;
-		u_char data[64];
-
-		// Send the version request
-		link_send_pkt(cpu, CID_VER, NULL);
-
-		// Receive the ACK
-		link_recv_pkt(cpu, &rpkt, data);
-		if (rpkt.command_ID != CID_ACK)
-			return LERR_LINK;
-
-		// Send the CTS
-		link_send_pkt(cpu, CID_CTS, NULL);
-
-		// Receive the ACK
-		link_recv_pkt(cpu, &rpkt, data);
-		if (rpkt.command_ID != CID_ACK)
-			return LERR_LINK;
-
-		// Receive the version
-		link_recv_pkt(cpu, &rpkt, data);
-
-		// Send the ACK
-		link_send_pkt(cpu, CID_ACK, NULL);
-
-		// Send the ready request
-		link_send_pkt(cpu, CID_RDY, NULL);
-
-		link_recv_pkt(cpu, &rpkt, data);
-		if (rpkt.command_ID != CID_ACK)
-			return LERR_LINK;
-		uint16_t page, offset;
-		for (page = 0; page < tifile->flash->pages; page++) {
-			for (offset = 0; offset < PAGE_SIZE && offset
-					< tifile->flash->pagesize[page]; offset += 0x80) {
-
-				// Send the flash header
-				TI_FLASHHDR flash_hdr;
-				flash_hdr.sizeLSB = link_endian(0x0080);
-				flash_hdr.type_ID = FlashObj;
-				flash_hdr.sizeMSB = link_endian(0x0000);
-				flash_hdr.offset = link_endian(offset + PAGE_SIZE);
-				flash_hdr.page = link_endian(page);
-				link_send_pkt(cpu, CID_VAR, &flash_hdr);
-
-				// Receive the ACK
-				link_recv_pkt(cpu, &rpkt, data);
-				if (rpkt.command_ID != CID_ACK)
-					return LERR_LINK;
-
-				// Receive the CTS
-				link_recv_pkt(cpu, &rpkt, data);
-				if (rpkt.command_ID != CID_CTS) {
-					if (rpkt.command_ID == CID_EXIT)
-						return LERR_MEM;
-					return LERR_LINK;
-				}
-
-				// Send the ACK
-				link_send_pkt(cpu, CID_ACK, NULL);
-
-				// Send the data packet
-				TI_DATA s_data = { 0x0080, &tifile->flash->data[page][offset] };
-				link_send_pkt(cpu, CID_DATA, &s_data);
-
-				// Receive the ACK
-				link_recv_pkt(cpu, &rpkt, data);
-				if (rpkt.command_ID != CID_ACK)
-					return LERR_LINK;
-			}
-		}
-
-		link_send_pkt(cpu, CID_EOT, NULL);
-
-		link_recv_pkt(cpu, &rpkt, data);
-		if (rpkt.command_ID != CID_ACK)
-			return LERR_LINK;
-			return LERR_SUCCESS;
-	}
-	default:
-			return LERR_SYSTEM;
-	}
-}
-
-BOOL check_flashpage_empty(u_char (*dest)[PAGE_SIZE], u_int page, u_int num_pages) {
-	u_char *space = &dest[page][PAGE_SIZE - 1];
-	u_int i;
-	// Make sure the subsequent pages are empty
-	for (i = 0; i < num_pages * PAGE_SIZE; i++, space--) {
-		if (*space != 0xFF) {
-			printf("Subsequent pages not empty\n");
-			return FALSE;
-		}
-	}
-	return TRUE;
-}
-
-/* Fixes the certificate page so that the app is no longer marked as a trial
- * cpu: cpu for the core the application is on
- * page: the page the application you want to mark is on
- */
-void fix_certificate(CPU_t *cpu, u_int page) {
-
-	u_char (*dest)[PAGE_SIZE] = (u_char (*)[PAGE_SIZE]) cpu->mem_c->flash;
-	upages_t upages;
-	state_userpages(cpu, &upages);
-	//there is probably some logic here that I'm missing...
-	//the 83p wtf is up with that offset
-	int offset = 0x1E50;
-	if (cpu->pio.model == TI_83P)
-		offset = 0x1F18;
-	//erase the part of the certificate that marks it as a trial app
-	dest[cpu->mem_c->flash_pages-2][offset + 2 * (upages.start - page)] = 0x80;
-	dest[cpu->mem_c->flash_pages-2][offset+1 + 2 * (upages.start - page)] = 0x00;
-}
-
-LINK_ERR forceload_os(CPU_t *cpu, TIFILE_t *tifile) {
-	u_int i, page;
-	u_char (*dest)[PAGE_SIZE] = (u_char (*)[PAGE_SIZE]) cpu->mem_c->flash;
-	if (dest == NULL)
-		return LERR_MODEL;
-
-	if (tifile->flash == NULL)
-		return LERR_FILE;
-
-	for (i = 0; i < ARRAYSIZE(tifile->flash->data); i++) {
-		if (tifile->flash->data[i] == NULL) {
-				continue;
-		}
-		if (i > 0x10) {
-			page = i + cpu->mem_c->flash_pages - 0x20;
-		} else {
-			page = i;
-		}
-		int sector = (page / 4) * 4;
-		int size;
-		if (sector >= cpu->mem_c->flash_pages - 4) {
-			size = PAGE_SIZE * 2;
-		} else {
-			size = PAGE_SIZE * 4;
-		}
-		memset(dest[sector], 0xFF, size);
-	}
-	for (i = 0; i < ARRAYSIZE(tifile->flash->data); i++) {
-		if (tifile->flash->data[i] == NULL) {
-				continue;
-		}
-		if (i > 0x10) {
-			page = i + cpu->mem_c->flash_pages - 0x20;
-		} else {
-			page = i;
-		}
-
-		memcpy(dest[page], tifile->flash->data[i], PAGE_SIZE);
-	}
-	
-	//valid OS
-	dest[0][0x56] = 0x5A;
-	dest[0][0x57] = 0xA5;
-
-	return LERR_SUCCESS;
-}
-
-int get_page_size(u_char (*dest)[PAGE_SIZE], int page) {
-	int i;
-	//apparently non user apps have a slightly different header
-	//therefore we have to actually find the identifier
-	for (i = 0; i < PAGE_SIZE; i++)
-		if (dest[page][i] == 0x80 && dest[page][i + 1] == 0x81)
-			break;
-	i += 2;
-	return dest[page][i];
-}
-
-/* Force load a TI-83+ series APP
- * On error: Returns an error code */
-static LINK_ERR forceload_app(CPU_t *cpu, TIFILE_t *tifile) {
-	u_char (*dest)[PAGE_SIZE] = (u_char (*)[PAGE_SIZE]) cpu->mem_c->flash;
-	if (dest == NULL)
-		return LERR_MODEL;
-
-	if (tifile->flash == NULL)
-		return LERR_FILE;
-
-	upages_t upages;
-	state_userpages(cpu, &upages);
-	if (upages.start == -1)
-		return LERR_MODEL;
-	
-	int page;
-	for (page = upages.start; page >= upages.end + tifile->flash->pages
-			&& dest[page][0x00] == 0x80 && dest[page][0x01] == 0x0F; ) {
-		int page_size;
-		//different size app need to send the long way
-		if (!memcmp(&dest[page][0x12], &tifile->flash->data[0][0x12], 8)) {
-			if (get_page_size(dest, page) != tifile->flash->pages)
-			{
-				//or we can force load it still ;D
-				//there's probably some good reason Jim didn't write this code :|
-				int pageDiff = tifile->flash->pages - get_page_size(dest, page);
-				int currentPage = page - tifile->flash->pages;
-				u_int end_page = pageDiff > 0 ? currentPage : currentPage + pageDiff;
-				while (!check_flashpage_empty(dest, end_page, 1) && end_page >= upages.end)
-					end_page -= get_page_size(dest, end_page);
-				if (end_page != currentPage) {
-					if (pageDiff > 0) {
-						if (end_page - pageDiff < upages.end)
-							return LERR_MEM;
-						memmove(dest[currentPage-pageDiff], dest[currentPage], PAGE_SIZE * (end_page - currentPage));
-						if (cpu->pio.model == TI_83P) {
-							//mark pages unprotected
-							for (int i = end_page - 7; i <= end_page + pageDiff - 8; i++) {
-								cpu->mem_c->protected_page[i / 8] &= ~(1 << (i % 8));
-							}
-						}
-					} else {
-						//we don't need to copy any new data, we just want to mark
-						//the old pages as free for the OS to use
-						//-pageDiff is used because its still negative
-						if (end_page > currentPage)
-							memmove(dest[currentPage-pageDiff], dest[currentPage], PAGE_SIZE * (end_page - currentPage));
-						memset(dest[end_page-pageDiff], 0xFF, (-pageDiff) * PAGE_SIZE);
-						if (cpu->pio.model == TI_83P) {
-							//mark pages as protected
-							for (int i = end_page - 7; i <= end_page - pageDiff - 8; i++) {
-								cpu->mem_c->protected_page[i / 8] |= 1 << (i % 8);
-							}
-						}
-					}
-				}
-				//fix page execution permissions
-				cpu->mem_c->flash_upper -= pageDiff;
-			}
-			u_int i;
-			for (i = 0; i < tifile->flash->pages; i++, page--) {
-				memcpy(dest[page], tifile->flash->data[i], PAGE_SIZE);
-			}
-			//note that this does not fix the old marks, only ensures that
-			//the new order of apps has the correct parts marked
-			applist_t applist;
-			state_build_applist(cpu, &applist);
-			for (i = 0; i < applist.count; i++) {
-				fix_certificate(cpu, applist.apps[i].page);
-			}
-
-			printf("Found already\n");
-			return LERR_SUCCESS;
-		}
-		page_size = get_page_size(dest, page);
-		page -= page_size;
-	}
-
-	if (page - tifile->flash->pages < upages.end)
-		return LERR_MEM;
-
-	//mark the app as non trial
-	fix_certificate(cpu, page);
-	//force reset the app list says BrandonW. seems to work, apps show up (sometimes)
-	mem_write(cpu->mem_c, 0x9C87, 0x00);
-
-	//u_char *space = &dest[page][PAGE_SIZE - 1];
-	u_int i;
-	// Make sure the subsequent pages are empty
-	if (!check_flashpage_empty(dest, page, tifile->flash->pages))
-		return LERR_MEM;
-	for (i = 0; i < tifile->flash->pages; i++, page--) {
-		memcpy(dest[page], tifile->flash->data[i], PAGE_SIZE);
-	}
-
-	cpu->mem_c->flash_upper -= tifile->flash->pages;
-	for (i = page - 7; i <= page + tifile->flash->pages - 8; i++) {
-		//-8 is for the start of user mem
-		cpu->mem_c->protected_page[i / 8] &= ~(1 << (i % 8));
-	}
-	// Discard any error link_send_app returns
-//	link_send_app(cpu, tifile);
-	// Delay for a few seconds so the calc will be responsive
-/*	cpu->pio.link->vlink_size = 100;
-	for (cpu->pio.link->vlink_send = 0; cpu->pio.link->vlink_send < 100; cpu->pio.link->vlink_send += 20) {
-		link_wait(cpu, MHZ_6 * 1);
-	}
-*/
-	return LERR_SUCCESS;
 }
 
 #ifdef _DEBUG
@@ -949,12 +368,13 @@ void writeboot(FILE* infile, memory_context_t *mem_c, int page) {
 	INTELHEX_t ihex;
 	if (!infile) return;
 	if (page == -1)
-		page += mem_c->flash_pages;			//last page is boot page
+		page += mem_c->flash_pages;			// last page is boot page
 	unsigned char (*flash)[PAGE_SIZE] = (uint8_t(*)[PAGE_SIZE]) mem_c->flash;
-	while(1) {
+	for (;;) {
 		if (!ReadIntelHex(infile, &ihex)) {
 			return;
 		}
+
 		switch(ihex.Type) {
 			case 0x00:
 				memcpy(flash[page] + (ihex.Address & 0x3FFF), ihex.Data, ihex.DataSize);

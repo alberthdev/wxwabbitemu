@@ -4,163 +4,100 @@
 #include "stdafx.h"
 #include "coretypes.h"
 
-#ifdef WXVER
-#include <wx/frame.h>
-#endif
 #include "core.h"
 #include "lcd.h"
 #include "keys.h"
 #include "link.h"
-
-#ifdef _WINDOWS
-#include "Wabbitemu_h.h"
 #include "sound.h"
-#include "DropTarget.h"
-#include "dbbreakpoints.h"
-#endif
-
-#include "label.h"
+#include "breakpoint.h"
+#include "state.h"
 
 typedef enum {
 	GDS_IDLE,
 	GDS_STARTING,
 	GDS_RECORDING,
 	GDS_ENDING
-} gif_disp_states;
+} gif_disp_state;
 
-#define MIN_BLOCK_SIZE 16
-#define MAX_FLASH_PAGE_SIZE 0x80
-#define MAX_RAM_PAGE_SIZE 0x08
-typedef struct profiler {
-	BOOL running;
-	int blockSize;
-	long long totalTime;
-	long flash_data[MAX_FLASH_PAGE_SIZE][PAGE_SIZE / MIN_BLOCK_SIZE];
-	long ram_data[MAX_RAM_PAGE_SIZE][PAGE_SIZE / MIN_BLOCK_SIZE];
-} profiler_t;
+typedef enum {
+	NO_EVENT = 0,
+	ROM_LOAD_EVENT = 1,
+	LCD_ENQUEUE_EVENT,
+	ROM_RUNNING_EVENT,
+	BREAKPOINT_EVENT,
+	GIF_FRAME_EVENT,
+	AVI_VIDEO_FRAME_EVENT,
+	AVI_AUDIO_FRAME_EVENT,
+} EVENT_TYPE;
 
+#define MAX_REGISTERED_EVENTS 0xFF
 #define KEY_STRING_SIZE 56
-struct key_string {
-	TCHAR *text;
-	int group;
-	int bit;
-	int repeat;
-	struct key_string *next;
-};
+#define AVI_FPS 24
+
+typedef struct {
+	TCHAR *name;
+	BOOL IsRAM;
+	uint8_t page;
+	uint16_t addr;
+} label_struct;
+
+struct tagCALC;
+
+typedef void(*event_callback)(struct tagCALC *, LPVOID);
+
+typedef struct registered_event {
+	EVENT_TYPE type;
+	event_callback callback;
+	LPVOID lParam;
+} registered_event_t;
+
 
 typedef struct tagCALC {
-#ifdef WINVER
-	HWND (*breakpoint_callback)(struct tagCALC *);
-#elif MACVER
-	void (*breakpoint_callback)(struct tagCALC *, void *);
+#ifdef MACVER
 	void *breakpoint_owner;
-#else
-	void (*breakpoint_callback)(struct tagCALC *);
 #endif
+	void (*breakpoint_callback)(struct tagCALC *);
 	int slot;
 	TCHAR rom_path[MAX_PATH];
 	char rom_version[32];
-	int model;
+	CalcModel model;
 
 	time_t time_error;
 
 	BOOL active;
+	BOOL running;
+	volatile BOOL fake_running;
 	CPU_t cpu;
 	memory_context_t mem_c;
 	timer_context_t timer_c;
-#ifdef WINVER
-	AUDIO_t *audio; // FIXME: Bad!
-#endif
+	AUDIO_t *audio;
 
-#ifdef WINVER
-	CDropTarget *pDropTarget;
-	HWND hwndFrame;
-	HWND hwndLCD;
-	HWND hwndDetachedFrame;
-	HWND hwndDetachedLCD;
-	HWND hwndStatusBar;
-	HWND hwndDebug;
-	HWND hwndSmallClose;
-	HWND hwndSmallMinimize;
-	HWND hwndKeyListDialog;
-	HWND hwndTeacherView;
-	HWND hwndTeacherViewScreen[3];
+	union {
+		struct {
+			breakpoint_t **flash_cond_break;
+			breakpoint_t **ram_cond_break;
+		};
+		breakpoint_t **cond_breakpoints[2];
+	};
 
-	BOOL SkinEnabled;
-	DWORD scale;
-	BOOL bCutout;
-	HANDLE hdlThread;
-	
-	clock_t sb_refresh;
-
-	key_string *last_keypress_head;
-	int num_keypresses;
-
-	BOOL do_drag;
-	HDC hdcSkin;
-	HDC hdcButtons;
-	HDC hdcKeymap;
-#elif WXVER
-	wxImage calcSkin;
-	wxImage keymap;
-	int scale;
-	bool SkinEnabled;
-	bool bCutout;
-	wxSize SkinSize;
-	wxRect LCDRect;
-	clock_t sb_refresh;
-	bool bCustomSkin;
-	char skin_path[256];
-	char keymap_path[256];
-	BOOL bTIOSDebug;
-#endif
-
-	BOOL running;
-	BOOL auto_turn_on;
+	BOOL max_speed;
 	int speed;
-	BYTE breakpoints[0x10000];
-	label_struct labels[6000];
-	profiler_t profiler;
+	label_struct labels[10000];
 
-	TCHAR labelfn[256];
-	applist_t applist;
-	apphdr_t *last_transferred_app;
+	apphdr_t last_transferred_app;
 
-	gif_disp_states gif_disp_state;
-
-#ifdef WINVER
-	RECT rectSkin;
-	RECT rectLCD;
-	COLORREF FaceplateColor;
-	BOOL bCustomSkin;
-	BOOL bAlwaysOnTop;
-	BOOL bAlphaBlendLCD;
-	BOOL bTIOSDebug;
-	TCHAR skin_path[256];
-	TCHAR keymap_path[256];
-	IWabbitemu *pWabbitemu;
-	ICalcNotify *pCalcNotify;
-#endif
-
-} calc_t;
-
-#ifdef WITH_BACKUPS
-typedef struct DEBUG_STATE {
-	SAVESTATE_t *save;
-	struct DEBUG_STATE *next, *prev;
-} debugger_backup;
-#endif
+	registered_event_t registered_events[MAX_REGISTERED_EVENTS];
+} calc_t, CALC, *LPCALC;
 
 #ifdef QUICKLOOK
 #define MAX_CALCS	1
 #else
 #define MAX_CALCS	8
 #endif
-#define MAX_SPEED 100*50
-
-typedef struct tagCALC CALC, *LPCALC;
+#define MAX_SPEED 100*100
 
 void calc_turn_on(LPCALC);
+void calc_set_running(LPCALC lpCalc, BOOL running);
 LPCALC calc_slot_new(void);
 u_int calc_count(void);
 int calc_reset(LPCALC);
@@ -168,17 +105,13 @@ int CPU_reset(CPU_t *);
 int calc_run_frame(LPCALC);
 int calc_run_seconds(LPCALC, double);
 int calc_run_timed(LPCALC, time_t);
+int calc_run_tstates(LPCALC lpCalc, time_t tstates);
 int calc_run_all(void);
-BOOL calc_start_screenshot(calc_t *calc, const char *filename);
-void calc_stop_screenshot(calc_t *calc);
-
-#ifdef WITH_BACKUPS
-void do_backup(LPCALC);
-void restore_backup(int index, LPCALC);
-void init_backups();
-void free_backups(LPCALC);
-void free_backup(debugger_backup *);
-#endif
+BOOL calc_start_screenshot(const TCHAR *filename);
+void calc_stop_screenshot();
+const TCHAR *calc_get_model_string(int model);
+void calc_register_event(LPCALC lpCalc, EVENT_TYPE event_type, event_callback callback, LPVOID lParam);
+void calc_unregister_event(LPCALC lpCalc, EVENT_TYPE event_type, event_callback callback, LPVOID lParam);
 
 BOOL rom_load(LPCALC lpCalc, LPCTSTR FileName);
 void calc_slot_free(LPCALC);
@@ -186,14 +119,14 @@ void calc_slot_free(LPCALC);
 void calc_unpause_linked();
 void calc_pause_linked();
 
-int calc_init_83p(LPCALC);
-int calc_init_84p(LPCALC);
-int calc_init_83pse(LPCALC);
+int calc_init_model(LPCALC lpCalc, int model, char *verString);
+
+int link_connect(CPU_t *, CPU_t *);
+int link_connect_hub(int slot, CPU_t *cpu);
+
 LPCALC calc_from_cpu(CPU_t *);
 LPCALC calc_from_memc(memc *);
 void calc_erase_certificate(unsigned char *, int);
-void port_debug_callback(void *, void *);
-void mem_debug_callback(void *);
 
 #ifdef CALC_C
 #define GLOBAL
@@ -202,54 +135,22 @@ void mem_debug_callback(void *);
 #endif
 
 GLOBAL calc_t calcs[MAX_CALCS];
-//GLOBAL LPCALC lpDebuggerCalc;
 
-#ifdef WITH_BACKUPS
-#define MAX_BACKUPS 10
-GLOBAL debugger_backup * backups[MAX_CALCS];
-GLOBAL int number_backup;
-GLOBAL int current_backup_index;
-GLOBAL int num_backup_per_sec;
-#endif
-
-#ifdef WITH_AVI
-#include "avi_utils.h"
-#include "avifile.h"
-GLOBAL CAviFile *currentAvi;
-GLOBAL HAVI recording_avi;
-GLOBAL BOOL is_recording;
-#endif
-
-GLOBAL u_int frame_counter;
-GLOBAL int startX;
-GLOBAL int startY;
 GLOBAL BOOL exit_save_state;
 GLOBAL BOOL check_updates;
+GLOBAL BOOL show_whats_new;
 GLOBAL BOOL new_calc_on_load_files;
 GLOBAL BOOL do_backups;
 GLOBAL BOOL break_on_exe_violation;
 GLOBAL BOOL break_on_invalid_flash;
+GLOBAL BOOL auto_turn_on;
 GLOBAL BOOL sync_cores;
-GLOBAL link_t *link_hub[MAX_CALCS + 1];
+GLOBAL u_char *link_hub_list[MAX_CALCS];
+GLOBAL link_t *link_hub;
 GLOBAL int link_hub_count;
 GLOBAL int calc_waiting_link;
-
-GLOBAL const TCHAR *CalcModelTxt[]
-#ifdef CALC_C
-= {	//"???",
-	_T("TI-81"),
-	_T("TI-82"),
-	_T("TI-83"),
-	_T("TI-85"),
-	_T("TI-86"),
-	_T("TI-73"),
-	_T("TI-83+"),
-	_T("TI-83+SE"),
-	_T("TI-84+"),
-	_T("TI-84+SE"),
-	_T("???")}
-#endif
-;
+GLOBAL BOOL portable_mode;
+GLOBAL TCHAR portSettingsPath[MAX_PATH];
 
 #define _HAS_CALC_H
 #endif

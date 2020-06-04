@@ -2,7 +2,6 @@
 #define STATE_H_
 
 #include "core.h"
-#include "var.h"		// TIFILE
 
 typedef struct apphdr {
 	TCHAR name[12];
@@ -11,7 +10,7 @@ typedef struct apphdr {
 
 typedef struct applist {
 	u_int count;
-	apphdr_t apps[96];
+	apphdr_t apps[255];
 } applist_t;
 
 typedef struct {
@@ -21,22 +20,27 @@ typedef struct {
 	uint16_t address;
 	uint8_t page;
 	uint8_t name_len;
-	uint8_t length;
-	TCHAR name[9];
+	uint16_t length;
+	char name[9];
 } symbol83P_t;
 
 typedef struct symlist {
 	symbol83P_t *programs;
 	symbol83P_t *last;
-	symbol83P_t symbols[512];
+	symbol83P_t symbols[2048];
+	u_int count;
 } symlist_t;
 
-//83p
-#define pTemp			0x982E
-#define progPtr			0x9830
-#define symTable		0xFE66
-//86
-#define VAT_END_86		0xD298
+// 83p
+#define PTEMP_83P			0x982E
+#define PROGPTR_83P			0x9830
+#define SYMTABLE_83P		0xFE66
+// 84PCSE
+#define PTEMP_84PCSE		0x9E0F
+#define PROGPTR_84PCSE		0x9E11
+#define SYMTABLE_84PCSE		0xFD9E
+// 86
+#define VAT_END			0xD298
 
 typedef struct upages {
 	u_int start, end;
@@ -49,8 +53,10 @@ void state_build_applist(CPU_t *, applist_t *);
 void state_userpages(CPU_t *, upages_t *);
 symlist_t *state_build_symlist_86(CPU_t *, symlist_t *);
 symlist_t *state_build_symlist_83P(CPU_t *, symlist_t *);
-TCHAR *GetRealAns(CPU_t*);
-TCHAR *Symbol_Name_to_String(int model, symbol83P_t *, TCHAR *);
+TCHAR *GetRealAns(CPU_t *, TCHAR *);
+TCHAR *Symbol_Name_to_String(int model, symbol83P_t *symbol, TCHAR * buffer, int bufferSize);
 TCHAR *App_Name_to_String(apphdr_t *, TCHAR *);
+u_char find_field(u_char *dest, u_char id1, u_char id2, u_char **output);
+u_int get_page_size(u_char *dest);
 
 #endif /*STATE_H_*/

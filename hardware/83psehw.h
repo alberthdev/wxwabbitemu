@@ -7,7 +7,6 @@
 #define LINK_READ
 #define LinkRead (((cpu->pio.link->host & 0x03) | (cpu->pio.link->client[0] & 0x03))^3)
 #endif
-#define NumElm(array) (sizeof (array) / sizeof ((array)[0]))
 
 typedef struct TIMER {
 	/* determines which clock if any is used for time */
@@ -117,14 +116,26 @@ typedef struct SE_AUX {
 	MD5_t md5;
 	LINKASSIST_t linka;
 	XTAL_t xtal;
+	unsigned char gpio;
+	unsigned long long gpio_write_tstates;
+	double gpio_write_elapsed;
 	USB_t usb;
-	int model_bits;
 } SE_AUX_t;
 
-STDINT_t *INT83PSE_init(CPU_t*);
-int device_init_83pse(CPU_t*);
+int device_init_83pse(CPU_t*, int model);
 int memory_init_83pse(memc *);
 int memory_init_84p(memc *);
+int memory_init_84pcse(memc *mc);
+void UpdateDelays(CPU_t *cpu, DELAY_t *delay);
+void handlextal(CPU_t *cpu,XTAL_t* xtal);
+void mod_timer(CPU_t *cpu, XTAL_t* xtal);
+void GenerateUSBEvent(CPU_t *cpu, USB_t *usb, int bit, BOOL lowToHigh);
+void md5ports(CPU_t *cpu, device_t *dev);
+void delay_ports(CPU_t *cpu, device_t *dev);
+//CLOCK
+void clock_enable(CPU_t *cpu, device_t *dev);
+void clock_set(CPU_t *cpu, device_t *dev);
+void clock_read(CPU_t *cpu, device_t *dev);
 
 void port0_83pse(CPU_t *, device_t *);
 void port2_83pse(CPU_t *, device_t *);
@@ -133,6 +144,6 @@ void port4_83pse(CPU_t *, device_t *);
 void port6_83pse(CPU_t *, device_t *);
 void port7_83pse(CPU_t *, device_t *);
 void port14_83pse(CPU_t *, device_t *);
-int GetCPUSpeed(CPU_t *);
+uint8_t GetCPUSpeed(CPU_t *);
 
 #endif 

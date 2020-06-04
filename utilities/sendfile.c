@@ -1,16 +1,16 @@
 #include "stdafx.h"
 
 #include "calc.h"
-#include "link.h"
+#include "linksendvar.h"
 #include "label.h"
 
 //Sends a file to the given calculator
 //from the given filename
 LINK_ERR SendFile(const LPCALC lpCalc, LPCTSTR lpszFileName, SEND_FLAG Destination)
 {
-	TIFILE_t *var = newimportvar(lpszFileName, FALSE);
+	TIFILE_t *var = importvar(lpszFileName, FALSE);
 
-	LINK_ERR result;
+	LINK_ERR result = LERR_FILE;
 	if (var != NULL)
 	{
 		switch(var->type)
@@ -19,21 +19,24 @@ LINK_ERR SendFile(const LPCALC lpCalc, LPCTSTR lpszFileName, SEND_FLAG Destinati
 		case VAR_TYPE:
 		case FLASH_TYPE:
 			{
-				if (var->type == FLASH_TYPE)
+				if (var->type == FLASH_TYPE) {
 					lpCalc->running = FALSE;
+					lpCalc->fake_running = TRUE;
+				}
 				lpCalc->cpu.pio.link->vlink_size = var->length;
 				lpCalc->cpu.pio.link->vlink_send = 0;
 
 				result = link_send_var(&lpCalc->cpu, var, (SEND_FLAG) Destination);
 				if (var->type == FLASH_TYPE)
 				{
+					applist_t applist;
 					// Rebuild the applist
-					state_build_applist(&lpCalc->cpu, &lpCalc->applist);
+					state_build_applist(&lpCalc->cpu, &applist);
 
 					u_int i;
-					for (i = 0; i < lpCalc->applist.count; i++) {
-						if (_tcsncmp((TCHAR *) var->flash->name, lpCalc->applist.apps[i].name, 8) == 0) {
-							lpCalc->last_transferred_app = &lpCalc->applist.apps[i];
+					for (i = 0; i < applist.count; i++) {
+						if (_tcsncmp((TCHAR *) var->flash->name, applist.apps[i].name, 8) == 0) {
+							lpCalc->last_transferred_app = applist.apps[i];
 							break;
 						}
 					}
@@ -42,13 +45,14 @@ LINK_ERR SendFile(const LPCALC lpCalc, LPCTSTR lpszFileName, SEND_FLAG Destinati
 						//calc_turn_on(lpCalc);
 					}
 					lpCalc->running = TRUE;
+					lpCalc->fake_running = FALSE;
 				}
 				break;
 			}
 		case BACKUP_TYPE:
 			lpCalc->cpu.pio.link->vlink_size = var->length;
 			lpCalc->cpu.pio.link->vlink_send = 0;
-			result = link_send_backup(&lpCalc->cpu, var, (SEND_FLAG) Destination);
+			result = link_send_backup(&lpCalc->cpu, var);
 			break;
 		case ROM_TYPE:
 		case SAV_TYPE:
@@ -64,9 +68,8 @@ LINK_ERR SendFile(const LPCALC lpCalc, LPCTSTR lpszFileName, SEND_FLAG Destinati
 			}
 		case LABEL_TYPE:
 			{
-				_tcscpy_s(lpCalc->labelfn, lpszFileName);
 				VoidLabels(lpCalc);
-				labels_app_load(lpCalc, lpCalc->labelfn);
+				labels_app_load(lpCalc, lpszFileName);
 				result = LERR_SUCCESS;
 				break;
 			}

@@ -1,19 +1,23 @@
 #ifndef LINK_H
 #define LINK_H
 #include "core.h"		// CPU_t
-
-#ifdef WINVER
 #include "sound.h"		// audio_t
-#endif
 
-#include "var.h"
-#include "state.h"
+//#include "state.h"
 
 // Link timing
 #define LINK_DELAY 			100				/* Delay between commands */
 #define LINK_GARBAGE_DELAY 	(14 * MHZ_6)	/* Delay for oncalc garbage collector */
 #define LINK_TIMEOUT 		(2 * MHZ_6)		/* Maximum time given to respond per bit */
 #define LINK_STEP			10				/* cycles between link status checks */
+
+/* Macro to wrap 16-bit values so they will send
+* correctly on big-endian systems */
+#ifdef __BIG_ENDIAN__
+#define link_endian(z) ((((z) & 0xFF)<<8) | ((z) >> 8))
+#else
+#define link_endian(z) (z)
+#endif
 
 // Link errors
 typedef enum {
@@ -26,14 +30,16 @@ typedef enum {
 	LERR_MEM,					/* Not enough memory on calc */
 	LERR_MODEL,					/* Not the correct model for file */
 	LERR_FILE,					/* Invalid TIFILE in argument */
-	LERR_SYSTEM					/* Something wrong in wabbitemu */
+	LERR_SYSTEM,				/* Something wrong in wabbitemu */
+	LERR_TURN_ON,				/* We need to turn on because a ROM image was sent */
 } LINK_ERR;
 
 // Destination flags
 typedef enum SEND_FLAG {
 	SEND_CUR,					/* sends based on current flag settings */
 	SEND_RAM,					/* sends to RAM, regardless of flag settings */
-	SEND_ARC					/* sends to archive, regardless of flag settings */
+	SEND_ARC,					/* sends to archive, regardless of flag settings */
+	SEND_FILE,					/* a file that is handled by wabbitemu not the calculator */
 } SEND_FLAG;
 
 typedef enum {
@@ -60,9 +66,7 @@ typedef struct link {
 	volatile size_t vlink_send;		// amount already sent over vlink
 	volatile size_t vlink_recv;		// amount already received over the link
 	size_t vlink_size;				// Size of the var currently on the link (if known)
-	#ifdef WINVER
 	AUDIO_t audio;
-	#endif
 	BYTE vout;
 	LPBYTE vin;						// Virtual Link data
 	BOOL hasChanged;				// if were connected to a hub, has the hub value changed
@@ -193,13 +197,23 @@ enum TI86OBJ {
 #define IDListObj		0x26
 #define EquObj_3        0x63
 
-LINK_ERR link_send_var(CPU_t *, TIFILE_t *, SEND_FLAG);
-LINK_ERR link_send_backup(CPU_t *, TIFILE_t *, SEND_FLAG);
-LINK_ERR forceload_os(CPU_t *, TIFILE_t *);
-int link_connect(CPU_t *, CPU_t *);
-int link_connect_hub(int slot, CPU_t *cpu);
+int link_init(CPU_t *cpu);
+void link_wait(CPU_t *cpu, time_t tstates);
+void link_recv_pkt(CPU_t *cpu, TI_PKTHDR *hdr, u_char *data);
+
+/* Send a TI packet over the virtual link
+* On error: Throws a Packet Exception */
+void link_send_pkt(CPU_t *cpu, u_char command_ID, void *data);
+/*
+* Receive a sequence of bytes over the virtual link
+* On error: Throws a Byte Exception
+*/
+void link_recv_bytes(CPU_t *cpu, void *data, size_t length);
+/* Send a sequence of bytes over the virtual link
+* On error: Throws a Byte Exception */
+void link_send_bytes(CPU_t *cpu, void *data, size_t length);
+
 BOOL link_connected_hub(int slot);
 int link_disconnect(CPU_t *);
-void writeboot(FILE* , memory_context_t *, int page);
 #endif
 

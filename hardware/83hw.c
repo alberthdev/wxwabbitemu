@@ -1,11 +1,13 @@
 #include "stdafx.h"
 
+#include "83hw.h"
 #include "lcd.h"
 #include "keys.h"
-#include "83hw.h"
 #include "link.h"
 #include "device.h"
-#include "calc.h"
+
+#pragma warning(push)
+#pragma warning( disable : 4100 )
 static double timer_freq83[4] = {1.0f / 600.0f, 1.0f / 257.14f, 1.0f / 163.63f, 1.0f / 120.0f};
 
 #define SWAP_BANK	0xFF
@@ -152,21 +154,20 @@ void port00_82(CPU_t *cpu, device_t *dev) {
 		cpu->bus += (((link->host & 0x03) | (link->client[0] & 0x03)) ^ 0x03);
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-#ifdef WINVER
 		if ((link->host & 0x01) != ((cpu->bus & 0x04) >> 2)) {
 			FlippedLeft(cpu, (cpu->bus & 0x04) >> 2);
 		}
 		if ((link->host&0x02) != ((cpu->bus & 0x08) >> 2)) {
 			FlippedRight(cpu, (cpu->bus & 0x08) >> 3);
 		}
-#endif
 		link->host = (cpu->bus & 0x0C) >> 2;
 //		setpage83(cpu);
 		cpu->output = FALSE;
 	}
-#ifdef WINVER
-	if (link->audio.init && link->audio.enabled) nextsample(cpu);
-#endif
+
+	if (link->audio.init && link->audio.enabled) {
+		nextsample(cpu);
+	}
 }
 
 void port00_83(CPU_t *cpu, device_t *dev) {
@@ -179,22 +180,21 @@ void port00_83(CPU_t *cpu, device_t *dev) {
 		cpu->bus += stdint->xy;
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-#ifdef WINVER
 		if ((link->host & 0x01) != (cpu->bus & 0x01)) {
 			FlippedLeft(cpu, cpu->bus & 0x01);
 		}
+
 		if ((link->host & 0x02) != (cpu->bus & 0x02)) {
 			FlippedRight(cpu, (cpu->bus & 0x02) >> 1);
 		}
-#endif
+
 		link->host = cpu->bus & 0x03;
 		stdint->xy = cpu->bus & 0x10;
 		setpage83(cpu);
 		cpu->output = FALSE;
 	}
-#ifdef WINVER
+
 	nextsample(cpu);
-#endif
 }
 
 void port02_83(CPU_t *cpu, device_t *dev) {
@@ -214,10 +214,10 @@ void port03_83(CPU_t *cpu, device_t *dev) {
 	
 	if (cpu->input) {
 		unsigned char result = 0;
-		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk1) > stdint->timermax1) {
+		if ((cpu->timer_c->elapsed - stdint->lastchk1) > stdint->timermax1) {
 			result += 2;
 		}
-		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk2) > stdint->timermax2) {
+		if ((cpu->timer_c->elapsed - stdint->lastchk2) > stdint->timermax2) {
 			result += 4;
 		}
 		if (cpu->pio.keypad->on_pressed) {
@@ -257,10 +257,10 @@ void port03_83(CPU_t *cpu, device_t *dev) {
 	when mask timer continues to tick but 
 	does not generate an interrupt. */
 	if (stdint->intactive & 0x02) {
-		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk1) > stdint->timermax1)
+		if ((cpu->timer_c->elapsed - stdint->lastchk1) > stdint->timermax1)
 			cpu->interrupt = TRUE;
 	} else {
-		while ((tc_elapsed(cpu->timer_c) - stdint->lastchk1) > stdint->timermax1)
+		while ((cpu->timer_c->elapsed - stdint->lastchk1) > stdint->timermax1)
 			stdint->lastchk1 += stdint->timermax1;
 	}
 
@@ -270,10 +270,10 @@ void port03_83(CPU_t *cpu, device_t *dev) {
 	when mask timer continues to tick but 
 	does not generate an interrupt. */
 	if (stdint->intactive & 0x04) {
-		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk2) > stdint->timermax2)
+		if ((cpu->timer_c->elapsed - stdint->lastchk2) > stdint->timermax2)
 			cpu->interrupt = TRUE;
 	} else {
-		while ((tc_elapsed(cpu->timer_c) - stdint->lastchk2) > stdint->timermax2)
+		while ((cpu->timer_c->elapsed - stdint->lastchk2) > stdint->timermax2)
 			stdint->lastchk2 += stdint->timermax2;
 	}
 	
@@ -329,7 +329,7 @@ void port14_83(CPU_t *cpu, device_t *dev) {
 /*----------------------------------------------*/
 
 
-STDINT_t* INT83_init(CPU_t* cpu) {
+STDINT_t* INT83_init(_In_ timer_context_t *timer_c) {
 	STDINT_t * stdint = (STDINT_t *) malloc(sizeof(STDINT_t));
 	if (!stdint) {
 		printf("Couldn't allocate memory for standard interrupt\n");
@@ -343,9 +343,9 @@ STDINT_t* INT83_init(CPU_t* cpu) {
 	
 	stdint->intactive = 0;
 	stdint->timermax1 = stdint->freq[3];
-	stdint->lastchk1 = tc_elapsed(cpu->timer_c);
+	stdint->lastchk1 = timer_c->elapsed;
 	stdint->timermax2 = stdint->freq[3]/2.0f;
-	stdint->lastchk2 = tc_elapsed(cpu->timer_c)+stdint->freq[3]/4.0f;
+	stdint->lastchk2 = timer_c->elapsed + stdint->freq[3] / 4.0f;
 	
 	
 	stdint->mem	=0;
@@ -357,7 +357,7 @@ STDINT_t* INT83_init(CPU_t* cpu) {
 	return stdint;
 }
 
-link_t* link83_init(CPU_t* cpu) {
+link_t* link83_init() {
 	link_t * link = (link_t *) malloc(sizeof(link_t));
 	if (!link) {
 		printf("Couldn't allocate memory for link\n");
@@ -369,10 +369,10 @@ link_t* link83_init(CPU_t* cpu) {
 }
 
 
-int device_init_83(CPU_t *cpu, int bad82) {
+int device_init_83(_In_ CPU_t *cpu, BOOL bad82) {
 	ClearDevices(cpu);
 
-	link_t * link = link83_init(cpu);
+	link_t * link = link83_init();
 	cpu->pio.devices[0x00].active = TRUE;
 	cpu->pio.devices[0x00].aux = link;
 	if (bad82 == 1) {
@@ -382,12 +382,12 @@ int device_init_83(CPU_t *cpu, int bad82) {
 		puts("83 port");
 		cpu->pio.devices[0x00].code = (devp) port00_83;
 	}
-	keypad_t *keyp = keypad_init(cpu);
+	keypad_t *keyp = keypad_init();
 	cpu->pio.devices[0x01].active = TRUE;
 	cpu->pio.devices[0x01].aux = keyp;
 	cpu->pio.devices[0x01].code = (devp) keypad;
 	
-	STDINT_t* stdint = INT83_init(cpu);
+	STDINT_t* stdint = INT83_init(cpu->timer_c);
 	cpu->pio.devices[0x02].active = TRUE;
 	cpu->pio.devices[0x02].aux = stdint;
 	cpu->pio.devices[0x02].code = (devp) port02_83;
@@ -403,16 +403,16 @@ int device_init_83(CPU_t *cpu, int bad82) {
 	LCD_t *lcd = LCD_init(cpu, TI_83);
 	cpu->pio.devices[0x10].active = TRUE;
 	cpu->pio.devices[0x10].aux = lcd;
-	cpu->pio.devices[0x10].code = (devp) LCD_command;
+	cpu->pio.devices[0x10].code = (devp) lcd->base.command;
 
 	cpu->pio.devices[0x11].active = TRUE;
 	cpu->pio.devices[0x11].aux = lcd;
-	cpu->pio.devices[0x11].code = (devp) LCD_data;
+	cpu->pio.devices[0x11].code = (devp) lcd->base.data;
 
 	cpu->pio.devices[0x14].active = TRUE;
 	cpu->pio.devices[0x14].code = (devp) port14_83;
 
-	cpu->pio.lcd		= lcd;
+	cpu->pio.lcd		= (LCDBase_t *) lcd;
 	cpu->pio.keypad		= keyp;
 	cpu->pio.link		= link;
 	cpu->pio.stdint		= stdint;
@@ -426,14 +426,8 @@ int device_init_83(CPU_t *cpu, int bad82) {
 }
 
 
-int memory_init_83(memc *mc) {
+int memory_init_83(_In_ memc *mc) {
 	memset(mc, 0, sizeof(memc));
-
-	mc->mem_read_break_callback = mem_debug_callback;
-	mc->mem_write_break_callback = mem_debug_callback;
-#ifdef WINVER
-	mc->breakpoint_manager_callback = check_break_callback;
-#endif
 	
 	/* Set Number of Pages here */
 	mc->flash_pages = 16;
@@ -450,6 +444,7 @@ int memory_init_83(memc *mc) {
 	mc->ram_break = (unsigned char *) calloc(mc->ram_pages, PAGE_SIZE);
 
 	if (!mc->flash || !mc->ram) {
+		_tprintf_s(_T("Couldn't allocate memory in memory_init_83\n"));
 		return 1;
 	}
 	mc->flash_version = 0;
@@ -470,5 +465,4 @@ int memory_init_83(memc *mc) {
 	return 0;
 }
 
-
-
+#pragma warning(pop)

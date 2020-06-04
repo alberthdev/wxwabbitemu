@@ -9,35 +9,24 @@ typedef struct keypad {
 } keypad_t;
 
 typedef struct KEYPROG {
-	int vk;
+	UINT vk;
 	int group;
 	int bit;
 } keyprog_t;
 
-//shhh..Redefine for sake of ease
-#define VKF_EQUAL	0xBB
-#define VKF_COMMA	0xBC
-#define VKF_MINUS	0xBD
-#define VKF_PERIOD	0xBE
-#define VKF_LBRACKET 0xDB
-#define VKF_RBRACKET 0xDD
-#define VKF_QUOTE	0xDE
-#define WXK_LSHIFT WXK_SPECIAL20+1
-#define WXK_RSHIFT WXK_LSHIFT+1
+#define MAX_KEY_MAPPINGS 256
+#define VK_EQUAL	VK_OEM_PLUS
+#define VK_LBRACKET VK_OEM_4
+#define VK_RBRACKET VK_OEM_6
 
-
-keypad_t *keypad_init(CPU_t*);
+keypad_t *keypad_init();
 void keypad(CPU_t *, device_t *);
 
-keyprog_t *keypad_key_press(CPU_t*, unsigned int vk, BOOL *changed = NULL);
+keyprog_t *keypad_key_press(CPU_t*, unsigned int vk, BOOL *changed);
 keyprog_t *keypad_key_release(CPU_t*, unsigned int vk);
 void keypad_press(CPU_t *cpu, int group, int bit);
 void keypad_release(CPU_t *cpu, int group, int bit);
-
-#ifdef WINVER
-//used by the debugger to fix stuck keys
-void keypad_vk_release(HWND hwnd, int group, int bit);
-#endif
+keyprog_t * keypad_keyprog_from_groupbit(CPU_t *cpu, int group, int bit);
 
 #define KEY_VALUE_MASK		(0x0F)
 
@@ -49,7 +38,5 @@ void keypad_vk_release(HWND hwnd, int group, int bit);
 
 #define KEYGROUP_ON			0x05
 #define KEYBIT_ON			0x00
-
-#define NumElm(array) (sizeof (array) / sizeof ((array)[0]))
 
 #endif /*#ifndef KEYS_H*/

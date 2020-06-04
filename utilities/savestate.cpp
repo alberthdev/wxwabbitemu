@@ -1,15 +1,39 @@
 #include "stdafx.h"
 
-#include "core.h"
-#include "savestate.h"
-#include "lcd.h"
-#include "link.h"
-#include "calc.h"
-#include "83psehw.h"
-#include "fileutilities.h"
+#include "core/core.h"
+#include "hardware/83psehw.h"
+#include "hardware/link.h"
+#include "interface/calc.h"
+#include "utilities/fileutilities.h"
+#include "utilities/savestate.h"
 
-extern int def(FILE *, FILE *, int);
-extern int inf(FILE *, FILE *);
+extern int def(FILE *source, FILE *dest, int level);
+extern int inf(FILE *source, FILE *dest);
+#ifdef _ANDROID
+extern char cache_dir[MAX_PATH];
+#endif
+
+LPCALC DuplicateCalc(LPCALC lpCalc) {
+	BOOL running_backup = lpCalc->running;
+	lpCalc->running = FALSE;
+	SAVESTATE_t *save = SaveSlot(lpCalc, _T(""), _T(""));
+	if (save == NULL) {
+		return NULL;
+	}
+
+	LPCALC duplicate_calc = (LPCALC)malloc(sizeof(calc_t));
+	ZeroMemory(duplicate_calc, sizeof(calc_t));
+	duplicate_calc->active = TRUE;
+	duplicate_calc->speed = 100;
+	//calcs[i].breakpoint_callback = calc_debug_callback;
+
+	calc_init_model(duplicate_calc, save->model, lpCalc->rom_version);
+	LoadSlot(save, duplicate_calc);
+	FreeSave(save);
+	lpCalc->running = running_backup;
+
+	return duplicate_calc;
+}
 
 BOOL cmpTags(const char *str1, const char *str2) {
 	int i;
@@ -40,9 +64,11 @@ int fgeti(FILE* stream) {
 	return r;
 }
 
-SAVESTATE_t* CreateSave(const TCHAR *author, const TCHAR *comment , int model) {
+SAVESTATE_t* CreateSave(const TCHAR *author, const TCHAR *comment , const CalcModel model) {
 	SAVESTATE_t* save = (SAVESTATE_t*) malloc(sizeof(SAVESTATE_t));
-	if (!save) return NULL;
+	if (!save) {
+		return NULL;
+	}
 
 	save->version_major = CUR_MAJOR;
 	save->version_minor = CUR_MINOR;
@@ -50,9 +76,8 @@ SAVESTATE_t* CreateSave(const TCHAR *author, const TCHAR *comment , int model) {
 
 	memset(save->author, 0, sizeof(save->author));
 	memset(save->comment, 0, sizeof(save->comment));
-#ifdef WINVER
+#ifdef _WINDOWS
 #ifdef _UNICODE
-	char buffer[64];
 	size_t numConv;
 	wcstombs_s(&numConv, save->author, author, sizeof(save->author));
 	wcstombs_s(&numConv, save->comment, comment, sizeof(save->author));
@@ -61,15 +86,14 @@ SAVESTATE_t* CreateSave(const TCHAR *author, const TCHAR *comment , int model) {
 	StringCbCopy(save->comment, sizeof(save->comment), comment);
 #endif
 #else
-	_tcsncpy(save->author, author, sizeof(save->author));
-	_tcsncpy(save->comment, comment, sizeof(save->comment));
+	strncpy(save->author, author, sizeof(save->author));
+	strncpy(save->comment, comment, sizeof(save->comment));
 #endif
 	
 	save->model = model;
 	save->chunk_count = 0;
 	
-	u_int i;
-	for(i = 0; i < NumElm(save->chunks); i++) {
+	for(unsigned int i = 0; i < ARRAYSIZE(save->chunks); i++) {
 		save->chunks[i] = NULL;
 	}
 	return save;
@@ -97,10 +121,9 @@ void ClearSave(SAVESTATE_t* save) {
 void FreeSave(SAVESTATE_t* save) {
 	ClearSave(save);
 	free(save);
-	save = NULL;
 }
 
-CHUNK_t* FindChunk(SAVESTATE_t* save, const char *tag) {
+CHUNK_t* FindChunk(SAVESTATE_t* save, const char* tag) {
 	int i;
 	for(i = 0; i < save->chunk_count; i++) {
 		if (cmpTags(save->chunks[i]->tag, tag) == TRUE) {
@@ -111,7 +134,7 @@ CHUNK_t* FindChunk(SAVESTATE_t* save, const char *tag) {
 	return NULL;
 }
 
-CHUNK_t* NewChunk(SAVESTATE_t* save, const char *tag) {
+CHUNK_t* NewChunk(SAVESTATE_t* save, const char* tag) {
 	int chunk = save->chunk_count;
 
 	if (FindChunk(save, tag) != NULL) {
@@ -139,7 +162,7 @@ CHUNK_t* NewChunk(SAVESTATE_t* save, const char *tag) {
 	return save->chunks[chunk];
 }
 
-BOOL DelChunk(SAVESTATE_t *save, const char *tag) {
+BOOL DelChunk(SAVESTATE_t *save, char *tag) {
 	int i;
 	for(i = 0; i < save->chunk_count; i++) {
 		if (cmpTags(save->chunks[i]->tag, tag) == TRUE) {
@@ -156,18 +179,21 @@ BOOL DelChunk(SAVESTATE_t *save, const char *tag) {
 	return FALSE;
 }
 
-
-BOOL CheckPNT(CHUNK_t* chunk) {
+/************************************************************************
+ * Checks that the chunk is the expected size. If it is not, then jumps
+ * to the cleanup code
+ ************************************************************************/
+void CheckPNT(CHUNK_t* chunk) {
 	if (chunk->size < chunk->pnt) {
-		return FALSE;
+		throw std::exception();
 	}
-	return TRUE;
 }
 
 BOOL WriteChar(CHUNK_t* chunk, char value) {
 	unsigned char * tmppnt;
 	tmppnt = (unsigned char *) realloc(chunk->data, chunk->size + sizeof(char));
 	if (tmppnt == NULL) {
+		_putts(_T("Error could not realloc data"));
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -183,6 +209,7 @@ BOOL WriteShort(CHUNK_t* chunk, uint16_t value) {
 	unsigned char  *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
+		_putts(_T("Error could not realloc data"));
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -202,6 +229,7 @@ BOOL WriteInt(CHUNK_t* chunk, uint32_t value) {
 	unsigned char *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
+		_putts(_T("Error could not realloc data"));
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -222,6 +250,7 @@ BOOL WriteLong(CHUNK_t* chunk, uint64_t value) {
 	unsigned char *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char  *) realloc(chunk->data, chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
+		_putts(_T("Error could not realloc data"));
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -242,6 +271,7 @@ BOOL WriteFloat(CHUNK_t* chunk, float value) {
 	unsigned char *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
+		_putts(_T("Error could not realloc data"));
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -261,6 +291,7 @@ BOOL WriteDouble(CHUNK_t* chunk, double value) {
 	unsigned char *pnt = (unsigned char *)(&value);
 	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size + sizeof(value));
 	if (tmppnt == NULL) {
+		_putts(_T("Error could not realloc data"));
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -280,6 +311,7 @@ BOOL WriteBlock(CHUNK_t* chunk, unsigned char *pnt, int length) {
 	unsigned char *tmppnt;
 	tmppnt = (unsigned char *) realloc(chunk->data,chunk->size+length);
 	if (tmppnt == NULL) {
+		_putts(_T("Error could not realloc data"));
 		return FALSE;
 	}
 	chunk->data = tmppnt;
@@ -292,17 +324,23 @@ BOOL WriteBlock(CHUNK_t* chunk, unsigned char *pnt, int length) {
 	
 
 	
-unsigned char ReadChar(CHUNK_t* chunk, BOOL *valOK = NULL) {
+unsigned char ReadChar(CHUNK_t* chunk) {
+	if (chunk->data == NULL) {
+		return 0;
+	}
+
 	unsigned char value;
 	value = chunk->data[chunk->pnt];
 	chunk->pnt += sizeof(unsigned char);
-	if (valOK) {
-		*valOK = CheckPNT(chunk);
-	}
+	CheckPNT(chunk);
 	return value;
 }
 
-unsigned short ReadShort(CHUNK_t* chunk, BOOL *valOK = NULL) {
+unsigned short ReadShort(CHUNK_t* chunk) {
+	if (chunk->data == NULL) {
+		return 0;
+	}
+
 	int i;
 	uint16_t value;
 	unsigned char *pnt = (unsigned char *)(&value);
@@ -314,13 +352,15 @@ unsigned short ReadShort(CHUNK_t* chunk, BOOL *valOK = NULL) {
 		*pnt++ = chunk->data[i+chunk->pnt];
 	}
 	chunk->pnt += sizeof(value);
-	if (valOK) {
-		*valOK = CheckPNT(chunk);
-	}
+	CheckPNT(chunk);
 	return value;
 }
 
-unsigned int ReadInt(CHUNK_t* chunk, BOOL *valOK = NULL) {
+unsigned int ReadInt(CHUNK_t* chunk) {
+	if (chunk->data == NULL) {
+		return 0;
+	}
+
 	int i;
 	uint32_t value;
 	unsigned char *pnt = (unsigned char *)(&value);
@@ -332,13 +372,15 @@ unsigned int ReadInt(CHUNK_t* chunk, BOOL *valOK = NULL) {
 		*pnt++ = chunk->data[i+chunk->pnt];
 	}
 	chunk->pnt += sizeof(value);
-	if (valOK) {
-		*valOK = CheckPNT(chunk);
-	}
+	CheckPNT(chunk);
 	return value;
 }
 
 float ReadFloat(CHUNK_t* chunk) {
+	if (chunk->data == NULL) {
+		return 0;
+	}
+
 	int i;
 	float value;
 	unsigned char *pnt = (unsigned char *)(&value);
@@ -356,6 +398,10 @@ float ReadFloat(CHUNK_t* chunk) {
 
 
 double ReadDouble(CHUNK_t* chunk) {
+	if (chunk->data == NULL) {
+		return 0;
+	}
+
 	int i;
 	double value;
 	unsigned char *pnt = (unsigned char *)(&value);
@@ -371,8 +417,11 @@ double ReadDouble(CHUNK_t* chunk) {
 	return value;
 }
 
-uint64_t ReadLong(CHUNK_t* chunk)
-{
+uint64_t ReadLong(CHUNK_t* chunk) {
+	if (chunk->data == NULL) {
+		return 0;
+	}
+
 	int i;
 	uint64_t value;
 	unsigned char *pnt = (unsigned char *)(&value);
@@ -389,8 +438,16 @@ uint64_t ReadLong(CHUNK_t* chunk)
 }
 
 void ReadBlock(CHUNK_t* chunk, unsigned char *pnt, int length) {
+	if (chunk->data == NULL) {
+		ZeroMemory(pnt, length);
+		return;
+	}
+
 	int i;
-	for(i = 0; i < length; i++) {
+	// we do this min because if the length and the chunk are not
+	// the same size we could end up reading bad data. CheckPNT will
+	// handle the error
+	for(i = 0; i < min(length, chunk->size); i++) {
 		pnt[i] = chunk->data[i+chunk->pnt];
 	}
 	chunk->pnt += length;
@@ -451,10 +508,12 @@ void SaveCPU(SAVESTATE_t* save, CPU_t* cpu) {
 	/* pio */
 	for(i = 0; i < 256; i++) {
 		interrupt_t *val = &cpu->pio.interrupt[i];
-		WriteInt(chunk, val->interrupt_val);
+		WriteInt(chunk, (uint32_t) (val->device - cpu->pio.devices));
 		WriteInt(chunk, val->skip_factor);
 		WriteInt(chunk, val->skip_count);
 	}
+
+	WriteInt(chunk, cpu->model_bits);
 }
 	
 void SaveMEM(SAVESTATE_t* save, memc* mem) {
@@ -467,13 +526,12 @@ void SaveMEM(SAVESTATE_t* save, memc* mem) {
 	WriteInt(chunk, mem->ram_size);
 	WriteInt(chunk, mem->ram_pages);
 	WriteInt(chunk, mem->step);
-	WriteChar(chunk, mem->cmd);
 	
 	WriteInt(chunk, mem->boot_mapped);
 	WriteInt(chunk, mem->flash_locked);
 	WriteInt(chunk, mem->flash_version);	
 
-	for(i = 0; i < 5; i++) {
+	for(i = 0; i < NUM_BANKS; i++) {
 		WriteInt(chunk, mem->normal_banks[i].page);
 		WriteInt(chunk, mem->normal_banks[i].read_only);
 		WriteInt(chunk, mem->normal_banks[i].ram);
@@ -538,13 +596,23 @@ void SaveTIMER(SAVESTATE_t *save, timerc *time) {
 	CHUNK_t* chunk = NewChunk(save,TIMER_tag);
 	WriteLong(chunk, time->tstates);
 	WriteLong(chunk, time->freq);
-	WriteDouble(chunk, tc_elapsed(time));
+	WriteDouble(chunk, time->elapsed);
 	WriteDouble(chunk, time->lasttime);
 }
 
 void SaveLINK(SAVESTATE_t* save, link_t* link) {
+	if (link == NULL) {
+		// 81
+		return;
+	}
+
 	CHUNK_t* chunk = NewChunk(save, LINK_tag);
 	WriteChar(chunk, link->host);
+}
+
+void SaveKeypad(SAVESTATE_t *save, keypad_t *keypad) {
+	CHUNK_t *chunk = NewChunk(save, KEYPAD_tag);
+	WriteChar(chunk, keypad->group);
 }
 
 void SaveSTDINT(SAVESTATE_t* save, STDINT_t *stdint) {
@@ -564,43 +632,51 @@ void SaveSTDINT(SAVESTATE_t* save, STDINT_t *stdint) {
 	WriteInt(chunk, stdint->xy);
 }
 
+void SaveLinkAssist(CHUNK_t *chunk, LINKASSIST_t *linka) {
+	WriteChar(chunk, linka->link_enable);
+	WriteChar(chunk, linka->in);
+	WriteChar(chunk, linka->out);
+	WriteChar(chunk, linka->working);
+	WriteInt(chunk, linka->receiving);
+	WriteInt(chunk, linka->read);
+	WriteInt(chunk, linka->ready);
+	WriteInt(chunk, linka->error);
+	WriteInt(chunk, linka->sending);
+	WriteDouble(chunk, linka->last_access);
+	WriteInt(chunk, linka->bit);
+}
+
 void SaveSE_AUX(SAVESTATE_t* save, SE_AUX_t *se_aux) {
 	int i;
 	if (!se_aux) return;
+	
+	if (save->model < TI_83P) {
+		return;
+	}
+
 	CHUNK_t* chunk = NewChunk(save, SE_AUX_tag);
 	
-	if (save->model > TI_83P) {
-		WriteChar(chunk, se_aux->clock.enable);
-		WriteInt(chunk, (uint32_t)se_aux->clock.set);
-		WriteInt(chunk, (uint32_t)se_aux->clock.base);
-		WriteDouble(chunk, se_aux->clock.lasttime);
+	if (save->model == TI_83P) {
+		SaveLinkAssist(chunk, (LINKASSIST_t *)se_aux);
+		return;
+	}
+
+	WriteChar(chunk, se_aux->clock.enable);
+	WriteInt(chunk, (uint32_t)se_aux->clock.set);
+	WriteInt(chunk, (uint32_t)se_aux->clock.base);
+	WriteDouble(chunk, se_aux->clock.lasttime);
+
+	SaveLinkAssist(chunk, &se_aux->linka);
 	
-		for(i = 0; i < 7; i++) {
-			WriteChar(chunk, se_aux->delay.reg[i]);
-		}
-	
-		for(i = 0; i < 6; i++) {
-			WriteInt(chunk, se_aux->md5.reg[i]);
-		}
-		WriteChar(chunk, se_aux->md5.s);
-		WriteChar(chunk, se_aux->md5.mode);
+	for(i = 0; i < 7; i++) {
+		WriteChar(chunk, se_aux->delay.reg[i]);
 	}
 	
-	
-	WriteChar(chunk, se_aux->linka.link_enable);
-	WriteChar(chunk, se_aux->linka.in);
-	WriteChar(chunk, se_aux->linka.out);
-	WriteChar(chunk, se_aux->linka.working);
-	WriteInt(chunk, se_aux->linka.receiving);
-	WriteInt(chunk, se_aux->linka.read);
-	WriteInt(chunk, se_aux->linka.ready);
-	WriteInt(chunk, se_aux->linka.error);
-	WriteInt(chunk, se_aux->linka.sending);
-	WriteDouble(chunk, se_aux->linka.last_access);
-	WriteInt(chunk, se_aux->linka.bit);
-
-	if (save->model < TI_83PSE)
-		return;
+	for(i = 0; i < 6; i++) {
+		WriteInt(chunk, se_aux->md5.reg[i]);
+	}
+	WriteChar(chunk, se_aux->md5.s);
+	WriteChar(chunk, se_aux->md5.mode);
 	
 	WriteDouble(chunk, se_aux->xtal.lastTime);
 	WriteLong(chunk, se_aux->xtal.ticks);
@@ -617,7 +693,6 @@ void SaveSE_AUX(SAVESTATE_t* save, SE_AUX_t *se_aux) {
 		WriteChar(chunk, se_aux->xtal.timers[i].count);
 		WriteChar(chunk, se_aux->xtal.timers[i].max);
 	}
-	WriteInt(chunk, se_aux->model_bits);
 	chunk = NewChunk(save, USB_tag);
 	WriteInt(chunk, se_aux->usb.USBLineState);
 	WriteInt(chunk, se_aux->usb.USBEvents);
@@ -635,13 +710,13 @@ void SaveLCD(SAVESTATE_t* save, LCD_t* lcd) {
 	if (!lcd) return;
 	CHUNK_t* chunk = NewChunk(save, LCD_tag);
 
-	WriteInt(chunk, lcd->active);
+	WriteInt(chunk, lcd->base.active);
 	WriteInt(chunk, lcd->word_len);
-	WriteInt(chunk, lcd->x);
-	WriteInt(chunk, lcd->y);
-	WriteInt(chunk, lcd->z);
-	WriteInt(chunk, lcd->cursor_mode);
-	WriteInt(chunk, lcd->contrast);
+	WriteInt(chunk, lcd->base.x);
+	WriteInt(chunk, lcd->base.y);
+	WriteInt(chunk, lcd->base.z);
+	WriteInt(chunk, lcd->base.cursor_mode);
+	WriteInt(chunk, lcd->base.contrast);
 	WriteInt(chunk, lcd->base_level);
 	WriteBlock(chunk, lcd->display, DISPLAY_SIZE);
 
@@ -650,30 +725,66 @@ void SaveLCD(SAVESTATE_t* save, LCD_t* lcd) {
 	
 	WriteInt(chunk, lcd->shades);
 	WriteInt(chunk, lcd->mode);
-	WriteDouble(chunk, lcd->time);
-	WriteDouble(chunk, lcd->ufps);
-	WriteDouble(chunk, lcd->ufps_last);
-	WriteDouble(chunk, lcd->lastgifframe);
-	WriteDouble(chunk, lcd->write_avg);
-	WriteDouble(chunk, lcd->write_last);
+	WriteDouble(chunk, lcd->base.time);
+	WriteDouble(chunk, lcd->base.ufps);
+	WriteDouble(chunk, lcd->base.ufps_last);
+	WriteDouble(chunk, lcd->base.lastgifframe);
+	WriteDouble(chunk, lcd->base.write_avg);
+	WriteDouble(chunk, lcd->base.write_last);
+	WriteShort(chunk, lcd->screen_addr);
 }
 
-SAVESTATE_t* SaveSlot(void *lpInput) {
-	LPCALC lpCalc = (LPCALC) lpInput;
+void SaveColorLCD(SAVESTATE_t *save, ColorLCD_t *lcd) {
+	if (!lcd) return;
+	CHUNK_t* chunk = NewChunk(save, LCD_tag);
+
+	WriteInt(chunk, lcd->base.active);
+	WriteInt(chunk, lcd->base.x);
+	WriteInt(chunk, lcd->base.y);
+	WriteInt(chunk, lcd->base.z);
+	WriteInt(chunk, lcd->base.cursor_mode);
+	WriteInt(chunk, lcd->base.contrast);
+	WriteDouble(chunk, lcd->base.time);
+	WriteDouble(chunk, lcd->base.ufps);
+	WriteDouble(chunk, lcd->base.ufps_last);
+	WriteDouble(chunk, lcd->base.lastgifframe);
+	WriteDouble(chunk, lcd->base.write_avg);
+	WriteDouble(chunk, lcd->base.write_last);
+
+	WriteBlock(chunk, lcd->display, COLOR_LCD_DISPLAY_SIZE);
+	WriteBlock(chunk, lcd->queued_image, COLOR_LCD_DISPLAY_SIZE);
+	WriteBlock(chunk, (unsigned char *) &lcd->registers, sizeof(lcd->registers));
+	WriteInt(chunk, lcd->current_register);
+	WriteInt(chunk, lcd->read_buffer);
+	WriteInt(chunk, lcd->write_buffer);
+	WriteInt(chunk, lcd->read_step);
+	WriteInt(chunk, lcd->write_step);
+	WriteInt(chunk, lcd->frame_rate);
+	WriteInt(chunk, lcd->front);
+}
+
+SAVESTATE_t* SaveSlot(LPCALC lpCalc, const TCHAR *author, const TCHAR *comment) {
 	SAVESTATE_t* save;
 	BOOL runsave;
-	if (lpCalc->active == FALSE) return NULL;
+	if (lpCalc == NULL || lpCalc->active == FALSE) {
+		return NULL;
+	}
 
 	runsave = lpCalc->running;
 	lpCalc->running = FALSE;
 	
-	save = CreateSave(_T("Revsoft"), _T("Test save"), lpCalc->model);
+	save = CreateSave(author, comment, lpCalc->model);
 
 	SaveCPU(save, &lpCalc->cpu);
 	SaveMEM(save, &lpCalc->mem_c);
 	SaveTIMER(save, &lpCalc->timer_c);
-	SaveLCD(save, lpCalc->cpu.pio.lcd);
+	if (lpCalc->model >= TI_84PCSE) {
+		SaveColorLCD(save, (ColorLCD_t *) lpCalc->cpu.pio.lcd);
+	} else {
+		SaveLCD(save, (LCD_t *) lpCalc->cpu.pio.lcd);
+	}
 	SaveLINK(save, lpCalc->cpu.pio.link);
+	SaveKeypad(save, lpCalc->cpu.pio.keypad);
 	SaveSTDINT(save, lpCalc->cpu.pio.stdint);
 	SaveSE_AUX(save, lpCalc->cpu.pio.se_aux);
 
@@ -681,8 +792,12 @@ SAVESTATE_t* SaveSlot(void *lpInput) {
 	return save;
 }
 
-void LoadCPU(SAVESTATE_t* save, CPU_t* cpu) {
+BOOL LoadCPU(SAVESTATE_t* save, CPU_t* cpu) {
 	CHUNK_t* chunk = FindChunk(save, CPU_tag);
+	if (chunk == NULL) {
+		return FALSE;
+	}
+
 	chunk->pnt = 0;
 	
 	cpu->a = ReadChar(chunk);
@@ -732,26 +847,42 @@ void LoadCPU(SAVESTATE_t* save, CPU_t* cpu) {
 	int i;
 	for(i = 0; i < 256; i++) {
 		interrupt_t *val = &cpu->pio.interrupt[i];
-		val->interrupt_val = ReadInt(chunk);
-		val->skip_factor = ReadInt(chunk);
-		val->skip_count = ReadInt(chunk);
+		val->device = &cpu->pio.devices[ReadInt(chunk)];
+		val->skip_factor = (unsigned char)ReadInt(chunk);
+		val->skip_count = (unsigned char)ReadInt(chunk);
 	}
 	
+	if (save->version_build >= CPU_MODEL_BITS_BUILD) {
+		cpu->model_bits = ReadInt(chunk);
+	} else {
+		cpu->model_bits = save->model == TI_84P ? 0 : 1;
+	}
+
+	return TRUE;
 }
 
 
 
-void LoadMEM(SAVESTATE_t* save, memc* mem) {
+BOOL LoadMEM(SAVESTATE_t* save, memc* mem) {
 	int i;
 	CHUNK_t* chunk = FindChunk(save, MEM_tag);
+	if (chunk == NULL) {
+		return FALSE;
+	}
+
 	chunk->pnt = 0;
 
 	mem->flash_size	= ReadInt(chunk);
 	mem->flash_pages= ReadInt(chunk);
 	mem->ram_size	= ReadInt(chunk);
 	mem->ram_pages	= ReadInt(chunk);
-	mem->step		= ReadInt(chunk);
-	mem->cmd		= ReadChar(chunk);
+	mem->step		= (FLASH_COMMAND) ReadInt(chunk);
+	if (save->version_build <= MEM_C_CMD_BUILD) {
+		// dummy read for compatibility. this used to read mem_c->cmd but 
+		// is no longer needed
+		ReadChar(chunk);
+	}
+
 	mem->boot_mapped= ReadInt(chunk);
 	mem->flash_locked= ReadInt(chunk);
 	mem->flash_version = ReadInt(chunk);
@@ -770,8 +901,9 @@ void LoadMEM(SAVESTATE_t* save, memc* mem) {
 	if (mem->boot_mapped) {
 		update_bootmap_pages(mem);
 		mem->banks = mem->bootmap_banks;
-	} else
+	} else {
 		mem->banks = mem->normal_banks;
+	}
 	
 	mem->read_OP_flash_tstates	= ReadInt(chunk);
 	mem->read_NOP_flash_tstates	= ReadInt(chunk);
@@ -780,14 +912,22 @@ void LoadMEM(SAVESTATE_t* save, memc* mem) {
 	mem->read_NOP_ram_tstates	= ReadInt(chunk);
 	mem->write_ram_tstates		= ReadInt(chunk);
 
-	mem->flash_upper = ReadInt(chunk);
-	mem->flash_lower = ReadInt(chunk);
+	mem->flash_upper = (unsigned short)ReadInt(chunk);
+	mem->flash_lower = (unsigned short)ReadInt(chunk);
 
 	chunk = FindChunk(save, ROM_tag);
+	if (chunk == NULL) {
+		return FALSE;
+	}
+
 	chunk->pnt = 0;
 	ReadBlock(chunk, (unsigned char *)mem->flash, mem->flash_size);
 	
 	chunk = FindChunk(save, RAM_tag);
+	if (chunk == NULL) {
+		return FALSE;
+	}
+
 	chunk->pnt = 0;
 	ReadBlock(chunk, (unsigned char *)mem->ram, mem->ram_size);	
 
@@ -801,23 +941,20 @@ void LoadMEM(SAVESTATE_t* save, memc* mem) {
 	chunk = FindChunk(save, RAM_LIMIT_tag);
 	if (chunk) {
 		chunk->pnt = 0;
-		mem->ram_upper = ReadInt(chunk);
-		mem->ram_lower = ReadInt(chunk);
+		mem->ram_upper = (unsigned short)ReadInt(chunk);
+		mem->ram_lower = (unsigned short)ReadInt(chunk);
 	}
 
 	chunk = FindChunk(save, NUM_FLASH_BREAKS_tag);
 	if (chunk) {
-		int num_flash_breaks = ReadInt(chunk);
+		const int num_flash_breaks = ReadInt(chunk);
 		chunk = FindChunk(save, FLASH_BREAKS_tag);
 		if (chunk) {
 			for (int i = 0; i < num_flash_breaks; i++)
 			{
-				int addr = ReadInt(chunk);
-				waddr_t waddr;
-				waddr.addr = addr % PAGE_SIZE;
-				waddr.page = addr / PAGE_SIZE;
-				waddr.is_ram = FALSE;
-				BREAK_TYPE type = (BREAK_TYPE) ReadInt(chunk);
+				const int addr = ReadInt(chunk);
+				const waddr_t waddr = MAKE_WADDR((uint16_t)(addr % PAGE_SIZE), (uint8_t)(addr / PAGE_SIZE), FALSE);
+				const BREAK_TYPE type = (BREAK_TYPE) ReadInt(chunk);
 				switch (type) {
 				case MEM_READ_BREAK:
 					set_mem_read_break(mem, waddr);
@@ -835,84 +972,163 @@ void LoadMEM(SAVESTATE_t* save, memc* mem) {
 
 	chunk = FindChunk(save, NUM_RAM_BREAKS_tag);
 	if (chunk) {
-		int num_ram_breaks = ReadInt(chunk);
-		chunk = FindChunk(save, FLASH_BREAKS_tag);
+		const int num_ram_breaks = ReadInt(chunk);
+		chunk = FindChunk(save, RAM_BREAKS_tag);
 		if (chunk) {
 			for (int i = 0; i < num_ram_breaks; i++)
 			{
-				BOOL valOk;
-				int addr = ReadInt(chunk, &valOk);
-				if (valOk) {
-					waddr_t waddr;
-					waddr.addr = addr % PAGE_SIZE;
-					waddr.page = addr / PAGE_SIZE;
-					waddr.is_ram = TRUE;
-					BREAK_TYPE type = (BREAK_TYPE) ReadInt(chunk);
-					switch (type) {
-					case MEM_READ_BREAK:
-						set_mem_read_break(mem, waddr);
-						break;
-					case MEM_WRITE_BREAK:
-						set_mem_read_break(mem, waddr);
-						break;
-					default:
-						set_break(mem, waddr);
-						break;
-					}
+				const int addr = ReadInt(chunk);
+				const waddr_t waddr = MAKE_WADDR((uint16_t)(addr % PAGE_SIZE), (uint8_t)(addr / PAGE_SIZE), TRUE);
+				const BREAK_TYPE type = (BREAK_TYPE) ReadInt(chunk);
+				switch (type) {
+				case MEM_READ_BREAK:
+					set_mem_read_break(mem, waddr);
+					break;
+				case MEM_WRITE_BREAK:
+					set_mem_read_break(mem, waddr);
+					break;
+				default:
+					set_break(mem, waddr);
+					break;
 				}
 			}
 		}
 	}
+
+	return TRUE;
 }
 
-void LoadTIMER(SAVESTATE_t* save, timerc* time) {
+BOOL LoadTIMER(SAVESTATE_t* save, timerc* time) {
 	CHUNK_t* chunk = FindChunk(save,TIMER_tag);
+	if (chunk == NULL) {
+		return FALSE;
+	}
+
 	chunk->pnt = 0;
 
 	time->tstates	= ReadLong(chunk);
 	time->freq		= (uint32_t) ReadLong(chunk);
 	time->elapsed	= ReadDouble(chunk);
 	time->lasttime	= ReadDouble(chunk);	// this isn't used.
+	return TRUE;
 }
 
-void LoadLCD(SAVESTATE_t* save, LCD_t* lcd) {
+BOOL LoadLCD(SAVESTATE_t* save, LCD_t* lcd) {
 	CHUNK_t* chunk = FindChunk(save,LCD_tag);
+	if (chunk == NULL) {
+		return FALSE;
+	}
+
 	chunk->pnt = 0;
 
-	lcd->active		= ReadInt(chunk);
+	lcd->base.active		= ReadInt(chunk);
 	lcd->word_len	= ReadInt(chunk);
-	lcd->x			= ReadInt(chunk);
-	lcd->y			= ReadInt(chunk);
-	lcd->z			= ReadInt(chunk);
-	lcd->cursor_mode		= (LCD_CURSOR_MODE) ReadInt(chunk);
-	lcd->contrast	= ReadInt(chunk);
-	lcd->base_level	= ReadInt(chunk);
+	lcd->base.x = ReadInt(chunk);
+	lcd->base.y = ReadInt(chunk);
+	lcd->base.z = ReadInt(chunk);
+	lcd->base.cursor_mode = (LCD_CURSOR_MODE)ReadInt(chunk);
+	lcd->base.contrast = ReadInt(chunk);
+	int base_level	= ReadInt(chunk);
+	if (save->version_build >= NEW_CONTRAST_MODEL_BUILD) {
+		lcd->base_level = base_level;
+	} else {
+		set_model_baselevel(lcd, save->model);
+		// we can't rely on the old contrast value, just reset it to the midpoint
+		lcd->base.contrast = LCD_MID_CONTRAST;
+	}
 
 	ReadBlock(chunk, lcd->display, DISPLAY_SIZE);
 	lcd->front		= ReadInt(chunk);
 	ReadBlock(chunk,  (unsigned char *) lcd->queue, LCD_MAX_SHADES * DISPLAY_SIZE);
 	lcd->shades		= ReadInt(chunk);
 	lcd->mode		= (LCD_MODE) ReadInt(chunk);
-	lcd->time		= ReadDouble(chunk);
-	lcd->ufps		= ReadDouble(chunk);
-	lcd->ufps_last	= ReadDouble(chunk);
-	lcd->lastgifframe= ReadDouble(chunk);
-	lcd->write_avg	= ReadDouble(chunk);
-	lcd->write_last = ReadDouble(chunk);
+	lcd->base.time = ReadDouble(chunk);
+	lcd->base.ufps = ReadDouble(chunk);
+	lcd->base.ufps_last = ReadDouble(chunk);
+	lcd->base.lastgifframe = ReadDouble(chunk);
+	lcd->base.write_avg	= ReadDouble(chunk);
+	lcd->base.write_last = ReadDouble(chunk);
+	if (save->version_build >= LCD_SCREEN_ADDR_BUILD) {
+		lcd->screen_addr = ReadShort(chunk);
+	} else {
+		// use the default and hope you were not
+		// using a custom location
+		lcd->screen_addr = 0xFC00;
+	}
+
+	return TRUE;
 }
 
+BOOL LoadColorLCD(SAVESTATE_t *save, ColorLCD_t *lcd) {
+	CHUNK_t* chunk = FindChunk(save, LCD_tag);
+	if (chunk == NULL) {
+		return FALSE;
+	}
 
-
-void LoadLINK(SAVESTATE_t* save, link_t* link) {
-	CHUNK_t* chunk	= FindChunk(save,LINK_tag);
 	chunk->pnt = 0;
 
-	link->host		= ReadChar(chunk);
+	lcd->base.active = ReadInt(chunk);
+	lcd->base.x = ReadInt(chunk);
+	lcd->base.y = ReadInt(chunk);
+	lcd->base.z = ReadInt(chunk);
+	lcd->base.cursor_mode = (LCD_CURSOR_MODE)ReadInt(chunk);
+	lcd->base.contrast = ReadInt(chunk);
+	lcd->base.time = ReadDouble(chunk);
+	lcd->base.ufps = ReadDouble(chunk);
+	lcd->base.ufps_last = ReadDouble(chunk);
+	lcd->base.lastgifframe = ReadDouble(chunk);
+	lcd->base.write_avg = ReadDouble(chunk);
+	lcd->base.write_last = ReadDouble(chunk);
+
+	ReadBlock(chunk, lcd->display, COLOR_LCD_DISPLAY_SIZE);
+	ReadBlock(chunk, lcd->queued_image, COLOR_LCD_DISPLAY_SIZE);
+	ReadBlock(chunk, (unsigned char *) &lcd->registers, sizeof(lcd->registers));
+	lcd->current_register = ReadInt(chunk);
+	lcd->read_buffer = ReadInt(chunk);
+	lcd->write_buffer = ReadInt(chunk);
+	lcd->read_step = ReadInt(chunk);
+	lcd->write_step = ReadInt(chunk);
+	lcd->frame_rate = ReadInt(chunk);
+	lcd->front = ReadInt(chunk);
+
+	return TRUE;
 }
 
-void LoadSTDINT(SAVESTATE_t* save, STDINT_t* stdint) {
+BOOL LoadLINK(SAVESTATE_t* save, link_t* link) {
+	CHUNK_t* chunk	= FindChunk(save,LINK_tag);
+	if (chunk == NULL) {
+		// 81
+		return save->model == TI_81;
+	}
+
+	chunk->pnt = 0;
+
+	link->host = ReadChar(chunk);
+
+	return TRUE;
+}
+
+BOOL LoadKeypad(SAVESTATE_t *save, keypad_t *keypad) {
+	CHUNK_t* chunk = FindChunk(save, KEYPAD_tag);
+	if (chunk == NULL) {
+		// Optional until recently, so we can get by without it
+		return TRUE;
+	}
+
+	chunk->pnt = 0;
+
+	keypad->group = ReadChar(chunk);
+
+	return TRUE;
+}
+
+BOOL LoadSTDINT(SAVESTATE_t* save, STDINT_t* stdint) {
 	int i;
 	CHUNK_t* chunk		= FindChunk(save,STDINT_tag);
+	if (chunk == NULL) {
+		return FALSE;
+	}
+
 	chunk->pnt = 0;
 
 	stdint->intactive	= ReadChar(chunk);
@@ -923,15 +1139,19 @@ void LoadSTDINT(SAVESTATE_t* save, STDINT_t* stdint) {
 	for(i = 0; i < 4; i++) {
 		stdint->freq[i]	= ReadDouble(chunk);
 	}
-	stdint->mem			= ReadInt(chunk);
-	stdint->xy			= ReadInt(chunk);
+	stdint->mem			= (unsigned char) ReadInt(chunk);
+	stdint->xy			= (unsigned char) ReadInt(chunk);
+
+	return TRUE;
 }
 
-void LoadSE_AUX(SAVESTATE_t* save, SE_AUX_t *se_aux) {
+// CPU needed for compatibility, see below
+void LoadSE_AUX(SAVESTATE_t* save, CPU_t *cpu, SE_AUX_t *se_aux) {
 	int i;
 	if (!se_aux) {
 		return;
 	}
+
 	CHUNK_t* chunk = FindChunk(save, SE_AUX_tag);
 	if (!chunk) {
 		return;
@@ -998,10 +1218,13 @@ void LoadSE_AUX(SAVESTATE_t* save, SE_AUX_t *se_aux) {
 		se_aux->xtal.timers[i].count		= ReadChar(chunk);
 		se_aux->xtal.timers[i].max			= ReadChar(chunk);
 	}
-	if (save->version_minor >= 1)
-		se_aux->model_bits = ReadInt(chunk);
-	else
-		se_aux->model_bits = save->model == TI_84P ? 0 : 1;
+
+	if (save->version_minor >= 1 && save->version_build <= SEAUX_MODEL_BITS_BUILD) {
+		// originally this was part of the SE_AUX struct
+		// now its contained in the core, and as such this minor hack
+		cpu->model_bits = ReadInt(chunk);
+	}
+
 	chunk = FindChunk(save, USB_tag);
 	if (!chunk) return;
 	chunk->pnt = 0;
@@ -1018,31 +1241,73 @@ void LoadSE_AUX(SAVESTATE_t* save, SE_AUX_t *se_aux) {
 	se_aux->usb.Port54 = ReadChar(chunk);
 }
 
-
-void LoadSlot(SAVESTATE_t *save, void *lpInput) {
+BOOL LoadSlot_Unsafe(SAVESTATE_t *save, LPCALC lpCalc) {
 	BOOL runsave;
-	LPCALC lpCalc = (LPCALC) lpInput;
-	
-	if (lpCalc->active == FALSE){
-		puts("Slot was not active");
-		return;
+
+	if (lpCalc == NULL || lpCalc->active == FALSE) {
+		return FALSE;
 	}
 	if (save == NULL) {
-		puts("Save was null");
-		return;
+		return FALSE;
 	}
-	
+
 	runsave = lpCalc->running;
 	lpCalc->running = FALSE;
-	
-	LoadCPU(save, &lpCalc->cpu);
-	LoadMEM(save, &lpCalc->mem_c);
-	LoadTIMER(save, &lpCalc->timer_c);
-	LoadLCD(save, lpCalc->cpu.pio.lcd);
-	LoadLINK(save, lpCalc->cpu.pio.link);
-	LoadSTDINT(save, lpCalc->cpu.pio.stdint);
-	LoadSE_AUX(save, lpCalc->cpu.pio.se_aux);
+
+	BOOL success = LoadCPU(save, &lpCalc->cpu);
+	if (success == FALSE) {
+		return FALSE;
+	}
+
+	success = LoadMEM(save, &lpCalc->mem_c);
+	if (success == FALSE) {
+		return FALSE;
+	}
+
+	success = LoadTIMER(save, &lpCalc->timer_c);
+	if (success == FALSE) {
+		return FALSE;
+	}
+
+	if (lpCalc->model >= TI_84PCSE) {
+		success = LoadColorLCD(save, (ColorLCD_t *)lpCalc->cpu.pio.lcd);
+	} else {
+		success = LoadLCD(save, (LCD_t *)lpCalc->cpu.pio.lcd);
+	}
+
+	if (success == FALSE) {
+		return FALSE;
+	}
+
+	success = LoadLINK(save, lpCalc->cpu.pio.link);
+	if (success == FALSE) {
+		return FALSE;
+	}
+
+	success = LoadKeypad(save, lpCalc->cpu.pio.keypad);
+	if (!success) {
+		return FALSE;
+	}
+
+	success = LoadSTDINT(save, lpCalc->cpu.pio.stdint);
+	if (success == FALSE) {
+		return FALSE;
+	}
+
+	LoadSE_AUX(save, &lpCalc->cpu, lpCalc->cpu.pio.se_aux);
 	lpCalc->running = runsave;
+
+	return TRUE;
+}
+
+BOOL LoadSlot(SAVESTATE_t *save, const LPCALC lpCalc) {
+	try {
+		return LoadSlot_Unsafe(save, lpCalc);
+	}
+	catch (std::exception& e) {
+		_tprintf(_T("Exception loading save state: %s"), e.what());
+		return FALSE;
+	}
 }
 
 char* GetRomOnly(SAVESTATE_t *save, int *size) {
@@ -1058,38 +1323,20 @@ void WriteSave(const TCHAR *fn, SAVESTATE_t* save, int compress) {
 	int i;
 	FILE* ofile;
 	FILE* cfile;
-#ifdef _WINDOWS
-	TCHAR tmpfn[L_tmpnam];
-	TCHAR temp_save[MAX_PATH];
-#else
-	char tmpfn[L_tmpnam];
-	char temp_save[MAX_PATH];
-#endif
 	
 	if (!save) {
+		_putts(_T("Save was null for write"));
 		return;
 	}
+
 	if (compress == 0) {
-#ifdef WINVER
 		_tfopen_s(&ofile, fn, _T("wb"));
-#else
-		ofile = _tfopen_s(fn, "wb");
-#endif
 	} else {
-#ifdef WINVER
-		tmpnam_s(tmpfn, sizeof(tmpfn));
-		GetAppDataString(temp_save, sizeof(temp_save));
-		StringCbCat(temp_save, sizeof(temp_save), tmpfn);
-		_tfopen_s(&ofile, temp_save, _T("wb"));
-#else
-		tmpnam(tmpfn);
-		strcpy(temp_save, getenv("appdata"));
-		strcat(temp_save, tmpfn);
-		ofile = fopen(temp_save,"wb");
-#endif
+		tmpfile_s(&ofile);
 	}
 		
 	if (!ofile) {
+		_putts(_T("Could not open save file for write"));
 		return;
 	}
 
@@ -1110,29 +1357,23 @@ void WriteSave(const TCHAR *fn, SAVESTATE_t* save, int compress) {
 		fputc(save->chunks[i]->tag[1], ofile);
 		fputc(save->chunks[i]->tag[2], ofile);
 		fputc(save->chunks[i]->tag[3], ofile);
-		fputi(save->chunks[i]->size,ofile);
+		fputi(save->chunks[i]->size, ofile);
 		fwrite(save->chunks[i]->data, 1, save->chunks[i]->size, ofile);
 	}
-	fclose(ofile);
 	
 	if (compress) {
-#ifdef WINVER
+		// make sure we've written to the file, and rewind to
+		// the beginning. TODO: we should not require files,
+		// but def and inf use FILE * for now
+		fflush(ofile);
+		rewind(ofile);
+
 		_tfopen_s(&cfile, fn, _T("wb"));
-#else
-		cfile = _tfopen_s(fn, "wb");
-#endif
 		if (!cfile) {
+			_putts(_T("Could not open compress file for write"));
 			return;
 		}
-#ifdef WINVER
-		_tfopen_s(&ofile, temp_save, _T("rb"));
-#else
-		ofile = fopen(temp_save,"rb");
-#endif
-		if (!ofile) {
-			return;
-		}
-		//int error;
+
 		fputs(DETECT_CMP_STR, cfile);
 		switch(compress) {
 #ifdef ZLIB_WINAPI
@@ -1140,99 +1381,75 @@ void WriteSave(const TCHAR *fn, SAVESTATE_t* save, int compress) {
 				{
 					fputc(ZLIB_CMP, cfile);
 				
-					int error = def(ofile, cfile, 9);
+					def(ofile, cfile, 9);
 					break;
 				}
 #endif
 			default:
+				_putts(_T("Error bad compression format selected."));
 				break;
 		}
-		fclose(ofile);
 		fclose(cfile);
-#ifdef _WINDOWS
-		_tremove(temp_save);
-#else
-		remove(temp_save);
-#endif
 	}
+	fclose(ofile);
 }
 
 SAVESTATE_t* ReadSave(FILE *ifile) {
 	int i;
 	int compressed = FALSE;
-	int chunk_offset,chunk_count;
+	int chunk_offset, chunk_count;
 	char string[128];
-#ifdef _WINDOWS
-	TCHAR tmpfn[L_tmpnam];
-	TCHAR temp_save[MAX_PATH];
-#else
-	char tmpfn[L_tmpnam];
-	char temp_save[MAX_PATH];
-#endif
-	SAVESTATE_t *save;
+	static SAVESTATE_t *save = NULL;
 	CHUNK_t *chunk;
-	FILE *tmpfile;
+	FILE *tmpFile;
 
 	fread(string, 1, 8, ifile);
 	string[8] = 0;
 	if (strncmp(DETECT_CMP_STR, string, 8) == 0) {
 		i = fgetc(ifile);
-#ifdef WINVER
-		_ttmpnam_s(tmpfn);
-		GetAppDataString(temp_save, sizeof(temp_save));
-		StringCbCat(temp_save, sizeof(temp_save), tmpfn);
-		_tfopen_s(&tmpfile, temp_save, _T("wb"));
-#else
-		tmpnam(tmpfn);
-		strcpy(temp_save, getenv("appdata"));
-		strcat(temp_save, tmpfn);
-		tmpfile = fopen(temp_save,"wb");
-#endif
-		if (!tmpfile) {
+		tmpfile_s(&tmpFile);
+		if (!tmpFile) {
 			return NULL;
 		}
-		//int error;
+		
 		switch(i) {
 #ifdef ZLIB_WINAPI
 			case ZLIB_CMP:
 				{
-					int error = inf(ifile,tmpfile);
+					int error = inf(ifile, tmpFile);
+					if (error) {
+						fclose(ifile);
+						return NULL;
+					}
+					// TODO: fix this so we don't need this temp file
+					// we've written it out to file, but fclosing this will
+					// delete it. Make sure we've written it out and rewind
+					fflush(tmpFile);
+					rewind(tmpFile);
+					ifile = tmpFile;
 					break;
 				}
 #endif
 			default:
-				fclose(tmpfile);
-#ifdef _WINDOWS
-				_tremove(tmpfn);
-#else
-				remove(tmpfn);
-#endif
+				fclose(tmpFile);
 				return NULL;
 		}
 		
-		fclose(tmpfile);
-#ifdef WINVER
-		_tfopen_s(&ifile, temp_save, _T("rb"));	//this is not a leak, file gets closed
-											// outside of this routine.
-#else
-		ifile = fopen(temp_save,"rb");	//this is not a leak, file gets closed
-										// outside of this routine.
-#endif
-		if (!ifile) {
-			return NULL;
-		}
 		compressed = TRUE;
 		fread(string, 1, 8, ifile);
 	}
 		
-	if (strncmp(DETECT_STR, string, 8) != 0){
-
-		if (compressed == TRUE) fclose(ifile);
+	if (strncmp(DETECT_STR, string, 8) != 0) {
+		_putts(_T("Readsave detect string failed."));
+		if (compressed == TRUE) {
+			fclose(ifile);
+		}
 		return NULL;
 	}		
 	
 	save = (SAVESTATE_t *) malloc(sizeof(SAVESTATE_t));
 	if (!save) {
+		_putts(_T("Save could not be allocated"));
 		if (compressed == TRUE) fclose(ifile);
 		return NULL;
 	}
@@ -1246,40 +1463,46 @@ SAVESTATE_t* ReadSave(FILE *ifile) {
 
 	if (save->version_major != CUR_MAJOR) {
 		fclose(ifile);
+		_putts(_T("Save not compatible at all, sorry\n"));
 		free(save);
 		return NULL;
 	}
 
-	save->model = fgeti(ifile);
+	save->model = (CalcModel) fgeti(ifile);
 
 	chunk_count = fgeti(ifile);
-	fread(save->author,1,32,ifile);
-	fread(save->comment,1,64,ifile);
+	fread(save->author, 1, MAX_SAVESTATE_AUTHOR_LENGTH, ifile);
+	fread(save->comment, 1 , MAX_SAVESTATE_COMMENT_LENGTH, ifile);
 
 	fseek(ifile, chunk_offset + 8 + 4, SEEK_SET);
 	
-	for(i = 0; i < 512; i++) {
+	for(i = 0; i < MAX_CHUNKS; i++) {
 		save->chunks[i] = NULL;
 	}
+
 	save->chunk_count = 0;
-	for(i = 0; i < chunk_count; i++) {
-		string[0]	= fgetc(ifile);
-		string[1]	= fgetc(ifile);
-		string[2]	= fgetc(ifile);
-		string[3]	= fgetc(ifile);
-		string[4]	= 0;
-		chunk		= NewChunk(save,string);
-		chunk->size	= fgeti(ifile);
-		chunk->data	= (unsigned char *) malloc(chunk->size);
-		fread(chunk->data,1,chunk->size,ifile);
+	for (i = 0; i < chunk_count; i++) {
+		string[0] = (char)fgetc(ifile);
+		string[1] = (char)fgetc(ifile);
+		string[2] = (char)fgetc(ifile);
+		string[3] = (char)fgetc(ifile);
+		string[4] = 0;
+		if (feof(ifile)) {
+			FreeSave(save);
+			return NULL;
+		}
+		chunk = NewChunk(save, string);
+		chunk->size = fgeti(ifile);
+		if (feof(ifile)) {
+			FreeSave(save);
+			return NULL;
+		}
+		chunk->data = (unsigned char *)malloc(chunk->size);
+		fread(chunk->data, 1, chunk->size, ifile);
 	}
+
 	if (compressed == TRUE) {
 		fclose(ifile);
-#ifdef _WINDOWS
-		_tremove(temp_save);
-#else
-		remove(temp_save);
-#endif
 	}
 /* check for read errors... */
 	return save;

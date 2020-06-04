@@ -4,9 +4,10 @@
 #include "lcd.h"
 #include "keys.h"
 #include "device.h"
-#include "calc.h"
 
-static void port10(CPU_t *cpu, device_t *dev);
+#pragma warning(push)
+#pragma warning( disable : 4100 )
+
 static double timer_freq81[4] = { 1.0 / 800.0, 1.0 / 400.0, 3.0 / 800.0, 1.0 / 200.0 };
 
 // 81 screen offset
@@ -15,13 +16,14 @@ static void port0(CPU_t *cpu, device_t *dev) {
 		cpu->bus = 0;
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-		dev->aux = (LPVOID) (0x100 * ((cpu->bus % 0x20) + 0xE0));
-		cpu->pio.devices[0x10].aux = dev->aux;
+		LCD_t *lcd = (LCD_t *)cpu->pio.lcd;
+		lcd->screen_addr = (0x100 * ((cpu->bus % 0x20) + 0xE0));
+		dev->aux = lcd;
 		port10(cpu, dev);
 		cpu->output = FALSE;
 		device_t devt;
 		devt.aux = cpu->pio.lcd;
-		LCD_data(cpu, &devt);
+		cpu->pio.lcd->data(cpu, &devt);
 	}
 	return;
 }
@@ -32,10 +34,11 @@ static void port2(CPU_t *cpu, device_t *dev) {
 	if (cpu->input) {
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-		//HACK: still not sure exactly how this works :P
-		lcd->contrast = lcd->base_level - 19 + cpu->bus;
-		if (lcd->contrast > 64)
-			lcd->contrast = 64;
+		lcd->base.contrast = cpu->bus & 0x1F;
+		if (lcd->base.contrast >= LCD_MAX_CONTRAST) {
+			lcd->base.contrast = LCD_MAX_CONTRAST - 1;
+		}
+
 		cpu->output = FALSE;
 	}
 	return;
@@ -46,7 +49,7 @@ static void port3(CPU_t *cpu, device_t *dev) {
 	
 	if (cpu->input) {
 		unsigned char result = 0;
-		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk1) > stdint->timermax1) result += 4;
+		if ((cpu->timer_c->elapsed - stdint->lastchk1) > stdint->timermax1) result += 4;
 		if (cpu->pio.lcd->active) result += 2;
 		if (stdint->on_latch) result += 1;
 		else result += 8;
@@ -63,14 +66,14 @@ static void port3(CPU_t *cpu, device_t *dev) {
 		if ((cpu->bus & 0x01) == 0)
 			stdint->on_latch = FALSE;
 		
-		stdint->intactive = cpu->bus;
+		stdint->intactive = cpu->bus & (BIT(2) | BIT(0));
 		cpu->output = FALSE;
 	}
 	
 	if (!(stdint->intactive & 0x04) && cpu->pio.lcd->active == TRUE) {
-		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk1) > stdint->timermax1) {
+		if ((cpu->timer_c->elapsed - stdint->lastchk1) > stdint->timermax1) {
 			cpu->interrupt = TRUE;
-			while ((tc_elapsed(cpu->timer_c) - stdint->lastchk1) > stdint->timermax1)
+			while ((cpu->timer_c->elapsed - stdint->lastchk1) > stdint->timermax1)
 				stdint->lastchk1 += stdint->timermax1;
 		}
 	}
@@ -89,10 +92,10 @@ static void port4(CPU_t *cpu, device_t *dev) {
 		cpu->input = FALSE;
 	} else if (cpu->output) {
 		cpu->output = FALSE;
-		dev->aux = (void *) cpu->bus;
+		dev->aux = (void *) (size_t) cpu->bus;
 		int freq = (cpu->bus >> 1) & 0x3;
 		cpu->pio.stdint->timermax1 = cpu->pio.stdint->freq[freq];
-		cpu->pio.stdint->lastchk1 = tc_elapsed(cpu->timer_c);
+		cpu->pio.stdint->lastchk1 = cpu->timer_c->elapsed;
 		int lcd_mode = (cpu->bus >> 3) & 0x3;
 		if (lcd_mode == 0) {
 			cpu->pio.lcd->width = 80;
@@ -123,13 +126,22 @@ static void port6(CPU_t *cpu, device_t *dev) {
 	}
 }
 
+static void port7(CPU_t *cpu, device_t *dev) {
+	if (cpu->input) {
+		cpu->bus = 0x00;
+		cpu->input = FALSE;
+	} else if (cpu->output) {
+		cpu->output = FALSE;
+	}
+}
+
 static void port10(CPU_t *cpu, device_t *dev) {
-	size_t screen_addr = (size_t) dev->aux;
+	LCD_t *lcd = (LCD_t *)dev->aux;
+	int screen_addr = lcd->screen_addr;
 	// Output the entire LCD
-	LCD_t *lcd = cpu->pio.lcd;
 	unsigned char *base_addr = cpu->mem_c->banks[mc_bank(screen_addr)].addr + mc_base(screen_addr);
 	int k = 0, l = 0;
-	for (int j = 0; j < 64; j++) {	
+	for (int j = 0; j < LCD_HEIGHT; j++) {	
 		for (int i = 0; i < 12; i++, k++, l++) {
 			lcd->display[k] = *(base_addr + l);
 		}
@@ -148,7 +160,7 @@ static STDINT_t* INT81_init(CPU_t* cpu) {
 	
 	stdint->intactive = 0;
 	stdint->timermax1 = stdint->freq[3];
-	stdint->lastchk1 = tc_elapsed(cpu->timer_c);
+	stdint->lastchk1 = cpu->timer_c->elapsed;
 	stdint->on_backup = 0;
 	stdint->on_latch = FALSE;
 	return stdint;
@@ -156,12 +168,6 @@ static STDINT_t* INT81_init(CPU_t* cpu) {
 
 int memory_init_81(memc *mc) {
 	memset(mc, 0, sizeof(memory_context_t));
-
-	mc->mem_read_break_callback = mem_debug_callback;
-	mc->mem_write_break_callback = mem_debug_callback;
-#ifdef WINVER
-	mc->breakpoint_manager_callback = check_break_callback;
-#endif
 	
 	/* Set Number of Pages here */
 	mc->flash_pages = 2;
@@ -178,6 +184,7 @@ int memory_init_81(memc *mc) {
 	mc->ram_break = (unsigned char *) calloc(mc->ram_pages, PAGE_SIZE);
 
 	if (!mc->flash || !mc->ram) {
+		_tprintf_s(_T("Couldn't allocate memory in memory_init_83p\n"));
 		return 1;
 	}
 
@@ -208,7 +215,7 @@ int device_init_81(CPU_t *cpu) {
 	cpu->pio.devices[0x00].aux = NULL;
 	cpu->pio.devices[0x00].code = (devp) &port0;
 
-	keypad_t *keyp = keypad_init(cpu);
+	keypad_t *keyp = keypad_init();
 	cpu->pio.devices[0x01].active = TRUE;
 	cpu->pio.devices[0x01].aux = keyp;
 	cpu->pio.devices[0x01].code = (devp) &keypad;
@@ -232,15 +239,18 @@ int device_init_81(CPU_t *cpu) {
 	cpu->pio.devices[0x06].active = TRUE;
 	cpu->pio.devices[0x06].code = (devp) &port6;
 
+	cpu->pio.devices[0x07].active = TRUE;
+	cpu->pio.devices[0x07].code = (devp)&port7;
+
 	cpu->pio.devices[0x10].active = TRUE;
-	cpu->pio.devices[0x10].aux = NULL;
+	cpu->pio.devices[0x10].aux = lcd;
 	cpu->pio.devices[0x10].code = (devp) &port10;
 
 	cpu->pio.devices[0x11].active = TRUE;
 	cpu->pio.devices[0x11].aux = lcd;
-	cpu->pio.devices[0x11].code = (devp) &LCD_data;
+	cpu->pio.devices[0x11].code = (devp)lcd->base.data;
 	
-	cpu->pio.lcd		= lcd;
+	cpu->pio.lcd		= (LCDBase_t *) lcd;
 	cpu->pio.keypad		= keyp;
 	cpu->pio.link		= NULL;
 	cpu->pio.stdint		= stdint;
@@ -249,8 +259,10 @@ int device_init_81(CPU_t *cpu) {
 	
 	//Append_interrupt_device(cpu, 0x00, 1);
 	Append_interrupt_device(cpu, 0x03, 1);
-	Append_interrupt_device(cpu, 0x10, 16000);
-	Append_interrupt_device(cpu, 0x11, 16000);
+	Append_interrupt_device(cpu, 0x10, 255);
+	Append_interrupt_device(cpu, 0x11, 255);
 	//Append_interrupt_device(cpu, 0x11, 128);
 	return 0;
 }
+
+#pragma warning(pop)

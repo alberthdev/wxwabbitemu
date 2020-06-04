@@ -1,17 +1,14 @@
 #include "stdafx.h"
 
+#include "83phw.h"
 #include "lcd.h"
 #include "keys.h"
-#include "83phw.h"
 #include "link.h"
 #include "device.h"
-#include "calc.h"
 #include "83psehw.h"
-#ifdef WINVER
-#include "dbbreakpoints.h"
-#endif
 
-#define BIT(bit) (1 << bit)
+#pragma warning(push)
+#pragma warning( disable : 4100 )
 
 static double timer_freq83p[4] = { 1.0f / 560.0f, 1.0f / 248.0f, 1.0f / 170.0f, 1.0f / 118.0f };
 
@@ -32,28 +29,29 @@ static void port0(CPU_t *cpu, device_t *dev) {
 		link->hasChanged = FALSE;
 		link->changedTime = 0;
 
-		cpu->bus = (((link->host & 0x03) | (link->client[0] & 0x03)) ^ 0x03) | (assist->link_enable & 0x04);
+		cpu->bus = (((link->host & 0x03) | (link->client[0] & 0x03)) ^ 0x03);
+		cpu->bus += assist->link_enable & BIT(2);
 		if (assist->read)
-			cpu->bus += 8;
+			cpu->bus += BIT(3);
 		if (assist->receiving)
-			cpu->bus += 64;
+			cpu->bus += BIT(6);
+		cpu->bus += cpu->link_write << 4;
 		cpu->input = FALSE;
 	} else if (cpu->output) {
-#ifdef WINVER // lazy me
 		if ((link->host & 0x01) != (cpu->bus & 0x01)) {
 			FlippedLeft(cpu, cpu->bus & 0x01);				//sound .. #$%# you
 		}
 		if ((link->host & 0x02) != (cpu->bus & 0x02)) {
 			FlippedRight(cpu, (cpu->bus & 0x02) >> 1);	//sound, not portable
 		}
-#endif		
-		assist->link_enable = cpu->bus & 0x04;
-		link->host = cpu->bus & 0x03;
+		assist->link_enable = cpu->bus & BIT(2);
+		cpu->link_write = link->host = cpu->bus & 0x03;
 		cpu->output = FALSE;
 	}
-#ifdef WINVER // :P
-	if (link->audio.init && link->audio.enabled) nextsample(cpu);
-#endif
+
+	if (link->audio.init && link->audio.enabled) {
+		nextsample(cpu);
+	}
 }
 
 static void port2(CPU_t *cpu, device_t *dev) {
@@ -100,10 +98,10 @@ static void port3(CPU_t *cpu, device_t *dev) {
 	when mask timer continues to tick but 
 	does not generate an interrupt. */
 	if (stdint->intactive & 0x02) {
-		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk1) > stdint->timermax1)
+		if ((cpu->timer_c->elapsed - stdint->lastchk1) > stdint->timermax1)
 			cpu->interrupt = TRUE;
-	} else if ((tc_elapsed(cpu->timer_c) - stdint->lastchk1) > stdint->timermax1) {
-		while ((tc_elapsed(cpu->timer_c) - stdint->lastchk1) > stdint->timermax1)
+	} else if ((cpu->timer_c->elapsed - stdint->lastchk1) > stdint->timermax1) {
+		while ((cpu->timer_c->elapsed - stdint->lastchk1) > stdint->timermax1)
 			stdint->lastchk1 += stdint->timermax1;
 	}
 
@@ -113,10 +111,10 @@ static void port3(CPU_t *cpu, device_t *dev) {
 	when mask timer continues to tick but 
 	does not generate an interrupt. */
 	if (stdint->intactive & 0x04) {
-		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk2) > stdint->timermax2)
+		if ((cpu->timer_c->elapsed - stdint->lastchk2) > stdint->timermax2)
 			cpu->interrupt = TRUE;
-	} else if ((tc_elapsed(cpu->timer_c) - stdint->lastchk2) > stdint->timermax2) {
-		while ((tc_elapsed(cpu->timer_c) - stdint->lastchk2) > stdint->timermax2)
+	} else if ((cpu->timer_c->elapsed - stdint->lastchk2) > stdint->timermax2) {
+		while ((cpu->timer_c->elapsed - stdint->lastchk2) > stdint->timermax2)
 			stdint->lastchk2 += stdint->timermax2;
 	}
 
@@ -132,8 +130,8 @@ static void port4(CPU_t *cpu, device_t *dev) {
 	STDINT_t * stdint = (STDINT_t *) dev->aux;
 	if (cpu->input) {
 		unsigned char result = 0;
-		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk1) > stdint->timermax1) result += 2;
-		if ((tc_elapsed(cpu->timer_c) - stdint->lastchk2) > stdint->timermax2) result += 4;
+		if ((cpu->timer_c->elapsed - stdint->lastchk1) > stdint->timermax1) result += 2;
+		if ((cpu->timer_c->elapsed - stdint->lastchk2) > stdint->timermax2) result += 4;
 		
 		if (stdint->on_latch) result += 1;
 		if (!cpu->pio.keypad->on_pressed) result += 8;
@@ -144,7 +142,7 @@ static void port4(CPU_t *cpu, device_t *dev) {
 	} else if (cpu->output) {
 		/* I'm not sure if this is how the interrupts work. */
 		/* but for practicality its close enough for now. */
-		int freq = (cpu->bus & 6) >> 1;
+		int freq = ((cpu->bus & 6) >> 1);
 		stdint->timermax1 = stdint->freq[freq];
 		stdint->timermax2 = stdint->freq[freq] / 2.0f;
 		stdint->lastchk2  = stdint->lastchk1 + (stdint->freq[freq] / 4.0f);
@@ -241,28 +239,30 @@ static void port5(CPU_t *cpu, device_t *dev) {
 
 static void port6(CPU_t *cpu, device_t *dev) {
 	if (cpu->input) {
-		cpu->bus = (cpu->mem_c->banks[1].ram << 6) + cpu->mem_c->banks[1].page;
+		cpu->bus = (unsigned char)((cpu->mem_c->banks[1].ram << 6) + cpu->mem_c->banks[1].page);
 		cpu->input = FALSE;
 	} else if (cpu->output) {
 		BOOL ram = (cpu->bus >> 6) & 1;
-		if (ram)
-			change_page(cpu, 1, (cpu->bus & 0x1f) % cpu->mem_c->ram_pages, ram);
-		else
-			change_page(cpu, 1, (cpu->bus & 0x1f) % cpu->mem_c->flash_pages, ram);
+		if (ram) {
+			change_page(cpu->mem_c, 1, (cpu->bus & 0x1f) % cpu->mem_c->ram_pages, ram);
+		} else {
+			change_page(cpu->mem_c, 1, (cpu->bus & 0x1f) % cpu->mem_c->flash_pages, ram);
+		}
 		cpu->output = FALSE;
 	}
 }
 
 static void port7(CPU_t *cpu, device_t *dev) {
 	if (cpu->input) {
-		cpu->bus = ((cpu->mem_c->banks[2].ram) << 6) + cpu->mem_c->banks[2].page;
+		cpu->bus = (unsigned char)((cpu->mem_c->banks[2].ram << 6) + cpu->mem_c->banks[2].page);
 		cpu->input = FALSE;
 	} else if (cpu->output) {
 		BOOL ram = (cpu->bus >> 6) & 1;
-		if (ram)
-			change_page(cpu, 2, (cpu->bus & 0x1f) % cpu->mem_c->ram_pages, ram);
-		else
-			change_page(cpu, 2, (cpu->bus & 0x1f) % cpu->mem_c->flash_pages, ram);
+		if (ram) {
+			change_page(cpu->mem_c, 2, (cpu->bus & 0x1f) % cpu->mem_c->ram_pages, ram);
+		} else {
+			change_page(cpu->mem_c, 2, (cpu->bus & 0x1f) % cpu->mem_c->flash_pages, ram);
+		}
 		cpu->output = FALSE;
 	}
 }
@@ -309,15 +309,15 @@ static STDINT_t* INT83P_init(CPU_t* cpu) {
 	
 	stdint->intactive = 0;
 	stdint->timermax1 = stdint->freq[3] ;
-	stdint->lastchk1 = tc_elapsed(cpu->timer_c);
+	stdint->lastchk1 = cpu->timer_c->elapsed;
 	stdint->timermax2 = stdint->freq[3] / 2.0f;
-	stdint->lastchk2 = tc_elapsed(cpu->timer_c) + stdint->freq[3] / 4.0f;
+	stdint->lastchk2 = cpu->timer_c->elapsed + stdint->freq[3] / 4.0f;
 	stdint->on_backup = 0;
 	stdint->on_latch = FALSE;
 	return stdint;
 }
 
-static link_t* link83p_init(CPU_t* cpu) {
+static link_t* link83p_init() {
 	link_t * link = (link_t *) malloc(sizeof(link_t));
 	if (!link) {
 		printf("Couldn't allocate memory for link\n");
@@ -334,12 +334,12 @@ int device_init_83p(CPU_t *cpu) {
 	
 	LINKASSIST_t *assist = (LINKASSIST_t *) malloc(sizeof(LINKASSIST_t));
 	assist->link_enable = 0;
-	link_t *link = link83p_init(cpu);
+	link_t *link = link83p_init();
 	cpu->pio.devices[0x00].active = TRUE;
 	cpu->pio.devices[0x00].aux = assist;
 	cpu->pio.devices[0x00].code = (devp) port0;
 
-	keypad_t *keyp = keypad_init(cpu);
+	keypad_t *keyp = keypad_init();
 	cpu->pio.devices[0x01].active = TRUE;
 	cpu->pio.devices[0x01].aux = keyp;
 	cpu->pio.devices[0x01].code = (devp) keypad;
@@ -369,11 +369,11 @@ int device_init_83p(CPU_t *cpu) {
 	LCD_t *lcd = LCD_init(cpu, TI_83P);
 	cpu->pio.devices[0x10].active = TRUE;
 	cpu->pio.devices[0x10].aux = lcd;
-	cpu->pio.devices[0x10].code = (devp) LCD_command;
+	cpu->pio.devices[0x10].code = (devp) lcd->base.command;
 
 	cpu->pio.devices[0x11].active = TRUE;
 	cpu->pio.devices[0x11].aux = lcd;
-	cpu->pio.devices[0x11].code = (devp) LCD_data;
+	cpu->pio.devices[0x11].code = (devp)lcd->base.data;
 
 	cpu->pio.devices[0x14].active = TRUE;
 	cpu->pio.devices[0x14].code = (devp) port14;
@@ -393,7 +393,7 @@ int device_init_83p(CPU_t *cpu) {
 	cpu->pio.devices[0x27].active = TRUE;
 	cpu->pio.devices[0x27].code = (devp) port7;
 	
-	cpu->pio.lcd		= lcd;
+	cpu->pio.lcd		= (LCDBase_t *) lcd;
 	cpu->pio.keypad		= keyp;
 	cpu->pio.link		= link;
 	cpu->pio.stdint		= stdint;
@@ -414,12 +414,6 @@ int device_init_83p(CPU_t *cpu) {
 int memory_init_83p(memc *mc) {
 	memset(mc, 0, sizeof(memory_context_t));
 
-	mc->mem_read_break_callback = mem_debug_callback;
-	mc->mem_write_break_callback = mem_debug_callback;
-#ifdef WINVER
-	mc->breakpoint_manager_callback = check_break_callback;
-#endif
-
 	// page protection for the 83p
 	mc->protected_page_set = 0;
 	
@@ -438,6 +432,7 @@ int memory_init_83p(memc *mc) {
 	mc->ram_break = (unsigned char *) calloc(mc->ram_pages, PAGE_SIZE);
 
 	if (!mc->flash || !mc->ram) {
+		_tprintf_s(_T("Couldn't allocate memory in memory_init_83p\n"));
 		return 1;
 	}
 
@@ -460,5 +455,4 @@ int memory_init_83p(memc *mc) {
 	return 0;
 }
 
-
-
+#pragma warning(pop)

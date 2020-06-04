@@ -3,25 +3,25 @@
 
 #define NumElm(array) (sizeof (array) / sizeof ((array)[0]))
 
-#include <stdint.h>
-
 #ifndef _WINDOWS
-#ifndef _LINUX
-typedef char TCHAR;
-typedef const char *LPCTSTR;
-#endif
+#include <stdint.h>
+//typedef char TCHAR;
+typedef unsigned char _TUCHAR;
 typedef void *LPVOID;
+//typedef const char *LPCTSTR;
 typedef intptr_t INT_PTR;
 typedef uint8_t BYTE, *LPBYTE;
 typedef uint16_t WORD, *LPWORD;
 typedef uint32_t DWORD, *LPDWORD;
+typedef unsigned int UINT;
+typedef uint8_t u_char;
 
 #ifndef MAX_PATH
 #define MAX_PATH 256
 #endif
 #endif
 
-#ifdef WINVER
+#ifdef _WINDOWS
 typedef int BOOL;
 #else
 #ifndef OBJC_BOOL_DEFINED

@@ -3,27 +3,42 @@
 project('wxWabbitemu', ['c', 'cpp'],
 	version: '0.1.0',
 	license: 'GPL2+',
-	default_options : ['default_library=static'])
+	default_options : ['default_library=static', 'cpp_std=c++11'])
 
 # find wx + include it
 # Turn on wxWidgets compatibility mode for some classes
 add_global_arguments('-DWX_COMPATIBILITY', language: ['c', 'cpp'])
 
 # wxWabbitemu specific defines
-add_global_arguments('-DHIGH_SHADE_GIF', '-DVERBOSE', '-D_LINUX', '-DWXVER', language: ['c', 'cpp'])
+add_global_arguments('-DHIGH_SHADE_GIF', '-DVERBOSE', '-D_LINUX', '-DWXVER', '-D_UNICODE', language: ['c', 'cpp'])
 
 # Enable Unicode, as needed
 compiler = meson.get_compiler('cpp')
 
-if ['gcc', 'clang'].contains(compiler.get_id())
-  if compiler.version().version_compare('>=4.8.0')
-    add_global_arguments('-D_UNICODE', language: ['c', 'cpp'])
-  endif
-endif
-
 # now hunt for wxWidgets
 # (adv is used for "advanced" widgets, such as the wizard)
 wxWidgets_dep = dependency('wxWidgets', required: true, modules: ['adv', 'net', 'core', 'base'], static: false)
+
+conf = configuration_data()
+
+# Test whether <stddef.h> has the 'wchar_t' type.
+if compiler.has_header_symbol('stddef.h', 'wchar_t')
+  conf.set('HAVE_WCHAR_T', 1)
+endif
+
+if compiler.has_header_symbol('wchar.h', 'mbstowcs_s')
+  conf.set('HAVE_MBSTOWCS_S', 1)
+endif
+
+if compiler.has_header_symbol('wchar.h', 'wcsncpy_s')
+  conf.set('HAVE_WCSNCPY_S', 1)
+endif
+
+if compiler.has_header_symbol('string.h', 'strcpy_s')
+  conf.set('HAVE_STRCPY_S', 1)
+endif
+
+configure_file(output : 'config.h', configuration : conf)
 
 # includes
 includes = include_directories(
@@ -40,9 +55,13 @@ wxWabbitemu_exe = executable('wxWabbitemu',
 	# Core
 	'core/core.c',
 	'core/alu.c',
+	'core/alu_reverse.c',
 	'core/control.c',
+	'core/control_reverse.c',
 	'core/device.c',
 	'core/indexcb.c',
+	'core/indexcb_reverse.c',
+	'core/reverse_info.c',
 	
 	# Calc Interfacing
 	'interface/calc.c',
@@ -51,10 +70,9 @@ wxWabbitemu_exe = executable('wxWabbitemu',
 	# Utilities/Libraries
 	'utilities/exportvar.c',
 	'utilities/fileutilities.c',
-	'utilities/gif.c',
-	'utilities/gifhandle.c',
+	'utilities/gif.cpp',
 	'utilities/label.c',
-	'utilities/savestate.c',
+	'utilities/savestate.cpp',
 	'utilities/sendfile.c', 
 	'utilities/var.c',
 	
@@ -64,6 +82,7 @@ wxWabbitemu_exe = executable('wxWabbitemu',
 	'hardware/83phw.c',
 	'hardware/83psehw.c',
 	'hardware/86hw.c',
+	'hardware/colorlcd.c',
 	'hardware/keys.c',
 	'hardware/lcd.c',
 	'hardware/link.c',
@@ -91,7 +110,7 @@ wxWabbitemu_exe = executable('wxWabbitemu',
 	dependencies: wxWidgets_dep,
 	
 	# mixing of C and C++ necessitates builds in c++
-	c_args: ['-x', 'c++'],
+	c_args: ['-x', 'c++', '-std=c++11'],
 	
 	include_directories: includes,
 	install: true

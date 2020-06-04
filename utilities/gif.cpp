@@ -23,21 +23,13 @@
 #include "stdafx.h"
 
 #include "calc.h"
-#ifndef WINVER
 #include "coretypes.h"
-#endif
-
-//#include "gif.h" // uhh...
-
-#define GIF_FRAME_MAX (256 * 128 * MAX_CALCS)
+#include "gif.h"
 
 #define GIF_IDLE 0
 #define GIF_START 1
 #define GIF_FRAME 2
 #define GIF_END 3
-
-#define SCRXSIZE 96
-#define SCRYSIZE 64
 
 #define TERMIN 'T'
 #define LOOKUP 'L'
@@ -59,17 +51,13 @@ typedef struct GIF_TREE {
 
 int gif_write_state = GIF_IDLE;
 
-TCHAR gif_file_name[512] = _T("wabbitemu.gif");
-BOOL gif_autosave = FALSE;
-BOOL gif_use_increasing = FALSE;
-#ifdef HIGH_SHADE_GIF
+TCHAR screenshot_file_name[512] = _T("wabbitemu.gif");
+BOOL screenshot_autosave = FALSE;
+BOOL screenshot_use_increasing = FALSE;
 int gif_colors = 8;
-#else
-int gif_colors=7;
-#endif
-
 int gif_base_delay_start = 4;
-u_int gif_size = 2;
+u_int screenshot_size = 2;
+u_int screenshot_color_size = 1;
 
 WORD gif_base_delay;
 int gif_file_size = 0;
@@ -87,6 +75,7 @@ int gif_newframe;
 
 int gif_file_num = 0;
 BOOL gif_bw = FALSE;
+BOOL gif_color = FALSE;
 
 
 int chainlen = 0, maxchainlen = 0, nodecount = 0, lookuptypes = 0, nbits;
@@ -112,7 +101,7 @@ void gif_clear_tree(int cc, GIF_TREE *root) {
 		newNode->nxt = NULL;
 		newNode->alt = NULL;
 		newNode->code = i;
-		newNode->ix = i;
+		newNode->ix = (BYTE)i;
 		newNode->typ = TERMIN;
 		newNode->node = empty;
 		nodecount++;
@@ -130,7 +119,7 @@ unsigned char *gif_code_to_buffer(int code, short n, unsigned char *buf) {
 
 	while (n >= need) {
 		mask = (1 << need) - 1;
-		*buf += (mask & code) << (8 - need);
+		*buf += (unsigned char)((mask & code) << (8 - need));
 		buf++;
 		*buf = 0x0;
 		code = code >> need;
@@ -139,7 +128,7 @@ unsigned char *gif_code_to_buffer(int code, short n, unsigned char *buf) {
 	}
 	if (n) {
 		mask = (1 << n) - 1;
-		*buf += (mask & code) << (8 - need);
+		*buf += (unsigned char)((mask & code) << (8 - need));
 		need -= n;
 	}
 	return buf;
@@ -169,7 +158,7 @@ int gif_encode(FILE *fout, BYTE *pixels, int depth, int siz) {
 	fsize = 1;
 	eoi = cc + 1;
 	next = cc + 2;
-	cLength = (depth == 1) ? 3 : depth + 1;
+	cLength = (depth == 1) ? 3 : (short)(depth + 1);
 
 	if ((topNode = baseNode = (GIF_TREE*)malloc(sizeof(GIF_TREE) * 4094)) == NULL) return -1;
 	if ((nodeArray = first->node = (GIF_TREE**)malloc(256 * sizeof(GIF_TREE*) * ARRNO)) == NULL) return -1;
@@ -264,7 +253,7 @@ int gif_encode(FILE *fout, BYTE *pixels, int depth, int siz) {
 				pos -= BLOKLEN;
 			}
 			next = cc + 2;
-			cLength = (depth == 1) ? 3 : depth + 1;
+			cLength = (depth == 1) ? 3 : (short)(depth + 1);
 		}
 	}
 
@@ -282,7 +271,7 @@ int gif_encode(FILE *fout, BYTE *pixels, int depth, int siz) {
 	}
 	pos = gif_code_to_buffer(eoi, cLength, pos);
 	pos = gif_code_to_buffer(0x0, -1, pos);
-	buffer[-1] = pos - buffer;
+	buffer[-1] = (unsigned char)(pos - buffer);
 
 	fwrite(buffer - 1, pos - buffer + 1, 1, fout);
 	fsize += (int) (pos - buffer + 1);
@@ -290,10 +279,83 @@ int gif_encode(FILE *fout, BYTE *pixels, int depth, int siz) {
 	return fsize;
 }
 
+static std::map<int, int> palette;
+static int last_index = 0;
+
+int gif_palette_color(int idx)
+{
+	for (auto it = palette.begin(); it != palette.end(); ++it) {
+		if (it->second == idx) {
+			return it->first;
+		}
+	}
+
+	return 0;
+}
+
+int gif_find_best_match(int rgb) {
+	int r = rgb >> 16;
+	int g = (rgb >> 8) & 0xFF;
+	int b = rgb & 0xFF;
+	int best_error = 0xFFFFFF;
+	int best_error_index = 0;
+	for (auto it = palette.begin(); it != palette.end(); ++it) {
+		int new_rgb = it->first;
+
+		int new_r = new_rgb >> 16;
+		int new_g = (new_rgb >> 8) & 0xFF;
+		int new_b = new_rgb & 0xFF;
+
+		int error_r = (new_r - r);
+		int error_g = (new_g - g);
+		int error_b = (new_b - b);
+
+		int total_error = error_r * error_r + error_g * error_g + error_b * error_b;
+		if (total_error < best_error) {
+			best_error = total_error;
+			best_error_index = it->second;
+		}
+	}
+
+	return best_error_index;
+}
+
+int gif_add_extra_color(int rgb)
+{
+	int index;
+	if (last_index > 0xFF) {
+		index = gif_find_best_match(rgb);
+	} else {
+		index = last_index;
+		last_index++;
+	}
+
+	palette[rgb] = index;
+	return index;
+}
+
+void gif_clear_palette() {
+	palette.clear();
+	last_index = 0;
+}
+
+int gif_convert_color_to_index(int r, int g, int b)
+{
+	int rgb = (r << 16) | (g << 8) | b;
+	auto it = palette.find(rgb);
+	if (it != palette.end()) {
+		return it->second;
+	}
+
+	// See if we can add it
+	int result = gif_add_extra_color(rgb);
+	return result;
+}
+
 void gif_writer(int shades) {
 	static FILE *fp;
 	// flags = 1 111 0 010
-	BYTE gif_header[205] = {'G', 'I', 'F', '8', '9', 'a', 96, 0, 64, 0, 0xf2, 0x0f, 0};
+	BYTE gif_header[13 + 3 * 256] = { 'G', 'I', 'F', '8', '9', 'a', 96, 0, 64, 0, 0x72, 0x00, 0 };
 	static BYTE gif_info[31] = {
 		0x21, 0xff, 0x0b, 'N', 'E', 'T', 'S', 'C', 'A', 'P', 'E', '2', '.', '0', 3, 1, 0, 0, 0,
 		0x21, 0xfe, 8, 'W', 'a', 'b', 'b', 'i', 't', 0, 0, 0
@@ -309,48 +371,54 @@ void gif_writer(int shades) {
 		case GIF_START: {
 			int i;
 			gif_colors = shades + 1;
+
 			for (i = 0; i < gif_colors; i++) {
-#ifdef HIGH_SHADE_GIF
-				double color_ratio = 1.0 - ((double) i / (double) (gif_colors - 1));
-				printf("ratio: %lf\n", color_ratio);
-				
+				double color_ratio = 1.0 - ((double)i / (double)(gif_colors - 1));
 #define LCD_HIGH_MUL 6
-				
-				if (gif_bw) {
-					gif_header[13 + i * 3] = (BYTE) (0xFF * color_ratio);
-					gif_header[14 + i * 3] = (BYTE) (0xFF * color_ratio);
-					gif_header[15 + i * 3] = (BYTE) (0xFF * color_ratio);
-				} else {
-					gif_header[13 + i * 3] = (BYTE) ((0x9E - (0x9E/LCD_HIGH_MUL)) * color_ratio + (0x9E/LCD_HIGH_MUL));
-					gif_header[14 + i * 3] = (BYTE) ((0xAB - (0xAB/LCD_HIGH_MUL)) * color_ratio + (0xAB/LCD_HIGH_MUL));
-					gif_header[15 + i * 3] = (BYTE) ((0x88 - (0x88/LCD_HIGH_MUL)) * color_ratio + (0x88/LCD_HIGH_MUL));
+				if (gif_colors == 256)
+				{
+					int color = 0;
+					gif_header[13 + i * 3] = (color >> 16) & 0xFF;
+					gif_header[14 + i * 3] = (color >> 8) & 0xFF;
+					gif_header[15 + i * 3] = (color & 0xFF);
 				}
-#else
-				gif_header[13 + i * 3] = 255 - i * 255 / (gif_colors-1);
-				gif_header[14 + i * 3] = 255 - i * 255 / (gif_colors-1);
-				gif_header[15 + i * 3] = 255 - i * 255 / (gif_colors-1);
-#endif
+				else if (gif_bw) {
+					gif_header[13 + i * 3] = (BYTE)(0xFF * color_ratio);
+					gif_header[14 + i * 3] = (BYTE)(0xFF * color_ratio);
+					gif_header[15 + i * 3] = (BYTE)(0xFF * color_ratio);
+				}
+				else
+				{
+					gif_header[13 + i * 3] = (BYTE)((0x9E - (0x9E / LCD_HIGH_MUL)) * color_ratio + (0x9E / LCD_HIGH_MUL));
+					gif_header[14 + i * 3] = (BYTE)((0xAB - (0xAB / LCD_HIGH_MUL)) * color_ratio + (0xAB / LCD_HIGH_MUL));
+					gif_header[15 + i * 3] = (BYTE)((0x88 - (0x88 / LCD_HIGH_MUL)) * color_ratio + (0x88 / LCD_HIGH_MUL));
+				}
 			}
 			
-			int palette_bits = 2;
-			if (gif_colors > 8)
+			BYTE palette_bits;
+			if (gif_colors <= 8)
+			{
 				palette_bits = 3;
-			
-			gif_header[10] = 0xF0 | palette_bits;
+			}
+			else if(gif_colors <= 16)
+			{
+				palette_bits = 4;
+			}
+			else
+			{
+				palette_bits = 8;
+			}
+			gif_header[10] = 0xF0 | (palette_bits - 1);
 			gif_frame_xs = gif_xs;
 			gif_frame_ys = gif_ys;
 			gif_frame_x = 0;
 			gif_frame_y = 0;
-			gif_header[6] = gif_xs;
-			gif_header[7] = gif_xs >> 8;
-			gif_header[8] = gif_ys;
-			gif_header[9] = gif_ys >> 8;
-#ifdef WINVER
-			_tfopen_s(&fp, gif_file_name, _T("wb"));
-#else
-			fp = _tfopen_s(gif_file_name, "wb");
-#endif
-			fwrite(gif_header, 13 + (3 * (1 << (palette_bits+1))), 1, fp);
+			gif_header[6] = (BYTE)gif_xs;
+			gif_header[7] = (BYTE)(gif_xs >> 8);
+			gif_header[8] = (BYTE)gif_ys;
+			gif_header[9] = (BYTE)(gif_ys >> 8);
+			_tfopen_s(&fp, screenshot_file_name, _T("wb"));
+			fwrite(gif_header, 13 + (3 * (1 << (palette_bits))), 1, fp);
 			fwrite(gif_info, 31, 1, fp);
 			gif_file_size = 236;
 			gif_write_state = GIF_FRAME;
@@ -361,7 +429,7 @@ void gif_writer(int shades) {
 			break;
 		}
 		case GIF_FRAME: {
-			int i, j, k, l;
+			int i, j, k;
 			for (i = 0; i < gif_xs * gif_ys; i++)
 				if (gif_frame[i] != gif_frame_old[i])
 					break;
@@ -371,14 +439,14 @@ void gif_writer(int shades) {
 				gif_img[3] = 5;
 				gif_img[4] = (BYTE) gif_delay;
 				gif_img[5] = gif_delay >> 8;
-				gif_img[9] = gif_frame_x;
-				gif_img[10] = gif_frame_x >> 8;
-				gif_img[11] = gif_frame_y;
-				gif_img[12] = gif_frame_y >> 8;
-				gif_img[13] = gif_frame_xs;
-				gif_img[14] = gif_frame_xs >> 8;
-				gif_img[15] = gif_frame_ys;
-				gif_img[16] = gif_frame_ys >> 8;
+				gif_img[9] = (BYTE)gif_frame_x;
+				gif_img[10] = (BYTE)(gif_frame_x >> 8);
+				gif_img[11] = (BYTE)gif_frame_y;
+				gif_img[12] = (BYTE)(gif_frame_y >> 8);
+				gif_img[13] = (BYTE)gif_frame_xs;
+				gif_img[14] = (BYTE)(gif_frame_xs >> 8);
+				gif_img[15] = (BYTE)gif_frame_ys;
+				gif_img[16] = (BYTE)(gif_frame_ys >> 8);
 				gif_delay = gif_base_delay;
 				fwrite(gif_img, 18, 1, fp);
 				i = gif_encode(fp, gif_frame_out, 8, gif_frame_xs * gif_frame_ys);
@@ -414,7 +482,7 @@ void gif_writer(int shades) {
 				k = gif_frame_y * gif_xs + gif_frame_x;
 				for (i = 0; i < gif_frame_ys; i++)
 					for (j = 0; j < gif_frame_xs; j++) {
-						l = gif_frame[i * gif_xs + j + k];
+						BYTE l = gif_frame[i * gif_xs + j + k];
 						gif_frame_out[i * gif_frame_xs + j] = (l == gif_frame_old[i * gif_xs + j + k]) ? 0x0f : l;
 					}
 				memcpy(gif_frame_old, gif_frame, GIF_FRAME_MAX);
@@ -423,16 +491,16 @@ void gif_writer(int shades) {
 		}
 		case GIF_END: {
 			int i;
-			gif_img[4] = (BYTE) gif_delay;
-			gif_img[5] = gif_delay >> 8;
-			gif_img[9] = gif_frame_x;
-			gif_img[10] = gif_frame_x >> 8;
-			gif_img[11] = gif_frame_y;
-			gif_img[12] = gif_frame_y >> 8;
-			gif_img[13] = gif_frame_xs;
-			gif_img[14] = gif_frame_xs >> 8;
-			gif_img[15] = gif_frame_ys;
-			gif_img[16] = gif_frame_ys >> 8;
+			gif_img[4] = (BYTE)gif_delay;
+			gif_img[5] = (BYTE)(gif_delay >> 8);
+			gif_img[9] = (BYTE)gif_frame_x;
+			gif_img[10] = (BYTE)(gif_frame_x >> 8);
+			gif_img[11] = (BYTE)gif_frame_y;
+			gif_img[12] = (BYTE)(gif_frame_y >> 8);
+			gif_img[13] = (BYTE)gif_frame_xs;
+			gif_img[14] = (BYTE)(gif_frame_xs >> 8);
+			gif_img[15] = (BYTE)gif_frame_ys;
+			gif_img[16] = (BYTE)(gif_frame_ys >> 8);
 			fwrite(gif_img, 18, 1, fp);
 			i = gif_encode(fp, gif_frame_out, 8, gif_frame_xs * gif_frame_ys);
 			if (i == -1) {
@@ -443,6 +511,19 @@ void gif_writer(int shades) {
 				gif_file_size += i + 19;
 			}
 			fputc(0x3b, fp);
+
+			// Write out the special colors table
+			if (gif_colors == 256)
+			{
+				fseek(fp, 13, SEEK_SET);
+				for (i = 0; i < gif_colors; i++) {
+					int color = gif_palette_color(i);
+					fputc((color >> 16) & 0xFF, fp);
+					fputc((color >> 8) & 0xFF, fp);
+					fputc(color & 0xFF, fp);
+				}
+			}
+
 			fclose(fp);
 			gif_file_size += 1;
 			gif_write_state = GIF_IDLE;
@@ -450,3 +531,4 @@ void gif_writer(int shades) {
 		}
 	}
 }
+
