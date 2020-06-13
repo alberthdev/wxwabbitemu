@@ -10,7 +10,7 @@ project('wxWabbitemu', ['c', 'cpp'],
 add_global_arguments('-DWX_COMPATIBILITY', language: ['c', 'cpp'])
 
 # wxWabbitemu specific defines
-add_global_arguments('-DHIGH_SHADE_GIF', '-DVERBOSE', '-D_LINUX', '-DWXVER', '-D_UNICODE', language: ['c', 'cpp'])
+add_global_arguments('-DHIGH_SHADE_GIF', '-DVERBOSE', '-D_LINUX', '-DWXVER', '-D_UNICODE', '-DCORETYPES_H_', language: ['c', 'cpp'])
 
 # Enable Unicode, as needed
 compiler = meson.get_compiler('cpp')
@@ -19,73 +19,60 @@ compiler = meson.get_compiler('cpp')
 # (adv is used for "advanced" widgets, such as the wizard)
 wxWidgets_dep = dependency('wxWidgets', required: true, modules: ['adv', 'net', 'core', 'base'], static: false)
 
-conf = configuration_data()
-
-# Test whether <stddef.h> has the 'wchar_t' type.
-if compiler.has_header_symbol('stddef.h', 'wchar_t')
-  conf.set('HAVE_WCHAR_T', 1)
-endif
-
-if compiler.has_header_symbol('wchar.h', 'mbstowcs_s')
-  conf.set('HAVE_MBSTOWCS_S', 1)
-endif
-
-if compiler.has_header_symbol('wchar.h', 'wcsncpy_s')
-  conf.set('HAVE_WCSNCPY_S', 1)
-endif
-
-if compiler.has_header_symbol('string.h', 'strcpy_s')
-  conf.set('HAVE_STRCPY_S', 1)
-endif
-
-configure_file(output : 'config.h', configuration : conf)
+# win2posix
+subdir('win2posix')
 
 # includes
 includes = include_directories(
-	'core',
+	'wabbitemu',
+	'wabbitemu/core',
+	'wabbitemu/debugger',
 	'debugger',
 	'gui',
-	'hardware',
-	'interface',
+	'wabbitemu/hardware',
+	'wabbitemu/interface',
+	'wabbitemu/utilities'
 	'utilities'
 )
 
 # add the executable
 wxWabbitemu_exe = executable('wxWabbitemu',
 	# Core
-	'core/core.c',
-	'core/alu.c',
-	'core/alu_reverse.c',
-	'core/control.c',
-	'core/control_reverse.c',
-	'core/device.c',
-	'core/indexcb.c',
-	'core/indexcb_reverse.c',
-	'core/reverse_info.c',
+	'wabbitemu/core/core.c',
+	'wabbitemu/core/alu.c',
+	'wabbitemu/core/alu_reverse.c',
+	'wabbitemu/core/control.c',
+	'wabbitemu/core/control_reverse.c',
+	'wabbitemu/core/device.c',
+	'wabbitemu/core/indexcb.c',
+	'wabbitemu/core/indexcb_reverse.c',
+	'wabbitemu/core/reverse_info.c',
 	
 	# Calc Interfacing
-	'interface/calc.c',
-	'interface/state.c',
+	'wabbitemu/interface/calc.c',
+	'wabbitemu/interface/state.c',
 	
 	# Utilities/Libraries
-	'utilities/exportvar.c',
+	'wabbitemu/utilities/exportvar.c',
+	'wabbitemu/utilities/gif.cpp',
+	'wabbitemu/utilities/label.c',
+	'wabbitemu/utilities/sendfile.c', 
+	'wabbitemu/utilities/var.c',
+	
+	# Utilities/Libraries specific to wx
 	'utilities/fileutilities.c',
-	'utilities/gif.cpp',
-	'utilities/label.c',
 	'utilities/savestate.cpp',
-	'utilities/sendfile.c', 
-	'utilities/var.c',
 	
 	# Hardware Emulation
-	'hardware/81hw.c',
-	'hardware/83hw.c',
-	'hardware/83phw.c',
-	'hardware/83psehw.c',
-	'hardware/86hw.c',
-	'hardware/colorlcd.c',
-	'hardware/keys.c',
-	'hardware/lcd.c',
-	'hardware/link.c',
+	'wabbitemu/hardware/81hw.c',
+	'wabbitemu/hardware/83hw.c',
+	'wabbitemu/hardware/83phw.c',
+	'wabbitemu/hardware/83psehw.c',
+	'wabbitemu/hardware/86hw.c',
+	'wabbitemu/hardware/colorlcd.c',
+	'wabbitemu/hardware/keys.c',
+	'wabbitemu/hardware/lcd.c',
+	'wabbitemu/hardware/link.c',
 	
 	# wxWidgets GUI
 	'gui/gui.cpp',                   # This requires ../gui/gui.h
@@ -107,7 +94,7 @@ wxWabbitemu_exe = executable('wxWabbitemu',
 	'debugger/panes/flagspane.cpp',  # This requires ../debugger/panes/flagspane.h
 	'debugger/panes/cpupane.cpp',    # This requires ../debugger/panes/cpupane.h
 	
-	dependencies: wxWidgets_dep,
+	dependencies: [wxWidgets_dep, win2posix_dep],
 	
 	# mixing of C and C++ necessitates builds in c++
 	c_args: ['-x', 'c++', '-std=c++11'],

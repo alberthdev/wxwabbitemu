@@ -1,0 +1,6 @@
+[submodule "wabbitemu"]
+	path = wabbitemu
+	url = https://github.com/sputt/wabbitemu
+[submodule "win2posix"]
+	path = win2posix
+	url = git@github.com:alberthdev/win2posix.git

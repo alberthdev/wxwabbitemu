@@ -1,6 +1,6 @@
 # Portions of this come from KiCad's CMakeLists.txt
-
 cmake_minimum_required(VERSION 3.0.2)
+set(CMAKE_USER_MAKE_RULES_OVERRIDE "CppMakeRulesOverwrite.cmake")
 
 # set the project name
 project(wxWabbitemu VERSION 0.1.0)
@@ -22,45 +22,50 @@ find_package(wxWidgets REQUIRED adv net core base)
 include(${wxWidgets_USE_FILE})
 
 # mixing of C and C++ necessitates builds in c++
-file(GLOB_RECURSE CFILES "${CMAKE_SOURCE_DIR}/*.c")
+file(GLOB_RECURSE CFILES "*.c")
 SET_SOURCE_FILES_PROPERTIES(${CFILES} PROPERTIES LANGUAGE CXX )
+
+# win2posix
+add_subdirectory(win2posix)
 
 # add the executable
 add_executable(wxWabbitemu
 	#[[ Core ]]
-	core/core.c
-	core/alu.c
-	core/alu_reverse.c
-	core/control.c
-	core/control_reverse.c
-	core/device.c
-	core/indexcb.c
-	core/indexcb_reverse.c
-	core/reverse_info.c
+	wabbitemu/core/core.c
+	wabbitemu/core/alu.c
+	wabbitemu/core/alu_reverse.c
+	wabbitemu/core/control.c
+	wabbitemu/core/control_reverse.c
+	wabbitemu/core/device.c
+	wabbitemu/core/indexcb.c
+	wabbitemu/core/indexcb_reverse.c
+	wabbitemu/core/reverse_info.c
 	
 	#[[ Calc Interfacing ]]
-	interface/calc.c
-	interface/state.c
+	wabbitemu/interface/calc.c
+	wabbitemu/interface/state.c
 	
 	#[[ Utilities/Libraries ]]
-	utilities/exportvar.c
+	wabbitemu/utilities/exportvar.c
+	wabbitemu/utilities/gif.cpp
+	wabbitemu/utilities/label.c
+	wabbitemu/utilities/sendfile.c
+	wabbitemu/utilities/var.c
+	
+	#[[ Utilities/Libraries specific to wx]]
 	utilities/fileutilities.c
-	utilities/gif.cpp
-	utilities/label.c
 	utilities/savestate.cpp
-	utilities/sendfile.c
-	utilities/var.c
 	
 	#[[ Hardware Emulation ]]
-	hardware/81hw.c
-	hardware/83hw.c
-	hardware/83phw.c
-	hardware/83psehw.c
-	hardware/86hw.c
-	hardware/colorlcd.c
-	hardware/keys.c
-	hardware/lcd.c
-	hardware/link.c
+	wabbitemu/hardware/81hw.c
+	wabbitemu/hardware/83hw.c
+	wabbitemu/hardware/83phw.c
+	wabbitemu/hardware/83psehw.c
+	wabbitemu/hardware/86hw.c
+	wabbitemu/hardware/colorlcd.c
+	wabbitemu/hardware/keys.c
+	wabbitemu/hardware/lcd.c
+	wabbitemu/hardware/link.c
 	
 	#[[ wxWidgets GUI ]]
 	gui/gui.cpp                   #[[ This requires gui/gui.h ]]
@@ -86,32 +91,20 @@ add_executable(wxWabbitemu
 target_include_directories(wxWabbitemu PUBLIC
                            "${PROJECT_BINARY_DIR}"
                            "${PROJECT_SOURCE_DIR}"
-                           "${PROJECT_SOURCE_DIR}/core"
+                           "${PROJECT_SOURCE_DIR}/wabbitemu"
+                           "${PROJECT_SOURCE_DIR}/wabbitemu/core"
+                           "${PROJECT_SOURCE_DIR}/wabbitemu/debugger"
                            "${PROJECT_SOURCE_DIR}/debugger"
                            "${PROJECT_SOURCE_DIR}/gui"
-                           "${PROJECT_SOURCE_DIR}/hardware"
-                           "${PROJECT_SOURCE_DIR}/interface"
+                           "${PROJECT_SOURCE_DIR}/wabbitemu/hardware"
+                           "${PROJECT_SOURCE_DIR}/wabbitemu/interface"
+                           "${PROJECT_SOURCE_DIR}/wabbitemu/utilities"
                            "${PROJECT_SOURCE_DIR}/utilities"
                            )
 
-target_link_libraries(wxWabbitemu ${wxWidgets_LIBRARIES})
+target_link_libraries(wxWabbitemu ${wxWidgets_LIBRARIES} win2posix)
 
-add_definitions(-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER -D_UNICODE)
-
-include(CheckTypeSize)
-check_type_size(wchar_t SIZEOF_WCHAR_T)
-
-if(NOT ${SIZEOF_WCHAR_T} EQUAL "")
-	set(HAVE_WCHAR_T 1)
-endif()
-
-include(CheckFunctionExists)
-CHECK_FUNCTION_EXISTS(mbstowcs_s HAVE_MBSTOWCS_S)
-CHECK_FUNCTION_EXISTS(wcsncpy_s HAVE_WCSNCPY_S)
-CHECK_FUNCTION_EXISTS(strcpy_s HAVE_STRCPY_S)
-
-configure_file ("${PROJECT_SOURCE_DIR}/cmake.config.h.in"
-                "${PROJECT_BINARY_DIR}/config.h" )
+add_definitions(-DHIGH_SHADE_GIF -DVERBOSE -D_LINUX -DWXVER -D_UNICODE -DCORETYPES_H_)
 
 # CPack for packaging
 if( UNIX AND NOT APPLE )
