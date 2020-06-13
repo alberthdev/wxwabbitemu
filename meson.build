@@ -26,13 +26,13 @@ subdir('win2posix')
 includes = include_directories(
 	'wabbitemu',
 	'wabbitemu/core',
-	'wabbitemu/debugger',
 	'debugger',
+	'wabbitemu/debugger',
 	'gui',
 	'wabbitemu/hardware',
 	'wabbitemu/interface',
+	'utilities',
 	'wabbitemu/utilities'
-	'utilities'
 )
 
 # add the executable
@@ -56,6 +56,7 @@ wxWabbitemu_exe = executable('wxWabbitemu',
 	'wabbitemu/utilities/exportvar.c',
 	'wabbitemu/utilities/gif.cpp',
 	'wabbitemu/utilities/label.c',
+	'wabbitemu/utilities/linksendvar.c',
 	'wabbitemu/utilities/sendfile.c', 
 	'wabbitemu/utilities/var.c',
 	
@@ -71,8 +72,10 @@ wxWabbitemu_exe = executable('wxWabbitemu',
 	'wabbitemu/hardware/86hw.c',
 	'wabbitemu/hardware/colorlcd.c',
 	'wabbitemu/hardware/keys.c',
-	'wabbitemu/hardware/lcd.c',
 	'wabbitemu/hardware/link.c',
+	
+	# Hardware Emulation specific to wx
+	'hardware/lcd.c',
 	
 	# wxWidgets GUI
 	'gui/gui.cpp',                   # This requires ../gui/gui.h

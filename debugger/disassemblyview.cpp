@@ -54,7 +54,7 @@ DisassemblyView::DisassemblyView(wxWindow *parent, LPCALC lpCalc, ViewType type)
 	
 	zinf = new Z80_info_t[0xFFFF];
 	memset(zinf, 0, sizeof(Z80_info_t) * 0xFFFF);
-	waddr_t waddr = addr_to_waddr(&lpCalc->mem_c, 0);
+	waddr_t waddr = addr16_to_waddr(&lpCalc->mem_c, 0);
 	disassemble(lpCalc, REGULAR, waddr, 0xFFFF, zinf);
 	
 	SetItemCount(FindLastItem());

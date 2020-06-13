@@ -22,6 +22,15 @@
  * We'll get there... eventually! :)
  */
 
+/* Polyfill for missing defs from core/core.h */
+#ifndef NO_TIMER_ELAPSED
+#define tc_elapsed( timer_z ) \
+	((timer_z)->elapsed)
+#endif
+
+#define tc_tstates( timer_z ) \
+	((timer_z)->tstates)
+
 class WabbitemuDebugger: public wxFrame, public DebuggerWindowClass
 {
 public:

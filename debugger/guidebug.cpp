@@ -142,7 +142,7 @@ WabbitemuDebugger::WabbitemuDebugger(WabbitemuFrame *frame, LPCALC lpCalc) :
 	m_toolBar1->Realize();
 	
 	m_disasmGotoPanel->Hide();
-	m_disasmView->GotoAddress(addr_to_waddr(&lpCalc->mem_c, lpCalc->cpu.pc));
+	m_disasmView->GotoAddress(addr16_to_waddr(&lpCalc->mem_c, lpCalc->cpu.pc));
 	DebugUpdateWindow();
 }
 
@@ -154,12 +154,12 @@ void CPU_stepout(LPCALC lpCalc) {
 
 	uint64_t tstates15seconds = 15.0 * cpu->timer_c->freq;
 	while ((tc_tstates(cpu->timer_c) - time) < tstates15seconds) {
-		waddr_t old_pc = addr_to_waddr(cpu->mem_c, cpu->pc);
+		waddr_t old_pc = addr16_to_waddr(cpu->mem_c, cpu->pc);
 		CPU_step(cpu);
 
 		if (cpu->sp > old_sp) {
 			Z80_info_t zinflocal;
-			disassemble(lpCalc, REGULAR, addr_to_waddr(cpu->mem_c, old_pc.addr), 1, &zinflocal);
+			disassemble(lpCalc, REGULAR, addr16_to_waddr(cpu->mem_c, old_pc.addr), 1, &zinflocal);
 
 			if (zinflocal.index == DA_RET 		||
 				zinflocal.index == DA_RET_CC 	||
@@ -184,7 +184,7 @@ void CPU_stepover(LPCALC lpCalc) {
 	double time = tc_elapsed(cpu->timer_c);
 	Z80_info_t zinflocal;
 
-	disassemble(lpCalc, REGULAR, addr_to_waddr(cpu->mem_c, cpu->pc), 1, &zinflocal);
+	disassemble(lpCalc, REGULAR, addr16_to_waddr(cpu->mem_c, cpu->pc), 1, &zinflocal);
 
 	if (cpu->halt) {
 		if (cpu->iff1) {
@@ -206,7 +206,7 @@ void CPU_stepover(LPCALC lpCalc) {
 
 				if (cpu->sp >= old_sp && (cpu->pc >= return_pc && (cpu->pc <= return_pc + 2))) {
 					Z80_info_t zinflocal;
-					disassemble(lpCalc, REGULAR, addr_to_waddr(cpu->mem_c, old_pc), 1, &zinflocal);
+					disassemble(lpCalc, REGULAR, addr16_to_waddr(cpu->mem_c, old_pc), 1, &zinflocal);
 
 					if (zinflocal.index == DA_RET 		||
 						zinflocal.index == DA_RET_CC 	||
@@ -256,7 +256,7 @@ void WabbitemuDebugger::OnToolbarRun(wxCommandEvent & WXUNUSED(event)) {
 		this->m_disasmView->Enable();
 		m_toolBar1->DeleteTool(ID_Toolbar_Run);
 		m_toolBar1->InsertTool(0, ID_Toolbar_Run, wxT("Run"), wxBitmap( wxT("./res/run.bmp"), wxBITMAP_TYPE_ANY ), wxNullBitmap, wxITEM_NORMAL, wxT("Run the calculator"), wxEmptyString );
-		m_disasmView->GotoAddress(addr_to_waddr(&lpCalc->mem_c, lpCalc->cpu.pc));
+		m_disasmView->GotoAddress(addr16_to_waddr(&lpCalc->mem_c, lpCalc->cpu.pc));
 	} else {
 		lpCalc->running = TRUE;
 		calc_unpause_linked();
@@ -296,7 +296,7 @@ void WabbitemuDebugger::OnToolbarStep(wxCommandEvent & WXUNUSED(event)) {
 	CPU_step(&lpCalc->cpu);
 	m_disasmView->Refresh();
 	m_disasmView->Update();
-	m_disasmView->GotoAddress(addr_to_waddr(&lpCalc->mem_c, lpCalc->cpu.pc));
+	m_disasmView->GotoAddress(addr16_to_waddr(&lpCalc->mem_c, lpCalc->cpu.pc));
 	DebugUpdateWindow();
 }
 
@@ -317,7 +317,7 @@ void WabbitemuDebugger::OnDisasmGoto(wxCommandEvent & WXUNUSED(event)) {
 	waddr_t waddr;
 	switch (m_disasmView->viewType) {
 		case REGULAR:
-			waddr = addr_to_waddr(&lpCalc->mem_c, addressToGoto);
+			waddr = addr16_to_waddr(&lpCalc->mem_c, addressToGoto);
 			break;
 	}
 	m_disasmView->GotoAddress(waddr);
@@ -333,6 +333,6 @@ void WabbitemuDebugger::OnToolbarStepOver(wxCommandEvent & WXUNUSED(event)) {
 	CPU_stepover(lpCalc);
 	m_disasmView->Refresh();
 	m_disasmView->Update();
-	m_disasmView->GotoAddress(addr_to_waddr(&lpCalc->mem_c, lpCalc->cpu.pc));
+	m_disasmView->GotoAddress(addr16_to_waddr(&lpCalc->mem_c, lpCalc->cpu.pc));
 	DebugUpdateWindow();
 }

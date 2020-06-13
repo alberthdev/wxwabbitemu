@@ -2,6 +2,8 @@
 #include "gui.h"
 #include "fileutilities.h"
 #include "exportvar.h"
+#include "linksendvar.h"
+#include "var.h"
 
 #include "rom/bf73.h"
 #include "rom/bf83p.h"
@@ -76,23 +78,7 @@ void RomWizard::OnPageChanged(wxWizardEvent &event) {
 
 void RomWizard::ModelInit(LPCALC lpCalc, int model)
 {
-	switch(model) {
-		case TI_73:
-			calc_init_83p(lpCalc);
-			break;
-		case TI_83P:
-			calc_init_83p(lpCalc);
-			break;
-		case TI_83PSE:
-			calc_init_83pse(lpCalc);
-			break;
-		case TI_84P:
-			calc_init_84p(lpCalc);
-			break;
-		case TI_84PSE:
-			calc_init_83pse(lpCalc);
-			break;
-	}
+	calc_init_model(lpCalc, model, NULL);
 }
 
 BOOL RomWizard::ExtractBootFree(wxString &bootfreePath, int model) {
@@ -155,8 +141,8 @@ void RomWizard::OnFinish(wxWizardEvent &event) {
 			
 			//if you don't want to load an OS, fine...
 			if (osPath.length() > 0) {
-				TIFILE_t *tifile = newimportvar(osPath);
-				if (tifile == NULL || tifile->type != FLASH_TYPE) {
+				TIFILE_t *tifile = importvar(osPath, FALSE);
+				if (tifile == NULL || tifile->type != TifileVarType_t::FLASH_TYPE) {
 					wxMessageBox(_T("Error: OS file is corrupt!"), _T("Error"), wxOK | wxICON_ERROR);
 					return;
 				} else {
@@ -171,7 +157,7 @@ void RomWizard::OnFinish(wxWizardEvent &event) {
 					_tcscpy(lpCalc->rom_path, osPath.c_str());
 					
 					lpCalc->active = TRUE;
-					lpCalc->model = model;
+					lpCalc->model = static_cast<CalcModel>(model);
 					lpCalc->cpu.pio.model = model;
 					FILE *file = fopen(hexFile.fn_str(), "rb");
 					writeboot(file, &lpCalc->mem_c, -1);

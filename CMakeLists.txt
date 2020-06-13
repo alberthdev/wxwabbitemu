@@ -49,6 +49,7 @@ add_executable(wxWabbitemu
 	wabbitemu/utilities/exportvar.c
 	wabbitemu/utilities/gif.cpp
 	wabbitemu/utilities/label.c
+	wabbitemu/utilities/linksendvar.c
 	wabbitemu/utilities/sendfile.c
 	wabbitemu/utilities/var.c
 	
@@ -64,8 +65,10 @@ add_executable(wxWabbitemu
 	wabbitemu/hardware/86hw.c
 	wabbitemu/hardware/colorlcd.c
 	wabbitemu/hardware/keys.c
-	wabbitemu/hardware/lcd.c
 	wabbitemu/hardware/link.c
+	
+	#[[ Hardware Emulation specific to wx ]]
+	hardware/lcd.c
 	
 	#[[ wxWidgets GUI ]]
 	gui/gui.cpp                   #[[ This requires gui/gui.h ]]
@@ -93,13 +96,13 @@ target_include_directories(wxWabbitemu PUBLIC
                            "${PROJECT_SOURCE_DIR}"
                            "${PROJECT_SOURCE_DIR}/wabbitemu"
                            "${PROJECT_SOURCE_DIR}/wabbitemu/core"
-                           "${PROJECT_SOURCE_DIR}/wabbitemu/debugger"
                            "${PROJECT_SOURCE_DIR}/debugger"
+                           "${PROJECT_SOURCE_DIR}/wabbitemu/debugger"
                            "${PROJECT_SOURCE_DIR}/gui"
                            "${PROJECT_SOURCE_DIR}/wabbitemu/hardware"
                            "${PROJECT_SOURCE_DIR}/wabbitemu/interface"
-                           "${PROJECT_SOURCE_DIR}/wabbitemu/utilities"
                            "${PROJECT_SOURCE_DIR}/utilities"
+                           "${PROJECT_SOURCE_DIR}/wabbitemu/utilities"
                            )
 
 target_link_libraries(wxWabbitemu ${wxWidgets_LIBRARIES} win2posix)

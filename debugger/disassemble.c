@@ -167,7 +167,7 @@ static TCHAR bli[4][4][8]	= {
 waddr_t GetNextAddr(memory_context_t *memc, ViewType type, waddr_t waddr) {
 	switch (type) {
 		case REGULAR:
-			waddr = addr_to_waddr(memc, waddr.addr + 1);
+			waddr = addr16_to_waddr(memc, waddr.addr + 1);
 			break;
 		case RAM:
 		case FLASH:
@@ -184,7 +184,7 @@ waddr_t GetNextAddr(memory_context_t *memc, ViewType type, waddr_t waddr) {
 waddr_t OffsetWaddr(memory_context_t *memc, ViewType type, waddr_t waddr, int offset) {
 	switch (type) {
 		case REGULAR:
-			waddr = addr_to_waddr(memc, waddr.addr + offset);
+			waddr = addr16_to_waddr(memc, waddr.addr + offset);
 			break;
 		case RAM:
 		case FLASH: {
@@ -675,7 +675,7 @@ int disassemble(LPCALC lpCalc, ViewType type, waddr_t waddr, int count, Z80_info
 							result->a1 = wmem_read16(memc, waddr);
 							waddr = GetNextAddr(memc, type, waddr);
 							waddr = GetNextAddr(memc, type, waddr);
-							TCHAR* Name = FindBcall((int) result->a1);
+							TCHAR* Name = FindBcall((int) result->a1, lpCalc->model);
 							if (Name == NULL) {
 								result->index = DA_BJUMP_N;
 							} else {
@@ -716,7 +716,7 @@ int disassemble(LPCALC lpCalc, ViewType type, waddr_t waddr, int count, Z80_info
 					int tmp = wmem_read16(memc, waddr);
 						waddr = GetNextAddr(memc, type, waddr);
 						waddr = GetNextAddr(memc, type, waddr);
-					TCHAR* Name = FindBcall(tmp);
+					TCHAR* Name = FindBcall(tmp, lpCalc->model);
 					if (Name == NULL) {
 						result->index = DA_BCALL_N;
 						result->a1 = tmp;

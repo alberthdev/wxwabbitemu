@@ -1,5 +1,6 @@
 #include "wizardos.h"
 #include "gui.h"
+#include "var.h"
 
 BEGIN_EVENT_TABLE(WizardOSPage, wxWizardPage)
 	EVT_FILEPICKER_CHANGED(wxID_ANY, WizardOSPage::OnFilePickerChanged)
@@ -42,8 +43,8 @@ bool WizardOSPage::UpdateOSPathState(bool error) {
 	wxString path = m_filePicker2->GetPath();
 	
 	if (!path.IsEmpty()) {
-		tifile = newimportvar(path.c_str(), TRUE);
-		if (tifile == NULL || !((tifile->type == FLASH_TYPE) && (tifile->flash) && (tifile->flash->type == FLASH_TYPE_OS))) {
+		tifile = importvar(path.c_str(), TRUE);
+		if (tifile == NULL || !((tifile->type == TifileVarType_t::FLASH_TYPE) && (tifile->flash) && (tifile->flash->type == FLASH_TYPE_OS))) {
 			if (error) {
 				dial = new wxMessageDialog(NULL, wxT("Invalid OS file specified! Please select a valid OS file, and try again."),
 					wxT("Error loading OS file"),

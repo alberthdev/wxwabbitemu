@@ -20,8 +20,9 @@
 #include "skins/ti86.h"
 
 #include "gif.h"
-#include "gifhandle.h"
+#include "screenshothandle.h"
 #include "fileutilities.h"
+#include "savestate.h"
 
 #define BIG_WINDOWS_ICON 0
 #ifndef max
@@ -31,7 +32,7 @@
 #define min(a, b)  (((a) < (b)) ? (a) : (b))
 #endif
 
-bool gif_anim_advance;
+bool screenshot_anim_advance;
 bool silent_mode = false;
 int prevCalcScale;
 enum
@@ -139,10 +140,10 @@ int WabbitemuFrame::gui_draw() {
 	wxLCD->Refresh();
 	wxLCD->Update();
 
-	if (lpCalc->gif_disp_state != GDS_IDLE) {
+	if (lpCalc->screenshot_disp_state != GDS_IDLE) {
 		static int skip = 0;
 		if (skip == 0) {
-			gif_anim_advance = true;
+			screenshot_anim_advance = true;
 			this->Update();
 		}
 		skip = (skip + 1) % 4;
@@ -278,7 +279,7 @@ void WabbitemuFrame::gui_frame_update() {
 		const int iStatusWidths[] = {100, -1};
 		wxStatus->SetFieldsCount(2, iStatusWidths);
 		wxStatus->SetStatusText(wxEmptyString);
-		wxStatus->SetStatusText(CalcModelTxt[lpCalc->model], 1);
+		wxStatus->SetStatusText(calc_get_model_string(lpCalc->model), 1);
 		
 		wxSize skinSize(128*lpCalc->scale, 64*lpCalc->scale);
 		this->SetClientSize(skinSize);
@@ -611,10 +612,7 @@ All Files (*.*)|*.*\0");
 	if (!SaveFile(FileName, lpstrFilter, _T("Wabbitemu Save State"), _T(".sav"))) {
 		return;
 	}	
-	SAVESTATE_t* save = SaveSlot(lpCalc);
-
-	_tcscpy(save->author, _T("Default"));
-	save->comment[0] = '\0';
+	SAVESTATE_t* save = SaveSlot(lpCalc, save->author, _T("Default"));
 	WriteSave(FileName, save, false);
 }
 
@@ -960,19 +958,19 @@ All Files (*.*)|*.*\0"),wxFD_SAVE|wxFD_OVERWRITE_PROMPT, wxDefaultPosition);
 	path.append( saveGIFDialog->GetDirectory() );
 	path.append( wxFileName::GetPathSeparator() );
 	path.append( saveGIFDialog->GetFilename() );
-	_tcscpy(gif_file_name, path.c_str());
+	_tcscpy(screenshot_file_name, path.c_str());
 	// Now to actually do something!
-	if (gif_write_state == GIF_IDLE) {
-		gif_write_state = GIF_START;
+	if (screenshot_write_state == GIF_IDLE) {
+		screenshot_write_state = GIF_START;
 		for (int i = 0; i < MAX_CALCS; i++)
 			if (lpCalc->active)
-				lpCalc->gif_disp_state = GDS_STARTING;
+				lpCalc->screenshot_disp_state = GDS_STARTING;
 		wxMenu->Check(ID_File_Gif, true);
 	} else {
-		gif_write_state = GIF_END;
+		screenshot_write_state = GIF_END;
 		for (int i = 0; i < MAX_CALCS; i++)
 			if (lpCalc->active)
-				lpCalc->gif_disp_state = GDS_ENDING;
+				lpCalc->screenshot_disp_state = GDS_ENDING;
 		wxMenu->Check(ID_File_Gif, false);
 	}
 }
@@ -1007,6 +1005,6 @@ All Files (*.*)|*.*\0"),wxFD_SAVE|wxFD_OVERWRITE_PROMPT, wxDefaultPosition);
 	path.append( saveGIFDialog->GetDirectory() );
 	path.append( wxFileName::GetPathSeparator() );
 	path.append( saveGIFDialog->GetFilename() );
-	_tcscpy(gif_file_name, path.c_str());
+	_tcscpy(screenshot_file_name, path.c_str());
 	return true;
 }

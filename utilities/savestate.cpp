@@ -76,8 +76,9 @@ SAVESTATE_t* CreateSave(const TCHAR *author, const TCHAR *comment , const CalcMo
 
 	memset(save->author, 0, sizeof(save->author));
 	memset(save->comment, 0, sizeof(save->comment));
-#ifdef _WINDOWS
+#ifdef WINVER
 #ifdef _UNICODE
+	char buffer[64];
 	size_t numConv;
 	wcstombs_s(&numConv, save->author, author, sizeof(save->author));
 	wcstombs_s(&numConv, save->comment, comment, sizeof(save->author));
@@ -86,8 +87,8 @@ SAVESTATE_t* CreateSave(const TCHAR *author, const TCHAR *comment , const CalcMo
 	StringCbCopy(save->comment, sizeof(save->comment), comment);
 #endif
 #else
-	strncpy(save->author, author, sizeof(save->author));
-	strncpy(save->comment, comment, sizeof(save->comment));
+	_tcsncpy(save->author, author, sizeof(save->author));
+	_tcsncpy(save->comment, comment, sizeof(save->comment));
 #endif
 	
 	save->model = model;

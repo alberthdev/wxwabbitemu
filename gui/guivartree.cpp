@@ -98,7 +98,7 @@ void VarTree::OnTreeSelChanged(wxTreeEvent &event)
 			m_staticPageText->SetLabel(varString);
 		}
 	} else if (symbol) {
-		if (Symbol_Name_to_String(Tree[slot].model, symbol, varString)) {
+		if (Symbol_Name_to_String(Tree[slot].model, symbol, varString, sizeof(varString))) {
 			m_staticNameText->SetLabel(varString);
 			_tprintf(varString, wxT("Address: %04X"), symbol->address);
 			m_staticAddressText->SetLabel(varString);
@@ -161,7 +161,7 @@ int VarTree::FillDesc(wxTreeItemId &hSelect, TCHAR *filePath) {
 			}
 			for(i = 0; i < (u_int) (Tree[slot].sym.last - Tree[slot].sym.symbols + 1); i++) {
 				if (Tree[slot].hVars[i] && *Tree[slot].hVars[i] == hSelect) {
-					if (Symbol_Name_to_String(Tree[slot].model, &Tree[slot].sym.symbols[i], varString)) {
+					if (Symbol_Name_to_String(Tree[slot].model, &Tree[slot].sym.symbols[i], varString, sizeof(varString))) {
 						_tcscat(varString, wxT("."));
 						_tcscat(varString, (const TCHAR *) type_ext[Tree[slot].sym.symbols[i].type_ID]);
 						_tcscpy(filePath, varString);
@@ -199,7 +199,7 @@ void *VarTree::FillFileBuffer(wxTreeItemId &hSelect, void *buf) {
 			}
 			for(i = 0; i < (u_int) (Tree[slot].sym.last - Tree[slot].sym.symbols + 1); i++) {
 				if (Tree[slot].hVars[i] && *Tree[slot].hVars[i] == hSelect) {
-					if (Symbol_Name_to_String(Tree[slot].model, &Tree[slot].sym.symbols[i], varString)) {
+					if (Symbol_Name_to_String(Tree[slot].model, &Tree[slot].sym.symbols[i], varString, sizeof(varString))) {
 						MFILE *outfile = ExportVar(&calcs[slot], NULL, &Tree[slot].sym.symbols[i]);
 						if(!outfile) {
 							return NULL;
@@ -342,7 +342,7 @@ void VarTree::UpdateVarTree(bool New)
 			/* This slot has not yet been initialized. */
 			/* so set up the Root */
 			if (Tree[slot].model == 0) {
-				Tree[slot].hRoot = m_treeVariables->AddRoot(CalcModelTxt[calcs[slot].model], TI_ICON_84PSE);
+				Tree[slot].hRoot = m_treeVariables->AddRoot(calc_get_model_string(calcs[slot].model), TI_ICON_84PSE);
 			}
 
 			/* If nodes haven't been init or the model is reset, create nodes */
@@ -453,7 +453,7 @@ void VarTree::UpdateVarTree(bool New)
 						icon = TI_ICON_FILE_RAM;  //green
 					}
 					
-					if (Symbol_Name_to_String(Tree[slot].model, &sym->symbols[i], tmpstring)) {
+					if (Symbol_Name_to_String(Tree[slot].model, &sym->symbols[i], tmpstring, sizeof(tmpstring))) {
 						wxTreeItemId item;
 						if (Tree[slot].model == TI_86) {
 							switch(sym->symbols[i].type_ID) {
