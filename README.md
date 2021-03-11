@@ -108,7 +108,7 @@ In a terminal type:
 
 To run it, type:
 
-    bin/wxwabbitemu
+    ./bin/wxWabbitemu
 
 Note, though, that wxwabbitemu is a portable file and it can be copied
 to anywhere in your computer and ran from any location.
