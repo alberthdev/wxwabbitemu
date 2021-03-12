@@ -80,6 +80,7 @@ follow each command with pressing the return key.
         # If libwxgtk3.0-dev isn't available, try libwxgtk2.8-dev.
         # 2.8 is available on older distros, while 3.0 is available
         # on more recent releases.
+        # Also, on later Ubuntu releases you will need to use libgtk3.0-gtk3-dev
         sudo apt-get install build-essential libwxgtk3.0-dev
 
   * Fedora, RHEL, and friends:
@@ -107,7 +108,7 @@ In a terminal type:
 
 To run it, type:
 
-    bin/wxwabbitemu
+    ./bin/wxWabbitemu
 
 Note, though, that wxwabbitemu is a portable file and it can be copied
 to anywhere in your computer and ran from any location.
