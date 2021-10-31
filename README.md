@@ -87,12 +87,6 @@ follow each command with pressing the return key.
     
     Run:
     
-        su -c "dnf update"
-    
-    Reboot if necessary. 
-    
-    Then open a terminal again (if you rebooted), and type:
-    
         su -c "dnf install gcc gcc-c++ make wxGTK wxGTK-devel"
 
 Once you have installed the dependencies, you can go ahead and
