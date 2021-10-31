@@ -87,7 +87,7 @@ follow each command with pressing the return key.
     
     Run:
     
-        su -c "dnf install gcc gcc-c++ make wxGTK wxGTK-devel"
+        su -c "dnf install gcc gcc-c++ make wxGTK3 wxGTK3-devel"
 
 Once you have installed the dependencies, you can go ahead and
 build wxWabbitemu!
